@@ -13,6 +13,13 @@ export type OwnerCacheEntry = {
     token_accts_map: Map<string, TokenAccount>;
 };
 
+
+/// This cache is a helper used to determine if a user owns a given patch.
+/// We fetch all the token accounts belonging to a given address that have a balance of 1
+/// We then build a map from the mint address for those tokens, to the token accounts themselves
+/// The patches include the mint address that created them, so by checking the map for the existence
+/// of a token account created by the same mint linked to the patch, we can determine if the user owns
+/// the patch.
 export class TokenAccountsCache {
 
     static singleton = new TokenAccountsCache();

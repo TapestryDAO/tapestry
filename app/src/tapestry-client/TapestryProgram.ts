@@ -19,7 +19,7 @@ import {
 import { TAPESTRY_PROGRAM_ID } from "./constants"
 import { PurchasePatchArgsData } from './instructions/PurchasePatch';
 import { UpdatePatchImageArgsData } from './instructions/UpdatePatchImage';
-import { extendBorsh } from './accounts/TapestryPatch';
+import { extendBorsh } from "./utils";
 import { UpdatePatchMetadataArgsData } from './instructions/UpdatePatchMetadata';
 
 export type InitTapestryParams = {

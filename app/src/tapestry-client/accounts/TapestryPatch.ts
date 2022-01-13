@@ -1,9 +1,10 @@
 import { PublicKey, AccountInfo, Connection } from '@solana/web3.js';
-import { Borsh, Account, AnyPublicKey, Program, TokenAccount } from '@metaplex-foundation/mpl-core';
-import { Schema, BinaryReader, BinaryWriter } from 'borsh';
+import { Borsh, Account, AnyPublicKey } from '@metaplex-foundation/mpl-core';
+import { Schema } from 'borsh';
 import BN from 'bn.js';
 import { TapestryProgram } from '../TapestryProgram';
 import { TokenAccountsCache } from '../TokenAccountsCache';
+import { extendBorsh } from "../utils";
 
 type TapestryPatchArgs = {
     is_initialized: boolean;
@@ -16,64 +17,6 @@ type TapestryPatchArgs = {
     hover_text?: string;
     image_data?: Buffer;
 };
-
-
-// NOTE(will): Fuggin borsh js doesn't support signed number types, so have to extend it this way
-
-type BinaryReaderExtended = BinaryReader & {
-    readI16(): number;
-    readVecU8(): Buffer;
-}
-
-type BinaryWriterExtended = BinaryWriter & {
-    writeI16(value: number): void;
-    writeVecU8(value: Buffer): void;
-}
-
-let once = false;
-
-export const extendBorsh = () => {
-
-    // TODO (will): how can I make this get called once at the module level?
-    if (once) return;
-    once = true;
-
-    (BinaryReader.prototype as BinaryReaderExtended).readI16 = function (
-        this: BinaryReaderExtended,
-    ) {
-        let buf = Buffer.from(this.readFixedArray(2));
-        return buf.readInt16LE(0);
-    };
-
-    (BinaryWriter.prototype as BinaryWriterExtended).writeI16 = function (
-        this: BinaryWriterExtended,
-        value: number,
-    ) {
-        let buf = Buffer.alloc(2);
-        buf.writeInt16LE(value, 0);
-        this.writeFixedArray(buf);
-    };
-
-    (BinaryReader.prototype as BinaryReaderExtended).readVecU8 = function (
-        this: BinaryReaderExtended,
-    ) {
-        let len = this.readU32();
-        let buf = Buffer.alloc(len);
-        for (let i = 0; i < len; i++) {
-            buf.writeUInt8(this.readU8(), i);
-            // buf.writeUIntLE(this.readU8(), i, 1);
-        }
-        return buf;
-    };
-
-    (BinaryWriter.prototype as BinaryWriterExtended).writeVecU8 = function (
-        this: BinaryWriterExtended,
-        value: Buffer,
-    ) {
-        this.writeU32(value.length);
-        value.forEach((byte) => this.writeU8(byte))
-    };
-}
 
 export class TapestryPatchData extends Borsh.Data<TapestryPatchArgs> {
     static readonly SCHEMA: Schema = new Map([
