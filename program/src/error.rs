@@ -46,6 +46,12 @@ pub enum TapestryError {
 
     #[error("Unexpected Patch State")]
     UnexpectedPatchState,
+
+    #[error("Invalid Patch Coordinates")]
+    InvalidPatchCoordinates,
+
+    #[error("Invalid Patch Chunk Coordinates")]
+    InvalidPatchChunkCoordinates,
 }
 
 impl From<TapestryError> for ProgramError {

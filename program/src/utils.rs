@@ -1,4 +1,8 @@
-use crate::error::TapestryError;
+use crate::{
+    error::TapestryError,
+    state::{CHUNK_SIZE, MAX_X, MAX_Y, MIN_X, MIN_Y},
+};
+
 use solana_program::{
     account_info::AccountInfo,
     entrypoint::ProgramResult,
@@ -10,6 +14,40 @@ use solana_program::{
     sysvar::{rent::Rent, Sysvar},
 };
 use std::convert::TryInto;
+
+#[derive(Debug)]
+pub struct ChunkCoords {
+    pub x_chunk: i8,
+    pub y_chunk: i8,
+}
+
+#[inline(always)]
+pub fn chunk_for_coords(x: i16, y: i16) -> ChunkCoords {
+    // NOTE(will): maybe assert coords valid here?
+    let x_chunk = if x >= 0 {
+        x / CHUNK_SIZE
+    } else {
+        ((x + 1) / CHUNK_SIZE) - 1
+    } as i8;
+
+    let y_chunk = if y >= 0 {
+        y / CHUNK_SIZE
+    } else {
+        ((y + 1) / CHUNK_SIZE) - 1
+    } as i8;
+
+    return ChunkCoords { x_chunk, y_chunk };
+}
+
+#[inline(always)]
+pub fn assert_coords_valid(x: i16, y: i16) -> ProgramResult {
+    let valid = x <= MAX_X && x >= MIN_X && y <= MAX_Y && y >= MIN_Y;
+    if valid {
+        return Ok(());
+    } else {
+        return Err(TapestryError::InvalidPatchCoordinates.into());
+    }
+}
 
 pub fn assert_signer(account_info: &AccountInfo) -> ProgramResult {
     if !account_info.is_signer {

@@ -11,7 +11,10 @@ use crate::{
         TapestryState, MAX_PATCH_IMAGE_DATA_LEN, MAX_PATCH_TOTAL_LEN, TAPESTRY_MINT_PDA_PREFIX,
         TAPESTRY_PDA_PREFIX, TAPESTRY_STATE_MAX_LEN,
     },
-    utils::{assert_signer, create_or_allocate_account_raw},
+    utils::{
+        assert_coords_valid, assert_signer, chunk_for_coords, create_or_allocate_account_raw,
+        ChunkCoords,
+    },
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
@@ -374,17 +377,21 @@ fn process_purchase_patch(
         ],
     )?;
 
+    let ChunkCoords { x_chunk, y_chunk } = chunk_for_coords(*x, *y);
+
     let tapestry_patch = TapestryPatch {
         is_initialized: true,
         owned_by_mint: *tapestry_patch_mint_acct.key,
-        x_region: 0,
-        y_region: 0, // TODO(will): compute these values
+        x_chunk: x_chunk,
+        y_chunk: y_chunk,
         x: *x,
         y: *y,
         url: None,
         hover_text: None,
         image_data: None,
     };
+
+    assert_patch_is_valid(&tapestry_patch);
 
     // The rest of the state can be updated via 'UpdatePatch' instructions
     tapestry_patch.serialize(&mut *tapestry_patch_acct.data.borrow_mut())?;
