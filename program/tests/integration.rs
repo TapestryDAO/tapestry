@@ -110,7 +110,6 @@ async fn test_patches() {
 
 #[tokio::test]
 async fn test_chunks() {
-    println!("asdf");
     let my_max = 127i16;
     assert_eq!(my_max as i8, std::i8::MAX);
     let my_min = -128i16;

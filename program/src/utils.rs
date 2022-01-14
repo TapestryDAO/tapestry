@@ -23,8 +23,7 @@ pub struct ChunkCoords {
 
 #[inline(always)]
 pub fn chunk_for_coords(x: i16, y: i16) -> ChunkCoords {
-    // assert_coords_valid(x, y);
-
+    // NOTE(will): maybe assert coords valid here?
     let x_chunk = if x >= 0 {
         x / CHUNK_SIZE
     } else {
