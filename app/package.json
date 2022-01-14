@@ -1,20 +1,7 @@
 {
-    "name": "@solana/wallet-adapter-react-ui-starter",
-    "version": "0.8.1",
-    "author": "Solana Maintainers <maintainers@solana.foundation>",
-    "repository": "https://github.com/solana-labs/wallet-adapter",
-    "license": "Apache-2.0",
-    "files": [
-        "public",
-        "src",
-        "craco.config.js",
-        "LICENSE",
-        "README.md",
-        "tsconfig.json"
-    ],
-    "publishConfig": {
-        "access": "public"
-    },
+    "name": "@tapestrydao/app",
+    "version": "0.1.0",
+    "repository": "https://github.com/TapestryDAO/tapestry",
     "scripts": {
         "clean": "shx rm -rf build/*",
         "start": "craco start",
