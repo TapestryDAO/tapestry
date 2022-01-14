@@ -3,11 +3,13 @@ import { BinaryReader, BinaryWriter } from 'borsh';
 // NOTE(will): Fuggin borsh js doesn't support signed number types, so have to extend it this way
 
 type BinaryReaderExtended = BinaryReader & {
+    readI8(): number;
     readI16(): number;
     readVecU8(): Buffer;
 }
 
 type BinaryWriterExtended = BinaryWriter & {
+    writeI8(value: number): void;
     writeI16(value: number): void;
     writeVecU8(value: Buffer): void;
 }
@@ -19,6 +21,22 @@ export const extendBorsh = () => {
     // TODO (will): how can I make this get called once at the module level?
     if (once) return;
     once = true;
+
+    (BinaryReader.prototype as BinaryReaderExtended).readI8 = function (
+        this: BinaryReaderExtended,
+    ) {
+        let buf = Buffer.from(this.readFixedArray(1));
+        return buf.readIntLE(0, 1);
+    };
+
+    (BinaryWriter.prototype as BinaryWriterExtended).writeI8 = function (
+        this: BinaryWriterExtended,
+        value: number,
+    ) {
+        let buf = Buffer.alloc(1);
+        buf.writeIntLE(value, 0, 1);
+        this.writeFixedArray(buf);
+    };
 
     (BinaryReader.prototype as BinaryReaderExtended).readI16 = function (
         this: BinaryReaderExtended,
