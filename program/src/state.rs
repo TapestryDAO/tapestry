@@ -2,7 +2,7 @@ use solana_program::{program_pack::IsInitialized, pubkey::Pubkey, entrypoint::Pr
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::error::TapestryError;
+use crate::{error::TapestryError, utils::{assert_coords_valid, chunk_for_coords, ChunkCoords}};
 
 /// Prefix used to generate the PDA for the tapestry state account
 pub const TAPESTRY_PDA_PREFIX: &str = "tapestry";
@@ -32,6 +32,7 @@ pub const MAX_X: i16 = 1023;
 pub const MIN_X: i16 = -1024;
 pub const MAX_Y: i16 = 1023;
 pub const MIN_Y: i16 = -1024;
+pub const CHUNK_SIZE: i16 = 8;
 
 pub const MAX_PATCH_IMAGE_DATA_LEN: usize = 1024;
 pub const MAX_PATCH_URL_LEN: usize = 128;
@@ -40,8 +41,8 @@ pub const MAX_PATCH_HOVER_TEXT_LEN: usize = 64;
 pub const MAX_PATCH_TOTAL_LEN: usize = 0 + 
     1 + // is_initialized
     32 + // owned_by_mint
-    8 + // x_region
-    8 + // y_region
+    1 + // x_chunk
+    1 + // y_region
     2 + // x
     2 + // y
     1 + 4 + MAX_PATCH_URL_LEN + // url
@@ -55,10 +56,11 @@ pub struct TapestryPatch {
     /// Only the owner of the NFT minted by this token mint can update the patch data
     pub owned_by_mint: Pubkey,
 
-    /// bit pattern used to query RPC nodes for a local grouping of patches using memcmp
-    pub x_region: u64,
-    /// bit pattern used to query RPC nodes for a local grouping of patches using memcmp
-    pub y_region: u64,
+    /// local chunk x
+    pub x_chunk: i8,
+
+    /// local chunk y
+    pub y_chunk: i8,
 
     /// X coordinate of the patch
     pub x: i16,
@@ -79,6 +81,14 @@ pub struct TapestryPatch {
 pub fn assert_patch_is_valid(
     patch: &TapestryPatch,
 ) -> ProgramResult {
+
+    assert_coords_valid(patch.x, patch.y)?;
+
+    let ChunkCoords { x_chunk, y_chunk } = chunk_for_coords(patch.x, patch.y);
+
+    if patch.x_chunk != x_chunk || patch.y_chunk != y_chunk {
+        return Err(TapestryError::InvalidPatchChunkCoordinates.into());
+    }
 
     if !patch.is_initialized {
         return Err(TapestryError::UnexpectedPatchState.into());

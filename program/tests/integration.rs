@@ -24,8 +24,9 @@ use {
         },
         state::{
             assert_patch_is_valid, find_tapestry_state_address, TapestryPatch, TapestryState,
-            MAX_PATCH_TOTAL_LEN,
+            CHUNK_SIZE, MAX_PATCH_TOTAL_LEN, MAX_X, MAX_Y, MIN_X, MIN_Y,
         },
+        utils::{chunk_for_coords, ChunkCoords},
     },
     spl_token::state::{Account as TokenAccount, AccountState},
     std::str::FromStr,
@@ -42,8 +43,8 @@ async fn test_patches() {
     let empty_patch = TapestryPatch {
         is_initialized: true,
         owned_by_mint: Pubkey::new_unique(),
-        x_region: 0,
-        y_region: 0,
+        x_chunk: 0,
+        y_chunk: 0,
         x: 0,
         y: 0,
         url: None,
@@ -56,8 +57,8 @@ async fn test_patches() {
     let fully_loaded_patch = TapestryPatch {
         is_initialized: true,
         owned_by_mint: Pubkey::new_unique(),
-        x_region: 0,
-        y_region: 0,
+        x_chunk: 0,
+        y_chunk: 0,
         x: 0,
         y: 0,
         url: Some(get_string(MAX_PATCH_URL_LEN)),
@@ -74,8 +75,8 @@ async fn test_patches() {
     let overloaded_patch = TapestryPatch {
         is_initialized: true,
         owned_by_mint: Pubkey::new_unique(),
-        x_region: 0,
-        y_region: 0,
+        x_chunk: 0,
+        y_chunk: 0,
         x: 0,
         y: 0,
         url: Some(get_string(MAX_PATCH_URL_LEN + 1)),
@@ -86,6 +87,98 @@ async fn test_patches() {
     let overload_result = assert_patch_is_valid(&overloaded_patch);
 
     assert_eq!(Err(TapestryError::PatchURLTooLong.into()), overload_result);
+
+    let wrong_chunk_patch = TapestryPatch {
+        is_initialized: true,
+        owned_by_mint: Pubkey::new_unique(),
+        x_chunk: 0,
+        y_chunk: 0,
+        x: -1,
+        y: -1,
+        url: Some(get_string(MAX_PATCH_URL_LEN)),
+        hover_text: Some(get_string(MAX_PATCH_HOVER_TEXT_LEN)),
+        image_data: Some(get_string(MAX_PATCH_IMAGE_DATA_LEN).into_bytes()),
+    };
+
+    let wrong_chunk_result = assert_patch_is_valid(&wrong_chunk_patch);
+
+    assert_eq!(
+        Err(TapestryError::InvalidPatchChunkCoordinates.into()),
+        wrong_chunk_result
+    );
+}
+
+#[tokio::test]
+async fn test_chunks() {
+    println!("asdf");
+    let my_max = 127i16;
+    assert_eq!(my_max as i8, std::i8::MAX);
+    let my_min = -128i16;
+    assert_eq!(my_min as i8, std::i8::MIN);
+
+    assert_matches!(
+        chunk_for_coords(0, 0),
+        ChunkCoords {
+            x_chunk: 0,
+            y_chunk: 0,
+        }
+    );
+
+    assert_matches!(
+        chunk_for_coords(-1, 0),
+        ChunkCoords {
+            x_chunk: -1,
+            y_chunk: 0,
+        }
+    );
+
+    assert_matches!(
+        chunk_for_coords(-1, -1),
+        ChunkCoords {
+            x_chunk: -1,
+            y_chunk: -1,
+        }
+    );
+
+    assert_matches!(
+        chunk_for_coords(0, -1),
+        ChunkCoords {
+            x_chunk: 0,
+            y_chunk: -1
+        }
+    );
+
+    assert_matches!(
+        chunk_for_coords(MAX_X, MAX_Y),
+        ChunkCoords {
+            x_chunk: 127,
+            y_chunk: 127,
+        }
+    );
+
+    assert_matches!(
+        chunk_for_coords(MIN_X, MIN_Y),
+        ChunkCoords {
+            x_chunk: -128,
+            y_chunk: -128,
+        }
+    );
+
+    assert_matches!(
+        chunk_for_coords(MIN_X, MAX_Y),
+        ChunkCoords {
+            x_chunk: -128,
+            y_chunk: 127,
+        }
+    );
+
+    assert_matches!(
+        chunk_for_coords(MAX_X, MIN_Y),
+        ChunkCoords {
+            x_chunk: 127,
+            y_chunk: -128,
+        }
+    );
 }
 
 #[tokio::test]
