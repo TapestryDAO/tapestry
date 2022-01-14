@@ -9,8 +9,8 @@ import { extendBorsh } from "../utils";
 type TapestryPatchArgs = {
     is_initialized: boolean;
     owned_by_mint: PublicKey;
-    x_region: BN;
-    y_region: BN;
+    x_chunk: number;
+    y_chunk: number;
     x: number;
     y: number;
     url?: string;
@@ -23,8 +23,8 @@ export class TapestryPatchData extends Borsh.Data<TapestryPatchArgs> {
         ...TapestryPatchData.struct([
             ['is_initialized', 'u8'],
             ['owned_by_mint', 'pubkey'],
-            ["x_region", "u64"],
-            ["y_region", "u64"],
+            ["x_chunk", "i8"],
+            ["y_chunk", "i8"],
             ["x", 'i16'],
             ["y", 'i16'],
             ["url", { kind: "option", type: "string" }],
@@ -35,8 +35,8 @@ export class TapestryPatchData extends Borsh.Data<TapestryPatchArgs> {
 
     is_initialized: boolean;
     owned_by_mint: PublicKey;
-    x_region: BN;
-    y_region: BN;
+    x_chunk: number;
+    y_chunk: number;
     x: number;
     y: number;
     url?: string;
@@ -50,8 +50,8 @@ export class TapestryPatchData extends Borsh.Data<TapestryPatchArgs> {
         // TODO(will): figure out how metaplex is able to not write all this out
         this.is_initialized = args.is_initialized;
         this.owned_by_mint = args.owned_by_mint;
-        this.x_region = args.x_region;
-        this.y_region = args.y_region;
+        this.x_chunk = args.x_chunk;
+        this.y_chunk = args.y_chunk;
         this.x = args.x;
         this.y = args.y;
         this.url = args.url;
