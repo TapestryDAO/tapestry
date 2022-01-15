@@ -5,7 +5,8 @@
     "main": "./src/index.tsx",
     "scripts": {
         "clean": "shx rm -rf build/*",
-        "start": "webpack serve --config webpack/webpack.config.js --env env=dev"
+        "start": "webpack serve --config webpack/webpack.config.js --env env=dev",
+        "build": "webpack --config webpack/webpack.config.js --env env=prod"
     },
     "dependencies": {
         "@emotion/react": "^11.7.1",
@@ -43,6 +44,7 @@
         "html-webpack-plugin": "^5.5.0",
         "react-dev-utils": "^12.0.0",
         "react-refresh": "^0.11.0",
+        "shx": "^0.3.4",
         "style-loader": "^3.3.1",
         "typescript": "~4.4.4",
         "webpack": "^5.66.0",
