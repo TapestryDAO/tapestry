@@ -1,26 +1,24 @@
 {
-    "include": [
-        "src"
-    ],
     "compilerOptions": {
-        "target": "es6",
+        "target": "es2021" /* https://www.typescriptlang.org/tsconfig#target */,
+        "module": "commonjs" /* https://www.typescriptlang.org/tsconfig#module */,
+        "moduleResolution": "Node" /* https://www.typescriptlang.org/tsconfig#moduleResolution */,
         "lib": [
-            "dom",
-            "dom.iterable",
-            "esnext"
-        ],
-        "allowJs": true,
-        "skipLibCheck": true,
-        "esModuleInterop": true,
-        "allowSyntheticDefaultImports": true,
-        "strict": true,
-        "forceConsistentCasingInFileNames": true,
-        "noFallthroughCasesInSwitch": true,
-        "module": "esnext",
-        "moduleResolution": "node",
-        "resolveJsonModule": true,
-        "isolatedModules": true,
-        "noEmit": true,
-        "jsx": "react-jsx"
-    }
+            "DOM",
+            "ESNext"
+        ] /* https://www.typescriptlang.org/tsconfig#lib */,
+        "jsx": "react-jsx",
+        "noEmit": true /* https://www.typescriptlang.org/tsconfig#noEmit */,
+        "isolatedModules": true /* https://www.typescriptlang.org/tsconfig#isolatedModules */,
+        "esModuleInterop": true /* https://www.typescriptlang.org/tsconfig#esModuleInterop */,
+        "strict": true /* https://www.typescriptlang.org/tsconfig#strict */,
+        "skipLibCheck": true /* https://www.typescriptlang.org/tsconfig#skipLibCheck */,
+        "forceConsistentCasingInFileNames": true /* https://www.typescriptlang.org/tsconfig#forceConsistentCasingInFileNames */,
+        "resolveJsonModule": true /* https://www.typescriptlang.org/tsconfig#resolveJsonModule */,
+        // "allowJs": true /* Allow javascript files to be compiled. Useful when migrating JS to TS */,
+        // "checkJs": true /* Report errors in .js files. Works in tandem with allowJs. */,
+    },
+    "include": [
+        "src/**/*"
+    ]
 }
