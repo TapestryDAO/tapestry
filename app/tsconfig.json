@@ -2,7 +2,7 @@
     "compilerOptions": {
         "target": "es2021" /* https://www.typescriptlang.org/tsconfig#target */,
         "module": "commonjs" /* https://www.typescriptlang.org/tsconfig#module */,
-        "moduleResolution": "node" /* https://www.typescriptlang.org/tsconfig#moduleResolution */,
+        "moduleResolution": "Node" /* https://www.typescriptlang.org/tsconfig#moduleResolution */,
         "lib": [
             "DOM",
             "ESNext"
