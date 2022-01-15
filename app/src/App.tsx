@@ -20,14 +20,11 @@ import {
   InitTapestryParams,
   TapestryProgram,
   PurchasePatchParams,
-  UpdatePatchMetadataParams,
   TokenAccountsCache,
   TapestryStateAccount,
   TapestryPatchAccount,
-} from '@tapestrydao/client';
-// import {  } from './tapestry-client/TokenAccountsCache';
-// import {  } from './tapestry-client/accounts/TapestryState';
-// import {  } from './tapestry-client/accounts/TapestryPatch';
+} from "@tapestrydao/client";
+
 import { Input } from '@mui/material';
 
 type PatchProps = {
