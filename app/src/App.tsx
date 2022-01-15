@@ -15,15 +15,16 @@ import {
   sendAndConfirmTransaction,
   Connection
 } from '@solana/web3.js';
+
 import {
   InitTapestryParams,
   TapestryProgram,
   PurchasePatchParams,
-  UpdatePatchMetadataParams,
-} from './tapestry-client/TapestryProgram';
-import { TokenAccountsCache } from './tapestry-client/TokenAccountsCache';
-import { TapestryStateAccount } from './tapestry-client/accounts/TapestryState';
-import { TapestryPatchAccount } from './tapestry-client/accounts/TapestryPatch';
+  TokenAccountsCache,
+  TapestryStateAccount,
+  TapestryPatchAccount,
+} from "@tapestrydao/client";
+
 import { Input } from '@mui/material';
 
 type PatchProps = {

@@ -1,8 +1,6 @@
 import { PublicKey, Connection } from "@solana/web3.js";
 import { TokenAccount } from '@metaplex-foundation/mpl-core'
 import BN from 'bn.js';
-import React, { FC } from 'react';
-
 
 // NOTE(will): using Map with a PublicKey key silently used object references rather than
 // value comparison, might be nice to extend PublicKey to implement whatever it needs for Maps

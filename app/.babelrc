@@ -8,5 +8,15 @@
             }
         ],
         "@babel/preset-typescript"
+    ],
+    "plugins": [
+        [
+            "module-resolver",
+            {
+                "alias": {
+                    "^@tapestrydao/client": "../client/build"
+                }
+            }
+        ]
     ]
 }
