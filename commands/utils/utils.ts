@@ -1,6 +1,6 @@
 import path from 'path'
 import * as fs from 'fs'
-import { Keypair, Connection, ConnectionConfig } from '@solana/web3.js'
+import { Keypair, Connection, ConnectionConfig, TransactionSignature, Transaction, Signer } from '@solana/web3.js'
 import { execSync, exec } from 'child_process'
 import axios from 'axios';
 import { exit } from 'process';
@@ -107,4 +107,43 @@ export const generateVanityKey = (keyname: string, vanity: string) => {
     ]
 
     let moveResult = execSync(mv_command.join(" "))
+}
+
+// NOTE(will): Copy pasted and tweaked slightly such that I can get raw tx wire bytes
+export const getRawTransaction = async (
+    connection: Connection,
+    transaction: Transaction,
+    signers: Array<Signer>,
+): Promise<Buffer> => {
+    if (transaction.nonceInfo) {
+        transaction.sign(...signers);
+    } else {
+        // @ts-expect-error
+        let disableCache = connection["_disableBlockhashCaching"];
+        for (; ;) {
+            // @ts-expect-error
+            transaction.recentBlockhash = await connection["_recentBlockhash"](disableCache);
+            transaction.sign(...signers);
+            // @ts-expect-error
+            const signature = transaction.signature.toString('base64');
+            // @ts-expect-error
+            if (!connection["_blockhashInfo"]["transactionSignatures"].includes(signature)) {
+                // The signature of this transaction has not been seen before with the
+                // current recentBlockhash, all done. Let's break
+                // @ts-expect-error
+                connection["_blockhashInfo"]["transactionSignatures"].push(signature);
+                break;
+            } else {
+                // This transaction would be treated as duplicate (its derived signature
+                // matched to one of already recorded signatures).
+                // So, we must fetch a new blockhash for a different signature by disabling
+                // our cache not to wait for the cache expiration (BLOCKHASH_CACHE_TIMEOUT_MS).
+                disableCache = true;
+            }
+        }
+    }
+
+    const wireTransaction = transaction.serialize();
+
+    return wireTransaction
 }

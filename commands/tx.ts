@@ -1,8 +1,8 @@
 
 import yargs, { ArgumentsCamelCase, Argv, string } from 'yargs'
 import { TapestryProgram } from '../client/src/TapestryProgram'
-import { LAMPORTS_PER_SOL, sendAndConfirmTransaction, Transaction, TransactionSignature } from '@solana/web3.js'
-import { getNewConnection, loadKey, makeJSONRPC } from './utils/utils'
+import { LAMPORTS_PER_SOL, sendAndConfirmRawTransaction, sendAndConfirmTransaction, Transaction } from '@solana/web3.js'
+import { getNewConnection, getRawTransaction, loadKey, makeJSONRPC } from './utils/utils'
 import util from 'util';
 
 
@@ -35,12 +35,15 @@ const init_command = {
 
         let tx = new Transaction().add(ix);
 
-        let signature = await sendAndConfirmTransaction(connection, tx, [keypair]);
+        let rawTx = await getRawTransaction(connection, tx, [keypair])
+
+        console.log("TX Bytes: " + rawTx.length)
+
+        let signature = await sendAndConfirmRawTransaction(connection, rawTx);
         let result = await connection.confirmTransaction(signature, "confirmed");
 
-        console.log('Result: ' + result);
-        console.log('Result: ' + result.value);
-        console.log('Result: ' + result.value.err)
+        console.log("TX Sig: " + signature);
+        console.log("Err: " + result.value.err);
     }
 }
 
@@ -69,23 +72,6 @@ const airdrop_command = {
     }
 }
 
-const get_tx = {
-    command: "get [signature]",
-    describe: "get a transaction by signature",
-    builder: (argv: Argv) => {
-        return argv.positional("signature", {
-            describe: "The signature from the transaction",
-            type: "string",
-            demandOption: true,
-        })
-    },
-    handler: async (args: ArgumentsCamelCase) => {
-        let signature = args.signature as string
-        let result = await makeJSONRPC("getTransaction", [signature, "json"])
-        console.log(util.inspect(result, true, null, true))
-    }
-}
-
 export const command = {
     command: "tx",
     description: "Execute various transations against the tapestry program running on the solana blockchain",
@@ -93,7 +79,6 @@ export const command = {
         return argv
             .command(airdrop_command)
             .command(init_command)
-            .command(get_tx)
             .demandCommand()
     }
 }
