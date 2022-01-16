@@ -1,11 +1,12 @@
-import { fstat } from 'fs'
+
 import { TapCommand } from "./command"
 import yargs, { ArgumentsCamelCase, Argv } from 'yargs'
 import { execSync, exec } from 'child_process'
 import path from 'path'
+import * as fs from 'fs';
+import { Keypair } from '@solana/web3.js'
+import { KEYS_DIR } from './utils/utils'
 
-
-const KEYS_DIR = path.resolve(__dirname, "..", "keys")
 
 const createKey = (args: ArgumentsCamelCase) => {
     console.log("Creating a key named: " + args.keyname + " in " + KEYS_DIR)
@@ -22,11 +23,6 @@ const showKey = (args: ArgumentsCamelCase) => {
 
     console.log(result.toString().trim());
 }
-
-// const createKeysBuilder = (args: Argv): Argv => {
-//     console.log("builder?")
-//     return args.option("keyname", {});
-// }
 
 export const command: TapCommand = {
     keyword: "keys",
