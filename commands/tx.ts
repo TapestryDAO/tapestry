@@ -149,6 +149,47 @@ const upload_image = {
     }
 }
 
+const upload_meta = {
+    command: "metaup",
+    description: "upload metadata to a patch",
+    builder: (args: Argv) => {
+        return applyKeynameOption(applyXYArgOptions(args))
+            .option("url", {
+                description: "Redirect URL for the patch",
+                type: "string",
+            })
+            .option("hover_text", {
+                description: "hover text for the patch",
+                type: "string"
+            })
+    },
+    handler: async (args: ArgumentsCamelCase) => {
+        let x = args.x as number
+        let y = args.y as number
+        let keypair = loadKey(args.keyname as string)
+
+        let ix = await TapestryProgram.updatePatchMetadata({
+            x: x,
+            y: y,
+            owner: keypair.publicKey,
+            url: args.url as string,
+            hover_text: args.hover_text as string
+        })
+
+        let tx = new Transaction().add(ix)
+
+        let connection = getNewConnection();
+        let txRaw = await getRawTransaction(connection, tx, [keypair])
+        console.log("TX Bytes: " + txRaw.length)
+
+        let sig = await sendAndConfirmRawTransaction(connection, txRaw)
+        console.log("TX Sig: " + sig)
+
+        let result = await connection.getConfirmedTransaction(sig, "confirmed")
+        console.log("TX Info: \n" + inspect(result, true, null, true))
+    }
+}
+
 export const command = {
     command: "tx",
     description: "Execute various transations against the tapestry program running on the solana blockchain",
@@ -158,6 +199,7 @@ export const command = {
             .command(init_command)
             .command(buy_command)
             .command(upload_image)
+            .command(upload_meta)
             .demandCommand()
     }
 }
