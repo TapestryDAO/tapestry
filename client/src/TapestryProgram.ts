@@ -86,18 +86,18 @@ export class TapestryProgram extends Program {
             y: params.y, // error here figure out how to serialize i16's
         })
 
-        console.log("creating buy patch ix: ", params.x, " ", params.y)
+        // console.log("creating buy patch ix: ", params.x, " ", params.y)
 
         let tapestryStateAddress = await this.findTapestryStateAddress();
         let tapestryPatchPDA = await this.findPatchAddressForPatchCoords(params.x, params.y);
         let tapestryPatchMint = await this.findMintAddressForPatchCoords(params.x, params.y);
         let patchAta = await this.findPatchATAForPatch(tapestryPatchMint, params.buyerPubkey);
 
-        console.log("buyer pub: ", params.buyerPubkey.toBase58());
-        console.log("state pda: ", tapestryStateAddress.toBase58());
-        console.log("patch pda: ", tapestryPatchPDA.toBase58());
-        console.log("mint  pda: ", tapestryPatchMint.toBase58());
-        console.log("ata   pda: ", patchAta.toBase58());
+        // console.log("buyer pub: ", params.buyerPubkey.toBase58());
+        // console.log("state pda: ", tapestryStateAddress.toBase58());
+        // console.log("patch pda: ", tapestryPatchPDA.toBase58());
+        // console.log("mint  pda: ", tapestryPatchMint.toBase58());
+        // console.log("ata   pda: ", patchAta.toBase58());
 
         return new TransactionInstruction({
             keys: [
@@ -124,7 +124,7 @@ export class TapestryProgram extends Program {
             image_data: Buffer.from(params.image_data),
         })
 
-        console.log("creating update patch ix: ", params.x, ",", params.y)
+        // console.log("creating update patch ix: ", params.x, ",", params.y)
 
         let tapestryPatchPDA = await this.findPatchAddressForPatchCoords(params.x, params.y);
         let tapestryPatchMint = await this.findMintAddressForPatchCoords(params.x, params.y);
@@ -151,7 +151,7 @@ export class TapestryProgram extends Program {
             hover_text: params.hover_text,
         });
 
-        console.log("creating update patch meta ix: ", params.x, ",", params.y);
+        // console.log("creating update patch meta ix: ", params.x, ",", params.y);
 
         let tapestryPatchPDA = await this.findPatchAddressForPatchCoords(params.x, params.y);
         let tapestryPatchMint = await this.findMintAddressForPatchCoords(params.x, params.y);

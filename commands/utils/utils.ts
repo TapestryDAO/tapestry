@@ -58,6 +58,12 @@ export const loadKeyFromPath = (keyPath: string): Keypair => {
     return Keypair.fromSecretKey(Uint8Array.from(dataJson));
 }
 
+export const loadPatternFromPath = (path: string): number[][] => {
+    const data = fs.readFileSync(path, 'utf-8');
+    const dataJson = JSON.parse(data);
+    return dataJson as [number[]]
+}
+
 export const allKeys = (): Array<{ key: Keypair, name: string }> => {
     return fs.readdirSync(KEYS_DIR)
         .filter((value) => value.endsWith(".json"))
