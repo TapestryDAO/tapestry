@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ $PWD = $TAPESTRY_ROOT ];
+then
+    ts-node tap.ts "$@";
+else
+    echo "Running tapestry commands from outside of tapestry root";
+fi
+
+exit 0;
