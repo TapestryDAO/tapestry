@@ -1,8 +1,10 @@
 
-import yargs, { ArgumentsCamelCase, Argv } from 'yargs'
+import yargs, { ArgumentsCamelCase, Argv, string } from 'yargs'
 import { TapestryProgram } from '../client/src/TapestryProgram'
-import { LAMPORTS_PER_SOL, sendAndConfirmTransaction, Transaction } from '@solana/web3.js'
-import { getNewConnection, loadKey } from './utils/utils'
+import { LAMPORTS_PER_SOL, sendAndConfirmTransaction, Transaction, TransactionSignature } from '@solana/web3.js'
+import { getNewConnection, loadKey, makeJSONRPC } from './utils/utils'
+import util from 'util';
+
 
 const init_command = {
     command: "init",
@@ -67,6 +69,23 @@ const airdrop_command = {
     }
 }
 
+const get_tx = {
+    command: "get [signature]",
+    describe: "get a transaction by signature",
+    builder: (argv: Argv) => {
+        return argv.positional("signature", {
+            describe: "The signature from the transaction",
+            type: "string",
+            demandOption: true,
+        })
+    },
+    handler: async (args: ArgumentsCamelCase) => {
+        let signature = args.signature as string
+        let result = await makeJSONRPC("getTransaction", [signature, "json"])
+        console.log(util.inspect(result, true, null, true))
+    }
+}
+
 export const command = {
     command: "tx",
     description: "Execute various transations against the tapestry program running on the solana blockchain",
@@ -74,6 +93,7 @@ export const command = {
         return argv
             .command(airdrop_command)
             .command(init_command)
+            .command(get_tx)
             .demandCommand()
     }
 }

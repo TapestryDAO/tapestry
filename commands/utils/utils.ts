@@ -2,6 +2,7 @@ import path from 'path'
 import * as fs from 'fs'
 import { Keypair, Connection, ConnectionConfig } from '@solana/web3.js'
 import { execSync, exec } from 'child_process'
+import axios from 'axios';
 
 const TAPESTRY_ROOT = process.env.TAPESTRY_ROOT as string;
 
@@ -10,7 +11,6 @@ const KEYS_DIR = path.resolve(TAPESTRY_ROOT, "keys")
 
 // NOTE(will): At some point we probably will want to swap configs between local / testnet / mainnet
 // So hiding hese constants here and accessing indirectly 
-
 const SOLANA_ENDPOINT_LOCAL = "http://127.0.0.1:8899"
 
 const SOLANA_CONFIG_LOCAL: ConnectionConfig = {
@@ -19,6 +19,23 @@ const SOLANA_CONFIG_LOCAL: ConnectionConfig = {
 
 const removeFileSuffix = (filename: string): string => {
     return filename.substring(0, filename.lastIndexOf("."))
+}
+
+export const makeJSONRPC = async (method: string, params: string[]) => {
+    const rpcPayload = {
+        jsonrpc: "2.0",
+        id: 1,
+        method: method,
+        params: params,
+    };
+
+    let result = await axios.post(SOLANA_ENDPOINT_LOCAL, rpcPayload, {
+        headers: {
+            "Content-Type": "application/json"
+        }
+    })
+
+    return result.data
 }
 
 export const getNewConnection = (): Connection => {
