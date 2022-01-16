@@ -3,6 +3,7 @@ import * as fs from 'fs'
 import { Keypair, Connection, ConnectionConfig } from '@solana/web3.js'
 import { execSync, exec } from 'child_process'
 import axios from 'axios';
+import { exit } from 'process';
 
 const TAPESTRY_ROOT = process.env.TAPESTRY_ROOT as string;
 
@@ -71,7 +72,39 @@ export const allKeys = (): Array<{ key: Keypair, name: string }> => {
 export const generateRandomKey = (keyname: string) => {
     const keypairName = keyname + ".json"
     const keyPath = path.resolve(KEYS_DIR, keypairName)
+
+    if (fs.existsSync(keyPath)) {
+        console.log("A key already exists at " + keyPath)
+        exit(1)
+    }
+
     console.log("Generating random keypair to " + keyPath)
     let command = ["solana-keygen", "new", "-o", keyPath, "--no-bip39-passphrase"]
     execSync(command.join(" "))
+}
+
+export const generateVanityKey = (keyname: string, vanity: string) => {
+    const keyPath = path.resolve(KEYS_DIR, keyname + ".json")
+
+    if (fs.existsSync(keyPath)) {
+        console.log("A key already exists at " + keyPath)
+        exit(1)
+    }
+
+    console.log("Grinding for a keypair starting with: " + vanity)
+    const command = [
+        "cd", KEYS_DIR, "&&",
+        "solana-keygen", "grind", "--starts-with", vanity + ":1", "--no-bip39-passphrase"]
+
+    let output = execSync(command.join(" ")).toString('utf-8')
+    let regexStr = "\\b" + vanity + "[\\w]*?\\.json"
+    let findKeynameRegex = new RegExp(regexStr)
+    let keypairFilename = output.match(findKeynameRegex)![0]
+    console.log("Found: " + keypairFilename.replace(".json", ""));
+    console.log("Saving to " + keyPath);
+    let mv_command = [
+        "mv", path.resolve(KEYS_DIR, keypairFilename), keyPath
+    ]
+
+    let moveResult = execSync(mv_command.join(" "))
 }

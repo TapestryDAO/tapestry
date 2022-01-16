@@ -1,18 +1,43 @@
 
 import yargs, { ArgumentsCamelCase, Argv } from 'yargs'
-import { allKeys, generateRandomKey, loadKey } from './utils/utils'
+import { allKeys, generateRandomKey, generateVanityKey, loadKey } from './utils/utils'
 
 const create_command = {
     command: "create [keyname]",
     description: "generate a new keypair in $TAPESTRY_ROOT/keys",
+    builder: (args: Argv) => {
+        return args
+            .option("vanity", {
+                describe: "grind for a vanity keypair",
+                type: "string",
+                default: null,
+            }).positional("keyname", {
+                describe: "a name for this keypair",
+                type: "string",
+                demandOption: true,
+            })
+    },
     handler: (args: ArgumentsCamelCase) => {
-        generateRandomKey(args.keyname as string)
+        const keyname = args.keyname as string
+        if (!args.vanity) {
+            generateRandomKey(args.keyname as string)
+        } else {
+            generateVanityKey(keyname, args.vanity as string)
+        }
     },
 }
 
 const show_command = {
     command: "show [keyname]",
     description: "create and manage local keypairs stored in $TAPESTRY_ROOT/keys",
+    builder: (args: Argv) => {
+        return args
+            .positional("keyname", {
+                describe: "name of the kepair to show",
+                type: "string",
+                demandOption: true,
+            })
+    },
     handler: (args: ArgumentsCamelCase) => {
         const key = loadKey(args.keyname as string)
         console.log(key.publicKey.toBase58())
