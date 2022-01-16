@@ -1,35 +1,43 @@
 
-import { TapCommand } from "./command"
 import yargs, { ArgumentsCamelCase, Argv } from 'yargs'
-import { execSync, exec } from 'child_process'
-import path from 'path'
-import * as fs from 'fs';
-import { Keypair } from '@solana/web3.js'
-import { KEYS_DIR } from './utils/utils'
+import { allKeys, generateRandomKey, loadKey } from './utils/utils'
 
-
-const createKey = (args: ArgumentsCamelCase) => {
-    console.log("Creating a key named: " + args.keyname + " in " + KEYS_DIR)
-    const keypair_name = args.keyname + ".json"
-    let command = ["solana-keygen", "new", "-o", path.resolve(KEYS_DIR, keypair_name), "--no-bip39-passphrase"]
-    execSync(command.join(" "))
+const create_command = {
+    command: "create [keyname]",
+    description: "generate a new keypair in $TAPESTRY_ROOT/keys",
+    handler: (args: ArgumentsCamelCase) => {
+        generateRandomKey(args.keyname as string)
+    },
 }
 
-const showKey = (args: ArgumentsCamelCase) => {
-    const keypair_path = path.resolve(KEYS_DIR, args.keyname + ".json")
-    const command = ["solana-keygen", "pubkey", keypair_path]
-
-    let result = execSync(command.join(" "))
-
-    console.log(result.toString().trim());
-}
-
-export const command: TapCommand = {
-    keyword: "keys",
-    description: "utilities for creating and managing local keypairs",
-    command: (yargs: Argv) => {
-        return yargs
-            .command("create [keyname]", "Create Keys", () => { }, createKey)
-            .command("show [keyname]", "Show the private key in base58", () => { }, showKey)
+const show_command = {
+    command: "show [keyname]",
+    description: "create and manage local keypairs stored in $TAPESTRY_ROOT/keys",
+    handler: (args: ArgumentsCamelCase) => {
+        const key = loadKey(args.keyname as string)
+        console.log(key.publicKey.toBase58())
     }
+}
+
+const list_command = {
+    command: "list",
+    desicription: "list all available keypairs",
+    handler: (args: ArgumentsCamelCase) => {
+        let keys = allKeys();
+        keys.forEach((value) => {
+            console.log(value.key.publicKey.toBase58().padEnd(46, " ") + " : " + value.name)
+        })
+    }
+}
+
+export const command = {
+    command: "keys",
+    description: "create and manage local keypairs stored in $TAPESTRY_ROOT/keys",
+    builder: (yargs: Argv) => {
+        return yargs
+            .command(create_command)
+            .command(show_command)
+            .command(list_command)
+            .demandCommand()
+    },
 }
