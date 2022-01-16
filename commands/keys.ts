@@ -14,7 +14,7 @@ const create_command = {
             }).positional("keyname", {
                 describe: "a name for this keypair",
                 type: "string",
-                demandOption: true,
+                required: true,
             })
     },
     handler: (args: ArgumentsCamelCase) => {
@@ -35,7 +35,7 @@ const show_command = {
             .positional("keyname", {
                 describe: "name of the kepair to show",
                 type: "string",
-                demandOption: true,
+                required: true,
             })
     },
     handler: (args: ArgumentsCamelCase) => {

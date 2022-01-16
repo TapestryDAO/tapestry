@@ -3,10 +3,11 @@ import yargs, { ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import { TapestryProgram } from '../client/src/TapestryProgram'
 import { LAMPORTS_PER_SOL, sendAndConfirmRawTransaction, sendAndConfirmTransaction, Transaction } from '@solana/web3.js'
 import { getNewConnection, getRawTransaction, loadKey, loadKeyFromPath, makeJSONRPC } from './utils/utils'
-import util from 'util';
+import { applyKeynameOption, applyXYArgOptions } from './utils/commandHelpers'
+import util, { inspect } from 'util';
 import { argv } from 'process';
 import { connect } from 'http2';
-
+import fs from 'fs';
 
 const init_command = {
     command: "init",
@@ -62,7 +63,7 @@ const airdrop_command = {
             .positional("keyname", {
                 describe: "keyname to airdrop SOL to",
                 type: "string",
-                demandOption: true,
+                required: true,
             })
     },
     handler: async (args: ArgumentsCamelCase) => {
@@ -77,23 +78,8 @@ const airdrop_command = {
 const buy_command = {
     command: "buy",
     describe: "buy a patch",
-    builder: (argv: Argv) => {
-        return argv
-            .option("keyname", {
-                describe: "Keypair that will purchase the patch",
-                type: "string",
-                demandOption: true,
-            })
-            .option("x", {
-                describe: "X coordinate of the patch",
-                type: "number",
-                demandOption: true,
-            })
-            .option("y", {
-                describe: "Y coordinate of the patch",
-                type: "number",
-                demandOption: true,
-            })
+    builder: (args: Argv) => {
+        return applyKeynameOption(applyXYArgOptions(args))
     },
     handler: async (args: ArgumentsCamelCase) => {
         let keypair = loadKey(args.keyname as string);
@@ -119,7 +105,47 @@ const buy_command = {
 
         let result = await connection.confirmTransaction(sig, "confirmed");
         console.log("TX Err: " + result.value.err)
+    }
+}
 
+const upload_image = {
+    command: "imageup",
+    description: "upload image to a patch",
+    builder: (args: Argv) => {
+        return applyKeynameOption(applyXYArgOptions(args))
+            .option("path", {
+                describe: "a path to the gif to upload",
+                type: "string",
+                required: true,
+            })
+    },
+    handler: async (args: ArgumentsCamelCase) => {
+        let path = args.path as string
+        let x = args.x as number
+        let y = args.y as number
+        let keypair = loadKey(args.keyname as string)
+
+        let image_data = new Uint8Array(fs.readFileSync(path))
+        console.log("image bytes: " + image_data.length)
+
+        let ix = await TapestryProgram.updatePatchImage({
+            x: x,
+            y: y,
+            image_data: image_data,
+            owner: keypair.publicKey
+        })
+        let tx = new Transaction().add(ix)
+
+        let connection = getNewConnection();
+        let txRaw = await getRawTransaction(connection, tx, [keypair])
+        console.log("TX Bytes: " + txRaw.length)
+
+        let sig = await sendAndConfirmRawTransaction(connection, txRaw)
+        console.log("TX Sig: " + sig);
+
+        let result = await connection.getConfirmedTransaction(sig, "confirmed")
+
+        console.log("TX Info: \n" + inspect(result, true, null, true))
     }
 }
 
@@ -131,6 +157,8 @@ export const command = {
             .command(airdrop_command)
             .command(init_command)
             .command(buy_command)
+            .command(upload_image)
             .demandCommand()
     }
 }
+

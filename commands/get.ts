@@ -11,7 +11,7 @@ const get_tx = {
         return argv.positional("signature", {
             describe: "The signature from the transaction",
             type: "string",
-            demandOption: true,
+            required: true,
         })
     },
     handler: async (args: ArgumentsCamelCase) => {
