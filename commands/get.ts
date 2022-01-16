@@ -27,7 +27,7 @@ const get_state = {
     describe: "get info on the tapestry state account",
     handler: async (args: ArgumentsCamelCase) => {
         let connection = getNewConnection();
-        let state = TapestryStateAccount.fetchState(connection)
+        let state = await TapestryStateAccount.fetchState(connection)
         console.log(state);
     }
 }
@@ -38,6 +38,7 @@ export const command = {
     builder: (args: Argv) => {
         return args
             .command(get_tx)
+            .command(get_state)
             .demandCommand()
     }
 }

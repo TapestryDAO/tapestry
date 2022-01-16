@@ -1,9 +1,11 @@
 
-import yargs, { ArgumentsCamelCase, Argv, string } from 'yargs'
+import yargs, { ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import { TapestryProgram } from '../client/src/TapestryProgram'
 import { LAMPORTS_PER_SOL, sendAndConfirmRawTransaction, sendAndConfirmTransaction, Transaction } from '@solana/web3.js'
-import { getNewConnection, getRawTransaction, loadKey, makeJSONRPC } from './utils/utils'
+import { getNewConnection, getRawTransaction, loadKey, loadKeyFromPath, makeJSONRPC } from './utils/utils'
 import util from 'util';
+import { argv } from 'process';
+import { connect } from 'http2';
 
 
 const init_command = {
@@ -72,6 +74,55 @@ const airdrop_command = {
     }
 }
 
+const buy_command = {
+    command: "buy",
+    describe: "buy a patch",
+    builder: (argv: Argv) => {
+        return argv
+            .option("keyname", {
+                describe: "Keypair that will purchase the patch",
+                type: "string",
+                demandOption: true,
+            })
+            .option("x", {
+                describe: "X coordinate of the patch",
+                type: "number",
+                demandOption: true,
+            })
+            .option("y", {
+                describe: "Y coordinate of the patch",
+                type: "number",
+                demandOption: true,
+            })
+    },
+    handler: async (args: ArgumentsCamelCase) => {
+        let keypair = loadKey(args.keyname as string);
+        let x = args.x as number;
+        let y = args.y as number;
+
+        console.log("Purchasing Patch at " + x + "," + y);
+
+        let ix = await TapestryProgram.purchasePatch({
+            x: x,
+            y: y,
+            buyerPubkey: keypair.publicKey,
+        });
+
+        let tx = new Transaction().add(ix);
+        let connection = getNewConnection();
+
+        let rawTx = await getRawTransaction(connection, tx, [keypair]);
+        console.log("TX Bytes: " + rawTx.length)
+
+        let sig = await sendAndConfirmRawTransaction(connection, rawTx)
+        console.log("TX Sig: " + sig);
+
+        let result = await connection.confirmTransaction(sig, "confirmed");
+        console.log("TX Err: " + result.value.err)
+
+    }
+}
+
 export const command = {
     command: "tx",
     description: "Execute various transations against the tapestry program running on the solana blockchain",
@@ -79,6 +130,7 @@ export const command = {
         return argv
             .command(airdrop_command)
             .command(init_command)
+            .command(buy_command)
             .demandCommand()
     }
 }
