@@ -1,9 +1,10 @@
 import path from 'path'
 import * as fs from 'fs'
-import { Keypair, Connection, ConnectionConfig, TransactionSignature, Transaction, Signer } from '@solana/web3.js'
+import { Keypair, Connection, ConnectionConfig, TransactionSignature, Transaction, Signer, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { execSync, exec } from 'child_process'
 import axios from 'axios';
 import { exit } from 'process';
+import { inspect } from 'util';
 
 const TAPESTRY_ROOT = process.env.TAPESTRY_ROOT as string;
 
@@ -113,6 +114,26 @@ export const generateVanityKey = (keyname: string, vanity: string) => {
     ]
 
     let moveResult = execSync(mv_command.join(" "))
+}
+
+export const confirmTxWithRetry = async (connection: Connection, sig: TransactionSignature, maxRetries: number = 3) => {
+    let count = maxRetries;
+
+    while (count > 0) {
+        try {
+            return await connection.confirmTransaction(sig, "confirmed")
+        } catch (e) {
+            console.log("Error Confirming TX: " + sig + "\n" + inspect(e, true, null, true))
+            count -= 1;
+        }
+    }
+
+    return null;
+}
+
+export const getBalance = async (key: PublicKey) => {
+    let lamports = await getNewConnection().getBalance(key)
+    return lamports / LAMPORTS_PER_SOL
 }
 
 // NOTE(will): Copy pasted and tweaked slightly such that I can get raw tx wire bytes

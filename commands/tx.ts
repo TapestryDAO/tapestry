@@ -2,7 +2,7 @@
 import yargs, { ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import { TapestryProgram } from '../client/src/TapestryProgram'
 import { LAMPORTS_PER_SOL, sendAndConfirmRawTransaction, sendAndConfirmTransaction, Transaction } from '@solana/web3.js'
-import { getNewConnection, getRawTransaction, loadKey, loadKeyFromPath, loadPatternFromPath, makeJSONRPC } from './utils/utils'
+import { confirmTxWithRetry, getBalance, getNewConnection, getRawTransaction, loadKey, loadKeyFromPath, loadPatternFromPath, makeJSONRPC } from './utils/utils'
 import { applyKeynameOption, applyXYArgOptions } from './utils/commandHelpers'
 import util, { inspect } from 'util';
 import { argv, exit } from 'process';
@@ -246,11 +246,17 @@ const fill_pattern_command = {
 
         let image_data = new Uint8Array(fs.readFileSync(args.image))
         let pattern = loadPatternFromPath(args.pattern)
+        let totalPatches = (args.xRight - args.xLeft) * (args.yTop - args.yBot)
 
         console.log("Pattern: \n" + pattern);
-        console.log("Buying a rectange of patches from topLeft: "
-            + makeKey(args.xLeft, args.yTop) + " botRight: " + makeKey(args.xRight, args.yBot))
+        console.log("Buyer Pubkey : " + keypair.publicKey)
+        console.log("Buyer Balance (SOL) : " + await getBalance(keypair.publicKey))
+        console.log("Bottom Left: x=" + args.xLeft + " y=" + args.yBot)
+        console.log("Top Right x=" + args.xRight + " y=" + args.yTop)
+        console.log("Total Patches = " + totalPatches)
+        console.log("Using Image at: " + args.image)
 
+        const retryCount = 3
 
         type SigMap = {
             [key: string]: Promise<string>
@@ -258,7 +264,6 @@ const fill_pattern_command = {
 
         let purchase_sigs: SigMap = {}
 
-        let totalPatches = (args.xRight - args.xLeft) * (args.yTop - args.yBot)
         let purchase_counter = 0;
 
         for (let x = args.xLeft; x < args.xRight; x++) {
@@ -267,6 +272,10 @@ const fill_pattern_command = {
                 if (purchase_counter % 100 == 0) {
                     console.log("Purchased " + purchase_counter + " patches")
                 }
+                if (purchase_counter % 500 == 0) {
+                    console.log("Buyer Balance: " + await getBalance(keypair.publicKey))
+                }
+
                 let tx = new Transaction().add(await TapestryProgram.purchasePatch({
                     x: x,
                     y: y,
@@ -274,15 +283,13 @@ const fill_pattern_command = {
                 }))
 
                 try {
-                    // purchase_sigs[makeKey(x, y)] = connection.sendTransaction(tx, [keypair], { skipPreflight: true })
-                    purchase_sigs[makeKey(x, y)] = sendAndConfirmTransaction(connection, tx, [keypair], { skipPreflight: true })
+                    purchase_sigs[makeKey(x, y)] = connection.sendTransaction(tx, [keypair], { skipPreflight: true })
+                    // purchase_sigs[makeKey(x, y)] = sendAndConfirmTransaction(connection, tx, [keypair], { skipPreflight: true })
                 } catch (error) {
                     continue;
                 }
             }
         }
-
-
 
         let upload_sigs: SigMap = {}
         let upload_counter = 0
@@ -293,11 +300,28 @@ const fill_pattern_command = {
                 if (upload_counter % 100 == 0) {
                     console.log("Uploaded " + upload_counter + " patches")
                 }
+                if (purchase_counter % 500 == 0) {
+                    console.log("Buyer Balance: " + await getBalance(keypair.publicKey))
+                }
 
                 let patternX = (x - args.xLeft) % pattern.length
                 let patternY = (y - args.yBot) % pattern[0].length
 
                 if (pattern[patternX][patternY] == 0) {
+                    continue;
+                }
+
+                let purchase_sig = await purchase_sigs[makeKey(x, y)]
+                delete purchase_sigs[makeKey(x, y)] // Don't need to check it twice
+                let result = await confirmTxWithRetry(connection, purchase_sig, 1)
+
+                // NOTE(will): When running this against the test validator, it seems to only keep signatures available
+                // for a fairly short period of time, so if result is null, we just assume it succeeded
+                // This would probably need to be changed if running against test or mainnet
+                if (!result) {
+                    console.log("Unable to confirm purchase: " + purchase_sig)
+                } else if (!!result.value.err) {
+                    console.log("Error purchasing patch, we will ignore trying to upload to it")
                     continue;
                 }
 
@@ -308,8 +332,8 @@ const fill_pattern_command = {
                     image_data: image_data,
                 }))
 
-                // upload_sigs[makeKey(x, y)] = connection.sendTransaction(tx, [keypair], { skipPreflight: true })
-                upload_sigs[makeKey(x, y)] = sendAndConfirmTransaction(connection, tx, [keypair], { skipPreflight: true })
+                upload_sigs[makeKey(x, y)] = connection.sendTransaction(tx, [keypair], { skipPreflight: true })
+                // upload_sigs[makeKey(x, y)] = await sendAndConfirmTransaction(connection, tx, [keypair], { skipPreflight: true })
             }
         }
 
@@ -325,15 +349,22 @@ const fill_pattern_command = {
                     console.log("Checked " + check_counter + " patches")
                 }
 
-                // We should have a purchase sig for every x,y even if some of them failed
-                let purchase_sig = await purchase_sigs[makeKey(x, y)]
-                console.log("Purchase Sig: " + purchase_sig)
-                let confirmed_tx = await connection.getConfirmedTransaction(purchase_sig, "confirmed")
-                console.log("Confirmed TX: " + inspect(confirmed_tx, true, null, true))
-                let purchase_result = await connection.confirmTransaction(purchase_sig, "singleGossip")
-                if (!!purchase_result.value.err) {
-                    console.log("Error With Purchase - Sig: " + purchase_sig + "\n" + inspect(purchase_result, true, null, true))
+                // Purchase sig may have already been checked and deleted during uploading data
+                let maybe_purchase_sig = purchase_sigs[makeKey(x, y)]
+                if (!!maybe_purchase_sig) {
+                    let purchase_sig = await maybe_purchase_sig;
+                    console.log("Purchase Sig: " + purchase_sig)
+                    // let confirmed_tx = await connection.getConfirmedTransaction(purchase_sig, "confirmed")
+                    // console.log("Confirmed TX: " + inspect(confirmed_tx, true, null, true))
+                    let purchase_result = await confirmTxWithRetry(connection, purchase_sig)
+
+                    if (!purchase_result) {
+                        console.log("Unable to confirm purchase: " + purchase_sig);
+                    } else if (!!purchase_result.value.err) {
+                        console.log("Error With Purchase - Sig: " + purchase_sig + "\n" + inspect(purchase_result, true, null, true))
+                    }
                 }
+
 
                 // We don't upload for every x,y so can be null
                 let upload_sig_promise = upload_sigs[makeKey(x, y)]
@@ -343,8 +374,10 @@ const fill_pattern_command = {
 
                 let upload_sig = await upload_sig_promise
                 console.log("Upload Sig: " + upload_sig)
-                let upload_result = await connection.confirmTransaction(upload_sig, "singleGossip")
-                if (!!upload_result.value.err) {
+                let upload_result = await confirmTxWithRetry(connection, upload_sig)
+                if (!upload_result) {
+                    console.log("Unable to confirm upload: " + upload_sig)
+                } else if (!!upload_result.value.err) {
                     console.log("Error with upload - Sig: " + upload_sig + "\n" + inspect(upload_result, true, null, true))
                 }
             }
