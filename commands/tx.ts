@@ -250,6 +250,8 @@ const fill_pattern_command = {
         let connection = getNewConnection();
 
         let image_data = new Uint8Array(fs.readFileSync(args.image))
+
+        // TODO(will): Transpose the pattern, lol
         let pattern = loadPatternFromPath(args.pattern)
         let totalPatches = (args.xRight - args.xLeft) * (args.yTop - args.yBot)
 

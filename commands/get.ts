@@ -1,8 +1,10 @@
-import yargs, { ArgumentsCamelCase, Argv } from 'yargs'
+import yargs, { ArgumentsCamelCase, Argv, describe, number } from 'yargs'
 import { getNewConnection, makeJSONRPC } from './utils/utils'
 import util from 'util';
 import { TapestryProgram } from '../client/src/TapestryProgram';
 import { TapestryStateAccount } from '../client/src/accounts/TapestryState';
+import { TapestryClient } from '../client/src/TapestryClient';
+import path from 'path/posix';
 
 const get_tx = {
     command: "sig [signature]",
@@ -32,6 +34,49 @@ const get_state = {
     }
 }
 
+type GetChunkArgs =
+    { x: number } &
+    { y: number }
+
+
+const get_chunk = {
+    command: "chunk",
+    describe: "Fetch a chunk of the tapestry",
+    builder: (args: Argv): Argv<GetChunkArgs> => {
+        return args.option("x", {
+            description: "the x index of the CHUNK",
+            type: "number",
+            required: true
+        }).option("y", {
+            description: "the y index of the CHUNK",
+            type: "number",
+            required: true
+        })
+    },
+    handler: async (args: ArgumentsCamelCase<GetChunkArgs>) => {
+        let client = TapestryClient.getInstance()
+
+        let chunkArray = await client.fetchChunk(args.x, args.y)
+
+        let stringRepresentation = ""
+        for (let y = 0; y < chunkArray.length; y++) {
+            for (let x = 0; x < chunkArray.length; x++) {
+                let chunk = chunkArray[y][x];
+                if (!chunk) {
+                    stringRepresentation += "."
+                } else if (!chunk.data.image_data) {
+                    stringRepresentation += "+"
+                } else {
+                    stringRepresentation += "@"
+                }
+            }
+            stringRepresentation += "\n"
+        }
+
+        console.log("Chunk: \n\n" + stringRepresentation)
+    }
+}
+
 export const command = {
     command: "get",
     description: "get various state from the blockchain",
@@ -39,6 +84,7 @@ export const command = {
         return args
             .command(get_tx)
             .command(get_state)
+            .command(get_chunk)
             .demandCommand()
     }
 }
