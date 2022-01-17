@@ -237,6 +237,11 @@ const fill_pattern_command = {
     },
     handler: async (args: ArgumentsCamelCase<FillCommandArgs>) => {
 
+        // TODO(will): Rework this but instead of polling for tx confirmations
+        // Subscribe
+
+        // TODO(will): add a flag to skip checking the tx'es and just assume they go through
+
         const makeKey = (x: number, y: number): string => {
             return "" + x + "," + y
         }
