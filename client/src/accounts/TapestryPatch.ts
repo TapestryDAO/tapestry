@@ -6,11 +6,15 @@ import { TokenAccountsCache } from '../TokenAccountsCache';
 import { extendBorsh } from "../utils";
 import base58 from 'bs58';
 
+
 const MAX_X = 1023;
 const MIN_X = -1024;
 const MAX_Y = 1023;
 const MIN_Y = -1024;
 const CHUNK_SIZE = 8;
+
+export const MAX_CHUNK_IDX = 127
+export const MIN_CHUNK_IDX = -128
 
 // This has to be kept in sync with state.rs
 const MAX_PATCH_IMAGE_DATA_LEN = 1024;
@@ -29,6 +33,40 @@ const MAX_PATCH_TOTAL_LEN = 0 +
     1 + 4 + MAX_PATCH_IMAGE_DATA_LEN; // image data
 
 const CHUNK_OFFSET = 1 + 32;
+
+export class TapestryChunk {
+
+    /// Row major order, can be null
+    public chunkAccounts: MaybeTapestryPatchAccount[][]
+    public xChunk: number
+    public yChunk: number
+
+    constructor(xChunk: number, yChunk: number, unorderedChunk: TapestryPatchAccount[]) {
+        this.chunkAccounts = TapestryPatchAccount.organizeChunk(unorderedChunk)
+        this.xChunk = xChunk
+        this.yChunk = yChunk
+    }
+
+    /**
+     * @param xIndex the xIndex of a patch in this chunks row major chunkAccounts array
+     * @param yIndex the yIndex of a patch in this chunks row major chunkAccounts array
+     * @returns the x,y coordinates of the patch in "tapestry coordinates"
+     */
+    public getPatchCoordsForChunkIndex(xIndex: number, yIndex: number): { x: number, y: number } {
+        return {
+            x: this.xChunk >= 0 ?
+                (CHUNK_SIZE * this.xChunk) + xIndex :
+                ((this.xChunk + 1) * CHUNK_SIZE) - (CHUNK_SIZE - xIndex),
+            y: this.yChunk >= 0 ?
+                (CHUNK_SIZE * this.yChunk) + ((CHUNK_SIZE - 1) - yIndex) :
+                (CHUNK_SIZE * (this.yChunk + 1)) - (yIndex + 1)
+        }
+    }
+
+    public static getEmptyChunk(xChunk: number, yChunk: number): TapestryChunk {
+        return new TapestryChunk(xChunk, yChunk, [])
+    }
+}
 
 type TapestryPatchArgs = {
     is_initialized: boolean;
@@ -119,15 +157,15 @@ export class TapestryPatchAccount extends Account<TapestryPatchData> {
      * @param chunk an unordered array of patches belonging to a particular chunk
      * @returns An organized 8x8 2D array of patches in row major order
      */
-    public static organizeChunk(chunk: TapestryPatchAccount[]): MaybeTapestryPatchAccount[][] {
-        let chunkArray = Array<MaybeTapestryPatchAccount[]>()
+    public static organizeChunk(chunkAccounts: TapestryPatchAccount[]): MaybeTapestryPatchAccount[][] {
+        let chunkArray = new Array<MaybeTapestryPatchAccount>(CHUNK_SIZE)
+            .fill(null)
+            .map(() =>
+                new Array(CHUNK_SIZE).fill(null)
+            );
 
-        for (let i = 0; i < 8; i++) {
-            chunkArray.push(Array(8).fill(null))
-        }
-
-        for (let i = 0; i < chunk.length; i++) {
-            let patch = chunk[i];
+        for (let i = 0; i < chunkAccounts.length; i++) {
+            let patch = chunkAccounts[i];
 
             // Chunks can be thought of as a "corner", so the picture at the origin looks like this
             //                 
@@ -138,15 +176,28 @@ export class TapestryPatchAccount extends Account<TapestryPatchData> {
             //      -1,-1   |   0,-1
             //              |
 
-            let xChunkOffset = patch.data.x - (patch.data.x_chunk * CHUNK_SIZE)
-            let yChunkOffset = patch.data.y - (patch.data.y_chunk * CHUNK_SIZE)
+            const x = patch.data.x
+            const y = patch.data.y
+            const xChunk = patch.data.x_chunk;
+            const yChunk = patch.data.y_chunk;
 
-            // This was awkward, but if you just think in one direction at a time it makes sense
+            const chunkOriginX = x >= 0 ?
+                xChunk * CHUNK_SIZE :
+                ((xChunk + 1) * CHUNK_SIZE) - 1
 
-            let xIndex = patch.data.x_chunk >= 0 ? xChunkOffset : xChunkOffset + (CHUNK_SIZE - 1)
-            let yIndex = patch.data.y_chunk >= 0 ? (CHUNK_SIZE - 1) - yChunkOffset : -yChunkOffset
+            const chunkOriginY = y >= 0 ?
+                yChunk * CHUNK_SIZE :
+                ((yChunk + 1) * CHUNK_SIZE) - 1
 
-            chunkArray[xIndex][yIndex] = patch
+            const xIndexRowMajor = x >= 0 ?
+                x - chunkOriginX :
+                (CHUNK_SIZE - 1) - Math.abs(x - chunkOriginX);
+
+            const yIndexRowMajor = y >= 0 ?
+                (CHUNK_SIZE - 1) - Math.abs(y - chunkOriginY) :
+                chunkOriginY - y;
+
+            chunkArray[xIndexRowMajor][yIndexRowMajor] = patch
         }
 
         return chunkArray
@@ -155,8 +206,6 @@ export class TapestryPatchAccount extends Account<TapestryPatchData> {
     static async fetch(connection: Connection, x: number, y: number) {
         extendBorsh();
         let patch_pda = await TapestryProgram.findPatchAddressForPatchCoords(x, y);
-        // let account = await TapestryPatchAccount.load(connection, patch_pda).catch(() => null);
-        // return account;
 
         let info = await connection.getAccountInfo(patch_pda);
         if (!info) return null;
