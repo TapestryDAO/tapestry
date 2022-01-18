@@ -53,6 +53,7 @@ export class TapestryChunk {
      * @returns the x,y coordinates of the patch in "tapestry coordinates"
      */
     public getPatchCoordsForChunkIndex(xIndex: number, yIndex: number): { x: number, y: number } {
+        // TODO(will): Check that I did this correctly
         return {
             x: this.xChunk >= 0 ?
                 (CHUNK_SIZE * this.xChunk) + xIndex :

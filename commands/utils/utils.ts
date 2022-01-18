@@ -25,8 +25,6 @@ const removeFileSuffix = (filename: string): string => {
 
 export const makeJSONRPC = async (method: string, params: string[]) => {
     const rpcPayload = {
-        jsonrpc: "2.0",
-        id: 1,
         method: method,
         params: params,
     };
@@ -137,16 +135,17 @@ export const getBalance = async (key: PublicKey) => {
 }
 
 // NOTE(will): Copy pasted and tweaked slightly such that I can get raw tx wire bytes
-export const getRawTransaction = async (
+export const getPreparedTransaction = async (
     connection: Connection,
     transaction: Transaction,
     signers: Array<Signer>,
-): Promise<Buffer> => {
+): Promise<Transaction> => {
     if (transaction.nonceInfo) {
         transaction.sign(...signers);
     } else {
         // @ts-expect-error
         let disableCache = connection["_disableBlockhashCaching"];
+        // let disableCache = true
         for (; ;) {
             // @ts-expect-error
             transaction.recentBlockhash = await connection["_recentBlockhash"](disableCache);
@@ -170,7 +169,21 @@ export const getRawTransaction = async (
         }
     }
 
-    const wireTransaction = transaction.serialize();
-
-    return wireTransaction
+    return transaction
 }
+
+export const getRawTransaction = async (
+    connection: Connection,
+    transaction: Transaction,
+    signers: Array<Signer>,
+): Promise<Buffer> => {
+    const tx = await getPreparedTransaction(connection, transaction, signers)
+    return tx.serialize()
+}
+
+class CheckablePromise<T> extends Promise<T> {
+    isPending = true
+    isFullfilled = false
+    isRejected = false
+}
+

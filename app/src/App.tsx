@@ -26,6 +26,7 @@ import {
 } from "@tapestrydao/client";
 
 import { Input } from '@mui/material';
+import { KonvaTapestry } from './Tapestry'
 
 type PatchProps = {
   x: number,
@@ -158,7 +159,6 @@ export const Patch: FC<PatchProps> = ({ x, y }: PatchProps) => {
       window.open(maybeUrl, '_blank');
     }
   }
-
 
   const sendTxUpdatePatchMetadata = async () => {
     if (!publicKey) return;
@@ -354,7 +354,7 @@ export const App: FC = () => {
     <div className="App">
       <SplitPane split="vertical" minSize={200} defaultSize={400} maxSize={400} style={{ backgroundColor: "white" }}>
         <LeftPane />
-        <Tapestry />
+        <KonvaTapestry />
       </SplitPane>
     </div>
   );

@@ -56,7 +56,7 @@ const get_chunk = {
     handler: async (args: ArgumentsCamelCase<GetChunkArgs>) => {
         let client = TapestryClient.getInstance()
 
-        let chunkArray = await client.fetchChunk(args.x, args.y)
+        let chunkArray = await client.fetchChunkArray(args.x, args.y)
 
         let stringRepresentation = ""
         for (let y = 0; y < chunkArray.length; y++) {
