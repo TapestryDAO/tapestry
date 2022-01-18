@@ -297,7 +297,21 @@ const fill_pattern_command = {
                         image_data: image_data,
                     }));
 
-                    return sendAndConfirmTransaction(connection, tx, [keypair], txConfig)
+                    let patternX = (x - args.xLeft) % pattern[0].length
+                    let patternY = (y - args.yBot) % pattern.length
+                    let shouldUpload = pattern[patternY][patternX] != 0
+
+                    if (shouldUpload) {
+                        return sendAndConfirmTransaction(connection, tx, [keypair], txConfig)
+                    } else {
+                        return "no upload"
+                    }
+                }).then((value) => {
+                    if (value != "no upload") {
+                        console.log("Confirmed Upload: " + x + " , " + y + "  SIG: " + value)
+                    }
+
+                    return "done"
                 }).catch((reason) => {
                     console.log("TX Failed: ", inspect(reason, true, null, true))
                     return "failed"
