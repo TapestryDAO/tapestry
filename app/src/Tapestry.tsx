@@ -19,7 +19,7 @@ type KonvaPatchProps = {
     layer_y: number,
 }
 
-let imageCache = new Map<string, ImageBitmap>();
+// let imageCache = new Map<string, ImageBitmap>();
 
 export const KonvaPatch: FC<KonvaPatchProps> = ({
     patch,
@@ -29,32 +29,21 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
     layer_y,
 }: KonvaPatchProps) => {
 
-    const [imageBitmap, setImageBitmap] = useState<ImageBitmap | undefined>(
-        imageCache.get("image:" + patch_x + ":" + patch_y));
-
-    // useMemo()
+    const [imageBitmap, setImageBitmap] = useState<ImageBitmap | undefined>(undefined);
 
     useEffect(() => {
-        if (imageBitmap != undefined) return;
-
-        let cachedBitmap = imageCache.get("image:" + patch_x + ":" + patch_y)
-
-        if (cachedBitmap != undefined) {
-            console.log("Set bitmap from cache")
-            setImageBitmap(cachedBitmap)
-        }
-
-        // console.log("Rendering Image for " + patch_x + " , " + patch_y)
-        // console.log("Render Image")
         let imageData = patch?.data.image_data
         if (!!imageData) {
             console.log("Render Image")
             let buffer = new Uint8Array(imageData);
             let blob = new Blob([buffer], { type: "image/gif" })
-            createImageBitmap(blob).then((value) => {
-                imageCache.set("image:" + patch_x + ":" + patch_y, value)
-                setImageBitmap(value)
-            })
+            try {
+                createImageBitmap(blob).then((value) => {
+                    setImageBitmap(value)
+                })
+            } catch (e) {
+                console.log("Error decoding image? " + e)
+            }
         }
     }, [patch])
 
@@ -67,7 +56,8 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
             height={HEIGHT / 8}
             stroke={"black"}
             image={imageBitmap}
-            strokeWidth={1}>
+            strokeWidth={1}
+            onClick={() => { console.log("clicked: ", patch_x, ",", patch_y) }}>
         </Image>
     )
 }
@@ -78,9 +68,6 @@ type KonvaChunkProps = {
     xCanvas: number,
     yCanvas: number,
 }
-
-// sort of unsure if this is helping
-let chunkCache = new Map<string, JSX.Element>()
 
 export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanvas }: KonvaChunkProps) => {
     const { publicKey } = useWallet();
@@ -102,7 +89,7 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
         for (var col = 0; col < 8; col++) {
             const patch = chunk.chunkAccounts[row][col]
             const patchCoords = chunk.getPatchCoordsForChunkIndex(row, col);
-            const key = "kpatch:" + patchCoords.x + patchCoords.y
+            const key = "kpatch:" + patchCoords.x + "," + patchCoords.y
             patches.push(<KonvaPatch
                 key={key}
                 patch_x={patchCoords.x}
@@ -113,9 +100,6 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
             />)
         }
     }
-
-    // console.log("Render: xChunk=" + xChunk + " yChunk=" + yChunk)
-    console.log("Render Chunk")
 
     return (
         <Group
@@ -136,14 +120,14 @@ export const KonvaTapestry: FC = () => {
         TapestryClient.getInstance().setConnection(connection)
     }, [connection])
 
-    const startX = Math.floor((-stagePos.x - window.innerWidth) / WIDTH) * WIDTH;
+    const startX =
+        Math.floor((-stagePos.x - window.innerWidth) / WIDTH) * WIDTH;
     const endX =
         Math.floor((-stagePos.x + window.innerWidth * 2) / WIDTH) * WIDTH;
-
     const startY =
-        Math.floor((-stagePos.y - window.innerHeight) / HEIGHT) * HEIGHT;
+        Math.floor((stagePos.y - window.innerHeight) / HEIGHT) * HEIGHT;
     const endY =
-        Math.floor((-stagePos.y + window.innerHeight * 2) / HEIGHT) * HEIGHT;
+        Math.floor((stagePos.y + window.innerHeight * 2) / HEIGHT) * HEIGHT;
 
 
     const tlChunkPosX = startX / WIDTH
@@ -151,24 +135,15 @@ export const KonvaTapestry: FC = () => {
 
     console.log("Render: tlChunk = " + tlChunkPosX + ", " + tlChunkPosY)
 
-    const gridComponents = [];
-    var i = 0;
+    const gridComponents = []
     for (var x = startX; x < endX; x += WIDTH) {
         for (var y = startY; y < endY; y += HEIGHT) {
-            if (i === 4) {
-                i = 0;
-            }
 
             const indexX = x / WIDTH;
             const indexY = y / HEIGHT;
 
-            // console.log("indexX=" + indexX + " indexY=" + indexY);
-            const colorX = Math.abs(indexX) % grid.length;
-            const colorY = Math.abs(indexY) % grid[0].length;
-            const fill = grid[colorX][colorY];
-
             const key = "kchunk:" + indexX + ":" + indexY
-            let existingChunk = chunkCache.get(key)
+            // let existingChunk = chunkCache.get(key)
             if (indexX > MAX_CHUNK_IDX
                 || indexX < MIN_CHUNK_IDX
                 || indexY > MAX_CHUNK_IDX
@@ -177,32 +152,29 @@ export const KonvaTapestry: FC = () => {
                 continue
             }
 
-            if (existingChunk != undefined) {
-                gridComponents.push(existingChunk)
-            } else {
-                const newChunk = <KonvaChunk
-                    key={key}
-                    xChunk={indexX}
-                    yChunk={indexY}
-                    xCanvas={x}
-                    yCanvas={y}
-                />
-                chunkCache.set(key, newChunk);
-                gridComponents.push(newChunk)
-            }
+            const newChunk = <KonvaChunk
+                key={key}
+                xChunk={indexX}
+                yChunk={indexY}
+                xCanvas={x}
+                yCanvas={y}
+            />
+
+            gridComponents.push(newChunk)
         }
     }
+
     return (
         <Stage
             x={stagePos.x}
             y={stagePos.y}
+            scaleY={-1}
             width={window.innerWidth}
             height={window.innerHeight}
             draggable
             onDragEnd={e => {
                 setStagePos(e.currentTarget.position());
-            }}
-        >
+            }}>
             <Layer>{gridComponents}</Layer>
         </Stage>
     );
