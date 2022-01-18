@@ -7,6 +7,22 @@ The Solana Tapestry Project Repo
 3. Install Node
 4. Install NPM, Yarn
 
+# Tapestry Root
+add TAPESTRY_ROOT to your environment and path
+```
+# in ~/.bashrc
+
+export TAPESTRY_ROOT="/home/bizzle/solproj/soltapestry"
+export PATH="$TAPESTRY_ROOT:$PATH"
+```
+
+# Install Dependencies via yarn
+```
+yarn install
+cd app && yarn install
+```
+
+
 # Quickstart
 Start the test validator
 ```bash
@@ -38,6 +54,10 @@ Solana program
 
 Tapestry React App
 
-## app/src/tapestry-client
+## client
 
 Wrapper for helping with serializing and deserializing state and communicating with the on chain program and the solana blockchain, Ideally this would be it's wn separate module with its own integration tests.
+
+## commands
+
+CLI commands to interact with the tapestry and show state
