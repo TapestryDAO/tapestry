@@ -1,15 +1,14 @@
 
-import { Layer, Rect, Stage, Image, Group } from 'react-konva';
+import { Layer, Rect, Stage, Image, Group, Text, Circle } from 'react-konva';
 import React, { FC, useEffect, useState, useCallback, useMemo } from 'react';
 import { TapestryPatchAccount, TapestryChunk, TapestryClient, MAX_CHUNK_IDX, MIN_CHUNK_IDX } from '@tapestrydao/client';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { string } from 'yargs';
 import { getThemeProps } from '@mui/system';
+import { Vector2d } from 'konva/lib/types';
 
 const WIDTH = 48 * 8
 const HEIGHT = 48 * 8
-
-const grid = [["red", "yellow"], ["green", "blue"]];
 
 type KonvaPatchProps = {
     patch: TapestryPatchAccount | null,
@@ -18,8 +17,6 @@ type KonvaPatchProps = {
     layer_x: number,
     layer_y: number,
 }
-
-// let imageCache = new Map<string, ImageBitmap>();
 
 export const KonvaPatch: FC<KonvaPatchProps> = ({
     patch,
@@ -98,6 +95,18 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
                 layer_y={col * (HEIGHT / 8)}
                 patch={patch}
             />)
+            // patches.push(
+            //     <Text
+            //         key={key}
+            //         x={row * (WIDTH / 8)}
+            //         y={col * (HEIGHT / 8)}
+            //         width={WIDTH / 8}
+            //         height={HEIGHT / 8}
+            //         verticalAlign='middle'
+            //         align='center'
+            //         text={patchCoords.x + "," + patchCoords.y}
+            //     />
+            // )
         }
     }
 
@@ -105,7 +114,17 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
         <Group
             key={"chunk_group:" + xChunk + "," + yChunk}
             x={xCanvas}
-            y={yCanvas}>
+            y={yCanvas}
+            strokeWidth={1}
+            stroke="black">
+            <Rect
+                x={0}
+                y={0}
+                width={WIDTH}
+                height={HEIGHT}
+                strokeWidth={1}
+                stroke="red"
+            />
             {patches}
         </Group>
     )
@@ -120,30 +139,30 @@ export const KonvaTapestry: FC = () => {
         TapestryClient.getInstance().setConnection(connection)
     }, [connection])
 
-    const startX =
-        Math.floor((-stagePos.x - window.innerWidth) / WIDTH) * WIDTH;
-    const endX =
-        Math.floor((-stagePos.x + window.innerWidth * 2) / WIDTH) * WIDTH;
-    const startY =
-        Math.floor((stagePos.y - window.innerHeight) / HEIGHT) * HEIGHT;
-    const endY =
-        Math.floor((stagePos.y + window.innerHeight * 2) / HEIGHT) * HEIGHT;
+    let tapStagePosX = stagePos.x
+    let tapStagePosY = stagePos.y
 
+    // Find x and y coordinates that align with chunk boundaries
+    const startX = Math.floor((-tapStagePosX - (window.innerWidth * 1.5)) / WIDTH) * WIDTH
+    const endX = Math.floor((-tapStagePosX + (window.innerWidth * 1.5)) / WIDTH) * WIDTH
+    const startY = Math.floor((-tapStagePosY - (window.innerHeight * 1.5)) / HEIGHT) * HEIGHT
+    const endY = Math.floor((-tapStagePosY + (window.innerHeight * 1.5)) / HEIGHT) * HEIGHT
 
-    const tlChunkPosX = startX / WIDTH
-    const tlChunkPosY = startY / HEIGHT
+    // const tlChunkPosX = startX / WIDTH
+    // const tlChunkPosY = startY / HEIGHT
 
-    console.log("Render: tlChunk = " + tlChunkPosX + ", " + tlChunkPosY)
+    console.log("Stage Pos: ", stagePos.x, " , ", stagePos.y)
+    // console.log("Render: tlChunk = " + tlChunkPosX + ", " + tlChunkPosY)
 
     const gridComponents = []
     for (var x = startX; x < endX; x += WIDTH) {
         for (var y = startY; y < endY; y += HEIGHT) {
 
             const indexX = x / WIDTH;
-            const indexY = y / HEIGHT;
+            const indexY = (-y / HEIGHT) - 1;
+            // console.log("Rendering indexX=", indexX, "indexY=", indexY)
 
             const key = "kchunk:" + indexX + ":" + indexY
-            // let existingChunk = chunkCache.get(key)
             if (indexX > MAX_CHUNK_IDX
                 || indexX < MIN_CHUNK_IDX
                 || indexY > MAX_CHUNK_IDX
@@ -152,12 +171,15 @@ export const KonvaTapestry: FC = () => {
                 continue
             }
 
+            const stageX = x
+            const stageY = y
+
             const newChunk = <KonvaChunk
                 key={key}
                 xChunk={indexX}
                 yChunk={indexY}
-                xCanvas={x}
-                yCanvas={y}
+                xCanvas={stageX}
+                yCanvas={stageY}
             />
 
             gridComponents.push(newChunk)
@@ -168,14 +190,18 @@ export const KonvaTapestry: FC = () => {
         <Stage
             x={stagePos.x}
             y={stagePos.y}
-            scaleY={-1}
+            offsetX={-window.innerWidth / 2.0}
+            offsetY={-window.innerHeight / 2.0}
             width={window.innerWidth}
             height={window.innerHeight}
             draggable
             onDragEnd={e => {
                 setStagePos(e.currentTarget.position());
             }}>
-            <Layer>{gridComponents}</Layer>
+            <Layer>
+                <Circle x={0} y={0} width={20} height={20} fill='red' />
+                {gridComponents}
+            </Layer>
         </Stage>
     );
 };

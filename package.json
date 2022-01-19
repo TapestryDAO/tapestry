@@ -14,7 +14,7 @@
     "client:test": "cd client && yarn test",
     "app:build": "cd app && yarn build",
     "app:start": "cd app && yarn start",
-    "localnet:up": "solana-test-validator --bpf-program Tapestry11111111111111111111111111111111111 program/target/deploy/solana_tapestry.so --reset",
+    "localnet:up": "solana-test-validator --bpf-program Tapestry11111111111111111111111111111111111 program/target/deploy/solana_tapestry.so",
     "localnet:logs": "solana logs -u localhost"
   },
   "dependencies": {

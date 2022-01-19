@@ -352,10 +352,7 @@ export const LeftPane: FC = () => {
 export const App: FC = () => {
   return (
     <div className="App">
-      <SplitPane split="vertical" minSize={200} defaultSize={400} maxSize={400} style={{ backgroundColor: "white" }}>
-        <LeftPane />
-        <KonvaTapestry />
-      </SplitPane>
+      <KonvaTapestry />
     </div>
   );
 };
