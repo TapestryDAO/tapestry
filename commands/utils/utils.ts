@@ -57,10 +57,23 @@ export const loadKeyFromPath = (keyPath: string): Keypair => {
     return Keypair.fromSecretKey(Uint8Array.from(dataJson));
 }
 
-export const loadPatternFromPath = (path: string): number[][] => {
-    const data = fs.readFileSync(path, 'utf-8');
+type PatternPatch = {
+    // path relative to the file containing the pattern.json
+    image: string,
+}
+
+type Pattern = {
+    patches: [PatternPatch]
+
+    // 0 indicates not no patch
+    // 1 indicates the patch in the patches array included at index 0
+    pattern: number[][]
+}
+
+export const loadPatternFromPath = (pattern_path: string): Pattern => {
+    const data = fs.readFileSync(path.resolve(pattern_path, "pattern.json"), 'utf-8');
     const dataJson = JSON.parse(data);
-    return dataJson as [number[]]
+    return dataJson as Pattern
 }
 
 export const allKeys = (): Array<{ key: Keypair, name: string }> => {

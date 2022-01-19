@@ -95,18 +95,18 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
                 layer_y={col * (HEIGHT / 8)}
                 patch={patch}
             />)
-            // patches.push(
-            //     <Text
-            //         key={key}
-            //         x={row * (WIDTH / 8)}
-            //         y={col * (HEIGHT / 8)}
-            //         width={WIDTH / 8}
-            //         height={HEIGHT / 8}
-            //         verticalAlign='middle'
-            //         align='center'
-            //         text={patchCoords.x + "," + patchCoords.y}
-            //     />
-            // )
+            patches.push(
+                <Text
+                    key={"label" + key}
+                    x={row * (WIDTH / 8)}
+                    y={col * (HEIGHT / 8)}
+                    width={WIDTH / 8}
+                    height={HEIGHT / 8}
+                    verticalAlign='middle'
+                    align='center'
+                    text={patchCoords.x + "," + patchCoords.y}
+                />
+            )
         }
     }
 
@@ -199,8 +199,8 @@ export const KonvaTapestry: FC = () => {
                 setStagePos(e.currentTarget.position());
             }}>
             <Layer>
-                <Circle x={0} y={0} width={20} height={20} fill='red' />
                 {gridComponents}
+                <Circle x={0} y={0} width={20} height={20} fill='red' />
             </Layer>
         </Stage>
     );

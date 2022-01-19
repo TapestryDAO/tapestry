@@ -7,7 +7,7 @@ import { applyKeynameOption, applyXYArgOptions } from './utils/commandHelpers'
 import { inspect } from 'util';
 import fs from 'fs';
 import base58 from 'bs58'
-import { exit } from 'process'
+import path from 'path'
 
 const init_command = {
     command: "init",
@@ -51,19 +51,14 @@ const init_command = {
 }
 
 const airdrop_command = {
-    command: "airdrop [keyname]",
+    command: "airdrop",
     describe: "get money from faucet for the provided [keyname]",
     builder: (argv: Argv) => {
-        return argv
+        return applyKeynameOption(argv)
             .option("amount", {
                 describe: "Amount to airdrop",
                 type: "number",
                 default: 100,
-            })
-            .positional("keyname", {
-                describe: "keyname to airdrop SOL to",
-                type: "string",
-                required: true,
             })
     },
     handler: async (args: ArgumentsCamelCase) => {
@@ -199,9 +194,7 @@ type FillCommandArgs =
     { xLeft: number } &
     { xRight: number } &
     { pattern: string } &
-    { image: string } &
-    { keyname: string } &
-    { skipChecks: boolean }
+    { keyname: string }
 
 const fill_pattern_command = {
     command: "fillpattern",
@@ -229,37 +222,25 @@ const fill_pattern_command = {
                 required: true,
             })
             .option("pattern", {
-                description: "path to a pattern file",
+                description: "path to the root of a directory containing a pattern.json and gifs",
                 type: "string",
                 required: true,
-            })
-            .option("image", {
-                description: "path to an image file",
-                type: "string",
-                required: true,
-            })
-            .option("skipChecks", {
-                description: "Skip checking all the signatures after purchase and upload",
-                type: "boolean",
-                required: false,
-                default: false,
             })
     },
     handler: async (args: ArgumentsCamelCase<FillCommandArgs>) => {
 
         let keypair = loadKey(args.keyname)
         let connection = getNewConnection();
-        let image_data = new Uint8Array(fs.readFileSync(args.image))
         let pattern = loadPatternFromPath(args.pattern)
+        let images = pattern.patches.map((p) => new Uint8Array(fs.readFileSync(path.resolve(args.pattern, p.image))))
         let totalPatches = (args.xRight - args.xLeft) * (args.yTop - args.yBot)
 
-        console.log("Pattern: \n" + pattern);
+        console.log("Pattern: \n" + inspect(pattern, true, null, true));
         console.log("Buyer Pubkey : " + keypair.publicKey)
         console.log("Buyer Balance (SOL) : " + await getBalance(keypair.publicKey))
         console.log("Bottom Left: x=" + args.xLeft + " y=" + args.yBot)
         console.log("Top Right x=" + args.xRight + " y=" + args.yTop)
         console.log("Total Patches = " + totalPatches)
-        console.log("Using Image at: " + args.image)
 
         let allPromises: Promise<string>[] = []
 
@@ -290,22 +271,23 @@ const fill_pattern_command = {
                 let txConfig: ConfirmOptions = { skipPreflight: true, commitment: "confirmed" }
                 let updatePromise = sendAndConfirmTransaction(connection, tx, [keypair], txConfig).then(async (value) => {
                     console.log("Confirmed Purchase: " + x + " , " + y + "  SIG: " + value)
+
+                    let patternX = (x - args.xLeft) % pattern.pattern[0].length
+                    let patternY = (pattern.pattern.length - 1) - ((y - args.yBot) % pattern.pattern.length)
+                    let imageIndex = pattern.pattern[patternY][patternX] - 1
+
+                    if (imageIndex < 0) {
+                        return "no upload"
+                    }
+
                     let tx = new Transaction().add(await TapestryProgram.updatePatchImage({
                         x: x,
                         y: y,
                         owner: keypair.publicKey,
-                        image_data: image_data,
+                        image_data: images[imageIndex],
                     }));
 
-                    let patternX = (x - args.xLeft) % pattern[0].length
-                    let patternY = (y - args.yBot) % pattern.length
-                    let shouldUpload = pattern[patternY][patternX] != 0
-
-                    if (shouldUpload) {
-                        return sendAndConfirmTransaction(connection, tx, [keypair], txConfig)
-                    } else {
-                        return "no upload"
-                    }
+                    return sendAndConfirmTransaction(connection, tx, [keypair], txConfig)
                 }).then((value) => {
                     if (value != "no upload") {
                         console.log("Confirmed Upload: " + x + " , " + y + "  SIG: " + value)

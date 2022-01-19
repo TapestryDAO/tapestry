@@ -1,0 +1,10 @@
+{
+    "patches": [
+        {"image": "blue.gif"},
+        {"image": "green.gif"}
+    ],
+    "pattern": [
+        [1, 2],
+        [2, 1]
+    ]
+}
