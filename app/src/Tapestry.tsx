@@ -7,9 +7,12 @@ import { string } from 'yargs';
 import { getThemeProps } from '@mui/system';
 import { Vector2d } from 'konva/lib/types';
 import { usePatchModal, PatchModalContext, ShowModalFn } from './UpdateModal';
+import { PublicKey } from '@solana/web3.js';
 
 const WIDTH = 48 * 8
 const HEIGHT = 48 * 8
+
+// NOTE(will): for some reason useWallet() and useConnection() don't work within the konva react nodes
 
 type KonvaPatchProps = {
     patch: TapestryPatchAccount | null,
@@ -18,6 +21,7 @@ type KonvaPatchProps = {
     layer_x: number,
     layer_y: number,
     showModal: ShowModalFn,
+    userPublicKey: PublicKey | null,
 }
 
 export const KonvaPatch: FC<KonvaPatchProps> = ({
@@ -27,9 +31,16 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
     layer_x,
     layer_y,
     showModal,
+    userPublicKey
 }: KonvaPatchProps) => {
 
+    let defaultIsOwned = false
+    if (patch != null && userPublicKey != null) {
+        defaultIsOwned = TapestryClient.getInstance().isPatchOwnedBy(patch.data.owned_by_mint, userPublicKey)
+    }
+
     const [imageBitmap, setImageBitmap] = useState<ImageBitmap | undefined>(undefined);
+    const [isOwned, setIsOwned] = useState<boolean>(defaultIsOwned)
 
     useEffect(() => {
         let imageData = patch?.data.image_data
@@ -46,6 +57,18 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
             }
         }
     }, [patch])
+
+    useEffect(() => {
+        if (patch != null && userPublicKey != null) {
+            let cacheResult = TapestryClient.getInstance().isPatchOwnedBy(patch.data.owned_by_mint, userPublicKey, (result) => {
+                console.log("Result?", result);
+                setIsOwned(result)
+            })
+
+            setIsOwned(cacheResult)
+        }
+
+    }, [patch, userPublicKey])
 
     const handleClick = () => {
         console.log("clicked: ", patch_x, ",", patch_y)
@@ -67,9 +90,9 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
             y={layer_y}
             width={WIDTH / 8}
             height={HEIGHT / 8}
-            stroke={"black"}
+            stroke={isOwned ? "red" : "black"}
             image={imageBitmap}
-            strokeWidth={1}
+            strokeWidth={isOwned ? 3 : 1}
             onMouseOver={() => { }}
             onClick={handleClick}>
         </Image>
@@ -82,9 +105,10 @@ type KonvaChunkProps = {
     xCanvas: number,
     yCanvas: number,
     showModal: ShowModalFn,
+    userPublicKey: PublicKey | null,
 }
 
-export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanvas, showModal }: KonvaChunkProps) => {
+export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanvas, showModal, userPublicKey }: KonvaChunkProps) => {
     const { publicKey } = useWallet();
 
     const [chunk, setChunk] = useState<TapestryChunk>(TapestryChunk.getEmptyChunk(xChunk, yChunk));
@@ -94,10 +118,6 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
             setChunk(chunk);
         })
     }, [xChunk, yChunk])
-
-    // useEffect(() => {
-    //     // check if chunk is owned by user
-    // }, [publicKey, chunk])
 
     const searchParams = new URLSearchParams(location.search)
     let debugMode = !!searchParams.get("debug")
@@ -116,6 +136,7 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
                 layer_y={col * (HEIGHT / 8)}
                 patch={patch}
                 showModal={showModal}
+                userPublicKey={userPublicKey}
             />)
 
             if (debugMode) {
@@ -158,6 +179,7 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
 export const KonvaTapestry: FC = () => {
 
     const { showModal } = usePatchModal();
+    const { publicKey } = useWallet();
 
     const startingLocation = () => {
         const searchParams = new URLSearchParams(location.search)
@@ -214,6 +236,7 @@ export const KonvaTapestry: FC = () => {
                 xCanvas={stageX}
                 yCanvas={stageY}
                 showModal={showModal}
+                userPublicKey={publicKey}
             />
 
             gridComponents.push(newChunk)

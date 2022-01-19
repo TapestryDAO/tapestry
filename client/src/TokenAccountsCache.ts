@@ -22,32 +22,55 @@ export class TokenAccountsCache {
 
     static singleton = new TokenAccountsCache();
 
-    cache = new Map<string, OwnerCacheEntry>();
+    private cache = new Map<string, OwnerCacheEntry>();
 
     static readonly CACHE_EPIRY_MS = 1_000 * 60 * 3;
 
-    async refreshCache(connection: Connection, owner: PublicKey, force: boolean = false) {
-        // is reading time this way slow? this might get called alot
+    private in_flight = new Map<string, Promise<void>>()
+
+    public isPatchOwned(patch: PublicKey, owner: PublicKey): boolean | undefined {
+        const cacheEntry = this.cache.get(owner.toBase58())
+        if (cacheEntry === undefined) {
+            return undefined
+        } else {
+            return cacheEntry.token_accts_map.get(patch.toBase58()) !== undefined
+        }
+    }
+
+    public refreshCache(connection: Connection, owner: PublicKey, force: boolean = false): Promise<void> {
+        let ownerB58 = owner.toBase58()
         let currentTimeMillis = new Date().valueOf();
-        let existingEntry = this.cache.get(owner.toBase58())
+        let existingEntry = this.cache.get(ownerB58)
         if (!force
             && !!existingEntry
             && existingEntry.timestamp - currentTimeMillis < TokenAccountsCache.CACHE_EPIRY_MS) {
-            return false;
+            return Promise.resolve()
         }
 
-        const accounts = await TokenAccount.getTokenAccountsByOwner(connection, owner);
-        const filteredAccounts = accounts
-            .filter((acct) => acct.data.amount != new BN(1))
-            .map((acct) => [acct.data.mint.toBase58(), acct] as [string, TokenAccount]);
+        let existing_request = this.in_flight.get(ownerB58)
 
-        this.cache.set(owner.toBase58(), {
-            owner: owner,
-            timestamp: new Date().valueOf(),
-            token_accts_map: new Map<string, TokenAccount>(filteredAccounts),
+        if (existing_request !== undefined) {
+            // console.log("existing request in flight")
+            return existing_request
+        }
+
+        let promise = TokenAccount.getTokenAccountsByOwner(connection, owner).then((accounts) => {
+            const filteredAccounts = accounts
+                .filter((acct) => acct.data.amount != new BN(1))
+                .map((acct) => [acct.data.mint.toBase58(), acct] as [string, TokenAccount]);
+
+            console.log("Accounts: Length", filteredAccounts)
+
+            this.cache.set(ownerB58, {
+                owner: owner,
+                timestamp: new Date().valueOf(),
+                token_accts_map: new Map<string, TokenAccount>(filteredAccounts),
+            })
         })
 
-        return true;
+        this.in_flight.set(ownerB58, promise)
+
+        return promise
     }
 }
 

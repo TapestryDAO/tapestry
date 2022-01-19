@@ -215,11 +215,11 @@ export class TapestryPatchAccount extends Account<TapestryPatchData> {
         return account;
     }
 
-    async isOwnedBy(connection: Connection, owner: PublicKey) {
-        await TokenAccountsCache.singleton.refreshCache(connection, owner);
-        let cacheForOwner = TokenAccountsCache.singleton.cache.get(owner.toBase58());
-        let myMap = cacheForOwner?.token_accts_map;
-        let tokenAcct = myMap?.get(this.data.owned_by_mint.toBase58());
-        return !!tokenAcct
-    }
+    // async isOwnedBy(connection: Connection, owner: PublicKey) {
+    //     await TokenAccountsCache.singleton.refreshCache(connection, owner);
+    //     let cacheForOwner = TokenAccountsCache.singleton.cache.get(owner.toBase58());
+    //     let myMap = cacheForOwner?.token_accts_map;
+    //     let tokenAcct = myMap?.get(this.data.owned_by_mint.toBase58());
+    //     return !!tokenAcct
+    // }
 }

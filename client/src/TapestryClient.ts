@@ -1,6 +1,5 @@
-import { Connection } from "@solana/web3.js";
-import { number } from "yargs";
-import { TapestryProgram } from ".";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { TapestryProgram, TokenAccountsCache } from ".";
 import { MaybeTapestryPatchAccount, TapestryPatchAccount, TapestryChunk } from "./accounts/TapestryPatch";
 
 /**
@@ -12,8 +11,12 @@ export class TapestryClient {
 
     private connection: Connection
 
+    // Cache used to determine if a public key is the owner of a patch
+    private tokenAccountsCache: TokenAccountsCache
+
     private constructor(connection: Connection) {
         this.connection = connection
+        this.tokenAccountsCache = new TokenAccountsCache();
     }
 
     public static getInstance(): TapestryClient {
@@ -31,6 +34,25 @@ export class TapestryClient {
 
     public setConnection(connection: Connection) {
         // this.connection = connection
+    }
+
+    // Returns undefined if 
+    public isPatchOwnedBy(patch: PublicKey, owner: PublicKey, cacheRefreshCallback?: (result: boolean) => void): boolean {
+        const cacheIsOwned = this.tokenAccountsCache.isPatchOwned(patch, owner)
+        if (cacheIsOwned !== undefined) {
+            return cacheIsOwned
+        } else if (cacheRefreshCallback !== undefined) {
+            this.tokenAccountsCache.refreshCache(this.connection, owner).then(() => {
+                const cacheIsOwned = this.tokenAccountsCache.isPatchOwned(patch, owner)
+                if (cacheIsOwned === undefined) {
+                    console.log("Unexpected cache miss!")
+                }
+
+                cacheRefreshCallback(cacheIsOwned ?? false)
+            })
+        }
+
+        return false;
     }
 
     public async fetchChunkArray(xChunk: number, yChunk: number): Promise<MaybeTapestryPatchAccount[][]> {
