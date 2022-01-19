@@ -8,10 +8,6 @@ import { TapestryPatchAccount, TapestryProgram, PurchasePatchParams } from '@tap
 export type ShowModalFn = (x: number, y: number, patch: TapestryPatchAccount | null) => void
 export type PatchModalType = {
     showModal: ShowModalFn
-    // x: number,
-    // y: number,
-    // setShow: (value: any) => void,
-    // show: boolean,
 }
 
 export const PatchModalContext = React.createContext<PatchModalType>({
@@ -22,24 +18,42 @@ export const PatchModalContext = React.createContext<PatchModalType>({
 
 export const usePatchModal = () => useContext(PatchModalContext)
 
+export type PatchModalInfo = {
+    showing: boolean
+    x: number,
+    y: number,
+    patch?: TapestryPatchAccount
+}
+
+const DefaultPatchModalInfo: PatchModalInfo = {
+    showing: false,
+    x: 0,
+    y: 0,
+}
+
 export const PatchModalProvider: FC = ({ children }) => {
 
     const { publicKey, sendTransaction } = useWallet();
     const { connection } = useConnection();
 
-    const [isModalShowing, setIsModalShowing] = useState(false)
+    const [modalInfo, updateModalInfo] = useState(DefaultPatchModalInfo)
 
     const showModalFn: ShowModalFn = (x, y, patch) => {
         console.log("Patch: ", patch)
         if (patch === null) {
             sendTxPurchasePatch(x, y)
         } else {
-            setIsModalShowing(true)
+            updateModalInfo({
+                x: x,
+                y: y,
+                showing: true,
+                patch: patch
+            })
         }
     }
 
     const closeModalFn = () => {
-        setIsModalShowing(false)
+        updateModalInfo(DefaultPatchModalInfo)
     }
 
     const sendTxPurchasePatch = async (x: number, y: number) => {
@@ -60,22 +74,16 @@ export const PatchModalProvider: FC = ({ children }) => {
         let result = await connection.confirmTransaction(signature, 'confirmed');
 
         console.log("Completed Purchase: ", result.value.err);
-
-        // Force reload the cache
-        // await TokenAccountsCache.singleton.refreshCache(connection, publicKey, true);
-
-        // fetchFlag = false;
-        // fetchPatch();
-    };
+    }
 
     return (
         <PatchModalContext.Provider value={{ showModal: showModalFn }}>
             {children}
             <PatchModal
-                show={isModalShowing}
-                x={0}
-                y={0}
-                patch={undefined}
+                show={modalInfo.showing}
+                x={modalInfo.x}
+                y={modalInfo.y}
+                patch={modalInfo.patch}
                 closeModal={closeModalFn}
             />
         </PatchModalContext.Provider>

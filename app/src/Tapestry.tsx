@@ -1,6 +1,6 @@
 
 import { Layer, Rect, Stage, Image, Group, Text, Circle } from 'react-konva';
-import React, { FC, useEffect, useState, useCallback, useMemo, useContext } from 'react';
+import React, { FC, useEffect, useState, useCallback, useMemo, useContext, useReducer } from 'react';
 import { TapestryPatchAccount, TapestryChunk, TapestryClient, MAX_CHUNK_IDX, MIN_CHUNK_IDX } from '@tapestrydao/client';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { string } from 'yargs';

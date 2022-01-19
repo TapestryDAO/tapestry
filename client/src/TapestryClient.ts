@@ -33,7 +33,11 @@ export class TapestryClient {
     }
 
     public setConnection(connection: Connection) {
-        // this.connection = connection
+        this.connection = connection
+    }
+
+    public forceTokenAccountsCacheRefresh(owner: PublicKey) {
+        this.tokenAccountsCache.refreshCache(this.connection, owner, true)
     }
 
     // Returns undefined if 
