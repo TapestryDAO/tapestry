@@ -59,7 +59,7 @@ export class TokenAccountsCache {
                 .filter((acct) => acct.data.amount != new BN(1))
                 .map((acct) => [acct.data.mint.toBase58(), acct] as [string, TokenAccount]);
 
-            console.log("Accounts: Length", filteredAccounts)
+            console.log("Fetched ", filteredAccounts.length, "Token accconts for ", ownerB58)
 
             this.cache.set(ownerB58, {
                 owner: owner,
