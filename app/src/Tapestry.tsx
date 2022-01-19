@@ -81,6 +81,9 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
     //     // check if chunk is owned by user
     // }, [publicKey, chunk])
 
+    const searchParams = new URLSearchParams(location.search)
+    let debugMode = !!searchParams.get("debug")
+
     let patches = []
     for (var row = 0; row < 8; row++) {
         for (var col = 0; col < 8; col++) {
@@ -95,18 +98,21 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
                 layer_y={col * (HEIGHT / 8)}
                 patch={patch}
             />)
-            patches.push(
-                <Text
-                    key={"label" + key}
-                    x={row * (WIDTH / 8)}
-                    y={col * (HEIGHT / 8)}
-                    width={WIDTH / 8}
-                    height={HEIGHT / 8}
-                    verticalAlign='middle'
-                    align='center'
-                    text={patchCoords.x + "," + patchCoords.y}
-                />
-            )
+
+            if (debugMode) {
+                patches.push(
+                    <Text
+                        key={"label" + key}
+                        x={row * (WIDTH / 8)}
+                        y={col * (HEIGHT / 8)}
+                        width={WIDTH / 8}
+                        height={HEIGHT / 8}
+                        verticalAlign='middle'
+                        align='center'
+                        text={"x:" + patchCoords.x + "\ny:" + patchCoords.y}
+                    />
+                )
+            }
         }
     }
 
@@ -131,7 +137,18 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
 }
 
 export const KonvaTapestry: FC = () => {
-    const [stagePos, setStagePos] = React.useState({ x: 0, y: 0 });
+
+    const startingLocation = () => {
+        const searchParams = new URLSearchParams(location.search)
+        const xStr = searchParams.get("x")
+        const yStr = searchParams.get("y")
+
+        if (xStr == null || yStr == null) return { x: 0, y: 0 }
+
+        return { x: -parseInt(xStr) * (WIDTH / 8), y: parseInt(yStr) * (HEIGHT / 8) }
+    }
+
+    const [stagePos, setStagePos] = React.useState(startingLocation());
     const { connection } = useConnection()
 
     useEffect(() => {
@@ -148,11 +165,7 @@ export const KonvaTapestry: FC = () => {
     const startY = Math.floor((-tapStagePosY - (window.innerHeight * 1.5)) / HEIGHT) * HEIGHT
     const endY = Math.floor((-tapStagePosY + (window.innerHeight * 1.5)) / HEIGHT) * HEIGHT
 
-    // const tlChunkPosX = startX / WIDTH
-    // const tlChunkPosY = startY / HEIGHT
-
     console.log("Stage Pos: ", stagePos.x, " , ", stagePos.y)
-    // console.log("Render: tlChunk = " + tlChunkPosX + ", " + tlChunkPosY)
 
     const gridComponents = []
     for (var x = startX; x < endX; x += WIDTH) {
@@ -160,7 +173,6 @@ export const KonvaTapestry: FC = () => {
 
             const indexX = x / WIDTH;
             const indexY = (-y / HEIGHT) - 1;
-            // console.log("Rendering indexX=", indexX, "indexY=", indexY)
 
             const key = "kchunk:" + indexX + ":" + indexY
             if (indexX > MAX_CHUNK_IDX
