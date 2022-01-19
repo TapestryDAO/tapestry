@@ -61,7 +61,6 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
     useEffect(() => {
         if (patch != null && userPublicKey != null) {
             let cacheResult = TapestryClient.getInstance().isPatchOwnedBy(patch.data.owned_by_mint, userPublicKey, (result) => {
-                console.log("Result?", result);
                 setIsOwned(result)
             })
 
