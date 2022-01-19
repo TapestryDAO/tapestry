@@ -194,7 +194,8 @@ type FillCommandArgs =
     { xLeft: number } &
     { xRight: number } &
     { pattern: string } &
-    { keyname: string }
+    { keyname: string } &
+    { buyEmpty: boolean }
 
 const fill_pattern_command = {
     command: "fillpattern",
@@ -226,6 +227,7 @@ const fill_pattern_command = {
                 type: "string",
                 required: true,
             })
+            .option("buyEmpty", { default: false })
     },
     handler: async (args: ArgumentsCamelCase<FillCommandArgs>) => {
 
@@ -243,6 +245,12 @@ const fill_pattern_command = {
         console.log("Total Patches = " + totalPatches)
 
         let allPromises: Promise<string>[] = []
+
+        const getPatchIndex = (x: number, y: number): number => {
+            let patternX = (x - args.xLeft) % pattern.pattern[0].length
+            let patternY = (pattern.pattern.length - 1) - ((y - args.yBot) % pattern.pattern.length)
+            return pattern.pattern[patternY][patternX] - 1
+        }
 
         for (let y = args.yBot; y < args.yTop; y++) {
             for (let x = args.xLeft; x < args.xRight; x++) {
@@ -262,6 +270,12 @@ const fill_pattern_command = {
                     }
                 }
 
+                const patchIndex = getPatchIndex(x, y)
+
+                if (!args.buyEmpty && patchIndex < 0) {
+                    continue
+                }
+
                 let tx = new Transaction().add(await TapestryProgram.purchasePatch({
                     x: x,
                     y: y,
@@ -272,11 +286,7 @@ const fill_pattern_command = {
                 let updatePromise = sendAndConfirmTransaction(connection, tx, [keypair], txConfig).then(async (value) => {
                     console.log("Confirmed Purchase: " + x + " , " + y + "  SIG: " + value)
 
-                    let patternX = (x - args.xLeft) % pattern.pattern[0].length
-                    let patternY = (pattern.pattern.length - 1) - ((y - args.yBot) % pattern.pattern.length)
-                    let imageIndex = pattern.pattern[patternY][patternX] - 1
-
-                    if (imageIndex < 0) {
+                    if (patchIndex < 0) {
                         return "no upload"
                     }
 
@@ -284,13 +294,38 @@ const fill_pattern_command = {
                         x: x,
                         y: y,
                         owner: keypair.publicKey,
-                        image_data: images[imageIndex],
+                        image_data: images[patchIndex],
+                    }));
+
+                    return sendAndConfirmTransaction(connection, tx, [keypair], txConfig)
+                }).then(async (value) => {
+                    if (value != "no upload") {
+                        console.log("Confirmed Upload: " + x + " , " + y + "  SIG: " + value)
+                    }
+
+                    if (patchIndex < 0) {
+                        return "no upload"
+                    }
+
+                    const url = pattern.patches[patchIndex].url
+                    const hoverText = pattern.patches[patchIndex].hoverText
+
+                    if (!url && !hoverText) {
+                        return "no meta"
+                    }
+
+                    let tx = new Transaction().add(await TapestryProgram.updatePatchMetadata({
+                        x: x,
+                        y: y,
+                        owner: keypair.publicKey,
+                        url: url,
+                        hover_text: hoverText
                     }));
 
                     return sendAndConfirmTransaction(connection, tx, [keypair], txConfig)
                 }).then((value) => {
-                    if (value != "no upload") {
-                        console.log("Confirmed Upload: " + x + " , " + y + "  SIG: " + value)
+                    if (value != "no meta" && value != "no upload") {
+                        console.log("Confirmed meta " + x + " , " + y + "  SIG: " + value);
                     }
 
                     return "done"
@@ -304,8 +339,8 @@ const fill_pattern_command = {
         }
 
         for (var i = 0; i < allPromises.length; i++) {
-            let sig = await allPromises[i];
-            console.log("Got update sig: " + sig)
+            let result = await allPromises[i];
+            console.log("Promise Completed: " + result)
         }
     }
 }

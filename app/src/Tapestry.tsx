@@ -44,6 +44,14 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
         }
     }, [patch])
 
+    const handleClick = () => {
+        console.log("clicked: ", patch_x, ",", patch_y)
+        const url = patch?.data.url
+        if (url) {
+            window.open(url, '_blank');
+        }
+    }
+
     return (
         <Image
             key={patch_x + "," + patch_y}
@@ -54,7 +62,8 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
             stroke={"black"}
             image={imageBitmap}
             strokeWidth={1}
-            onClick={() => { console.log("clicked: ", patch_x, ",", patch_y) }}>
+            onMouseOver={() => { console.log("mouseover: ", patch_x, patch_y) }}
+            onClick={handleClick}>
         </Image>
     )
 }

@@ -60,6 +60,8 @@ export const loadKeyFromPath = (keyPath: string): Keypair => {
 type PatternPatch = {
     // path relative to the file containing the pattern.json
     image: string,
+    url?: string,
+    hoverText?: string,
 }
 
 type Pattern = {

@@ -1,7 +1,15 @@
 {
     "patches": [
-        {"image": "blue.gif"},
-        {"image": "green.gif"}
+        {
+            "image": "blue.gif",
+            "hoverText": "I am blue",
+            "url": "https://en.wikipedia.org/wiki/Blue"
+        },
+        {
+            "image": "green.gif",
+            "hoverText": "I am green",
+            "url": "https://en.wikipedia.org/wiki/Green"
+        }
     ],
     "pattern": [
         [1, 2],
