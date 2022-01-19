@@ -27,6 +27,7 @@ import {
 
 import { Input } from '@mui/material';
 import { KonvaTapestry } from './Tapestry'
+import { PatchModalProvider } from './UpdateModal';
 
 type PatchProps = {
   x: number,
@@ -352,7 +353,9 @@ export const LeftPane: FC = () => {
 export const App: FC = () => {
   return (
     <div className="App">
-      <KonvaTapestry />
+      <PatchModalProvider>
+        <KonvaTapestry />
+      </PatchModalProvider>
     </div>
   );
 };

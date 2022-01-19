@@ -1,11 +1,12 @@
 
 import { Layer, Rect, Stage, Image, Group, Text, Circle } from 'react-konva';
-import React, { FC, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { FC, useEffect, useState, useCallback, useMemo, useContext } from 'react';
 import { TapestryPatchAccount, TapestryChunk, TapestryClient, MAX_CHUNK_IDX, MIN_CHUNK_IDX } from '@tapestrydao/client';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { string } from 'yargs';
 import { getThemeProps } from '@mui/system';
 import { Vector2d } from 'konva/lib/types';
+import { usePatchModal, PatchModalContext, ShowModalFn } from './UpdateModal';
 
 const WIDTH = 48 * 8
 const HEIGHT = 48 * 8
@@ -16,6 +17,7 @@ type KonvaPatchProps = {
     patch_y: number,
     layer_x: number,
     layer_y: number,
+    showModal: ShowModalFn,
 }
 
 export const KonvaPatch: FC<KonvaPatchProps> = ({
@@ -24,6 +26,7 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
     patch_y,
     layer_x,
     layer_y,
+    showModal,
 }: KonvaPatchProps) => {
 
     const [imageBitmap, setImageBitmap] = useState<ImageBitmap | undefined>(undefined);
@@ -46,10 +49,15 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
 
     const handleClick = () => {
         console.log("clicked: ", patch_x, ",", patch_y)
-        const url = patch?.data.url
-        if (url) {
-            window.open(url, '_blank');
-        }
+        showModal(patch_x, patch_y, patch)
+        // usePatchModal.patch = patch ?? undefined;
+        // usePatchModal.x = patch_x;
+        // usePatchModal.y = patch_y;
+        // usePatchModal.show = true;
+        // const url = patch?.data.url
+        // if (url) {
+        //     window.open(url, '_blank');
+        // }
     }
 
     return (
@@ -62,7 +70,7 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
             stroke={"black"}
             image={imageBitmap}
             strokeWidth={1}
-            onMouseOver={() => { console.log("mouseover: ", patch_x, patch_y) }}
+            onMouseOver={() => { }}
             onClick={handleClick}>
         </Image>
     )
@@ -73,9 +81,10 @@ type KonvaChunkProps = {
     yChunk: number,
     xCanvas: number,
     yCanvas: number,
+    showModal: ShowModalFn,
 }
 
-export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanvas }: KonvaChunkProps) => {
+export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanvas, showModal }: KonvaChunkProps) => {
     const { publicKey } = useWallet();
 
     const [chunk, setChunk] = useState<TapestryChunk>(TapestryChunk.getEmptyChunk(xChunk, yChunk));
@@ -106,6 +115,7 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
                 layer_x={row * (WIDTH / 8)}
                 layer_y={col * (HEIGHT / 8)}
                 patch={patch}
+                showModal={showModal}
             />)
 
             if (debugMode) {
@@ -146,6 +156,8 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
 }
 
 export const KonvaTapestry: FC = () => {
+
+    const { showModal } = usePatchModal();
 
     const startingLocation = () => {
         const searchParams = new URLSearchParams(location.search)
@@ -201,6 +213,7 @@ export const KonvaTapestry: FC = () => {
                 yChunk={indexY}
                 xCanvas={stageX}
                 yCanvas={stageY}
+                showModal={showModal}
             />
 
             gridComponents.push(newChunk)
