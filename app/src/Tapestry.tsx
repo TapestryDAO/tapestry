@@ -39,24 +39,7 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
         defaultIsOwned = TapestryClient.getInstance().isPatchOwnedBy(patch.data.owned_by_mint, userPublicKey)
     }
 
-    // const [imageBitmap, setImageBitmap] = useState<ImageBitmap | undefined>(undefined);
     const [isOwned, setIsOwned] = useState<boolean>(defaultIsOwned)
-
-    // useEffect(() => {
-    //     let imageData = patch?.data.image_data
-    //     if (!!imageData) {
-    //         console.log("Render Image")
-    //         let buffer = new Uint8Array(imageData);
-    //         let blob = new Blob([buffer], { type: "image/gif" })
-    //         try {
-    //             createImageBitmap(blob).then((value) => {
-    //                 setImageBitmap(value)
-    //             })
-    //         } catch (e) {
-    //             console.log("Error decoding image? " + e)
-    //         }
-    //     }
-    // }, [patch])
 
     useEffect(() => {
         if (patch != null && userPublicKey != null) {
@@ -104,12 +87,6 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
     const { publicKey } = useWallet();
 
     const [chunk, setChunk] = useState<TapestryChunk>(TapestryChunk.getNullChunk(xChunk, yChunk));
-
-    // useEffect(() => {
-    //     TapestryClient.getInstance().fetchChunk(xChunk, yChunk).then((chunk) => {
-    //         setChunk(chunk);
-    //     })
-    // }, [xChunk, yChunk])
 
     useEffect(() => {
 
