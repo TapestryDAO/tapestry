@@ -110,16 +110,6 @@ export class TapestryClient {
         return false;
     }
 
-    /// TODO:
-    //
-    // 1. pre-load image and store on patches
-    // 2. pub sub at the chunk level
-    // 2.5 sub to accounts owned by main program account
-    // 3. have the chunk components diff (if needed, might not actually be needed)
-    // 4. keep a cache of chunks
-    // 5. allow invaldation of cache on updates
-    // 6. show hover text on patches
-
     public async fetchChunkArray(xChunk: number, yChunk: number): Promise<MaybeTapestryPatchAccount[][]> {
         let result = await this.connection.getProgramAccounts(TapestryProgram.PUBKEY, {
             filters: TapestryPatchAccount.getChunkFilters(xChunk, yChunk)
