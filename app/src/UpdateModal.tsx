@@ -2,7 +2,7 @@ import React, { FC, useState, useContext } from 'react'
 import { Container, Typography, Box, Link, Button, Modal, TextField, Tooltip, Input } from '@mui/material'
 import { Transaction } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { TapestryPatchAccount, TapestryProgram, PurchasePatchParams, TapestryClient } from '@tapestrydao/client';
+import { TapestryPatchAccount, TapestryProgram, PurchasePatchParams, TapestryClient, patchCoordToChunkCoord } from '@tapestrydao/client';
 
 
 export type ShowModalFn = (x: number, y: number, patch: TapestryPatchAccount | null) => void
@@ -73,7 +73,9 @@ export const PatchModalProvider: FC = ({ children }) => {
         const signature = await sendTransaction(tx, connection);
         let result = await connection.confirmTransaction(signature, 'confirmed');
 
-        // TapestryClient.getInstance().fetchChunk2()
+        const chunkCoord = patchCoordToChunkCoord({ x: x, y: y })
+
+        TapestryClient.getInstance().fetchChunk2(chunkCoord.x, chunkCoord.y, true, true)
 
         console.log("Completed Purchase: ", result.value.err);
     }
@@ -138,6 +140,9 @@ export const PatchModal: FC<PatchModalProps> = ({ show, x, y, patch, closeModal 
         let tx = new Transaction().add(ix);
         const signature = await sendTransaction(tx, connection);
         let result = await connection.confirmTransaction(signature, 'confirmed');
+
+        const chunkCoord = patchCoordToChunkCoord({ x: x, y: y })
+        TapestryClient.getInstance().fetchChunk2(chunkCoord.x, chunkCoord.y, true, true)
 
         console.log("Completed Update: ", result.value.err);
     }

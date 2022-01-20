@@ -129,11 +129,11 @@ export class TapestryClient {
     // Will return a loaded chunk from cache if it has one, otherwise will return an empty chunk immediately
     // and fetch the desired chunk, callers of this can subscribe to the OnChunkUpdate signal to get the result
     // of the fetch
-    public fetchChunk2(xChunk: number, yChunk: number, loadBitmaps: boolean = true): TapestryChunk {
+    public fetchChunk2(xChunk: number, yChunk: number, loadBitmaps: boolean = true, force: boolean = false): TapestryChunk {
 
         const cachedChunk = this.chunkCache.get(chunkKey(xChunk, yChunk));
 
-        if (cachedChunk !== undefined) {
+        if (cachedChunk !== undefined && !force) {
             return cachedChunk
         }
 
@@ -161,6 +161,7 @@ export class TapestryClient {
             let chunk = new TapestryChunk(xChunk, yChunk, accountsResolved);
             console.log("Udating Cache: ", xChunk, yChunk);
             this.updateCache(chunk);
+            this.inFlightChunkFetch.delete(chunkKey(xChunk, yChunk))
             return chunk
         })
 

@@ -80,6 +80,17 @@ export const patchCoordToChunkLocalPatchCoord = (patchCoord: Vec2d, chunkCoord: 
     return { x: xIndexRowMajor, y: yIndexRowMajor }
 }
 
+export const patchCoordToChunkCoord = (patchCoord: Vec2d): Vec2d => {
+    return {
+        x: patchCoord.x >= 0 ?
+            Math.floor(patchCoord.x / CHUNK_SIZE) :
+            Math.floor((patchCoord.x + 1) / CHUNK_SIZE) - 1,
+        y: patchCoord.y > 0 ?
+            Math.floor(patchCoord.y / CHUNK_SIZE) :
+            Math.floor((patchCoord.y + 1) / CHUNK_SIZE) - 1,
+    }
+}
+
 export class TapestryChunk {
 
     /// Row major order, can be null
@@ -103,20 +114,10 @@ export class TapestryChunk {
      * @returns the x,y coordinates of the patch in "tapestry coordinates"
      */
     public getPatchCoordsForChunkIndex(xIndex: number, yIndex: number): Vec2d {
-        // return chunkLocalPatchCoordToTapestryPatchCoord(
-        //     { x: xIndex, y: xIndex },
-        //     { x: this.xChunk, y: this.yChunk }
-        // )
-
-        // TODO(will): Check that I did this correctly
-        return {
-            x: this.xChunk >= 0 ?
-                (CHUNK_SIZE * this.xChunk) + xIndex :
-                ((this.xChunk + 1) * CHUNK_SIZE) - (CHUNK_SIZE - xIndex),
-            y: this.yChunk >= 0 ?
-                (CHUNK_SIZE * this.yChunk) + ((CHUNK_SIZE - 1) - yIndex) :
-                (CHUNK_SIZE * (this.yChunk + 1)) - (yIndex + 1)
-        }
+        return chunkLocalPatchCoordToTapestryPatchCoord(
+            { x: xIndex, y: yIndex },
+            { x: this.xChunk, y: this.yChunk }
+        )
     }
 
     public updatePatch(patch: TapestryPatchAccount) {
