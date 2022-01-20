@@ -176,35 +176,4 @@ export class TapestryClient {
 
         return new TapestryChunk(xChunk, yChunk, accounts)
     }
-
-    public static async fetchChunk(connection: Connection, xChunk: number, yChunk: number): Promise<TapestryChunk> {
-        let result = await connection.getProgramAccounts(TapestryProgram.PUBKEY, {
-            filters: TapestryPatchAccount.getChunkFilters(xChunk, yChunk)
-        })
-
-        let accounts = result.map((value) => {
-            return new TapestryPatchAccount(value.pubkey, value.account)
-        }).map((account) => {
-            let imageData = account.data.image_data
-            if (imageData !== undefined) {
-                try {
-                    let buffer = new Uint8Array(imageData)
-                    let blob = new Blob([buffer], { type: "image/gif" })
-                    return createImageBitmap(blob).then((value) => {
-                        account.image_bitmap = value
-                        return account
-                    })
-                } catch (error) {
-                    console.log("image decoding failed: ", error)
-                    return Promise.resolve(account)
-                }
-            } else {
-                return Promise.resolve(account)
-            }
-        })
-
-        let accountsResolved = await Promise.all(accounts)
-
-        return new TapestryChunk(xChunk, yChunk, accountsResolved)
-    }
 }
