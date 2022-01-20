@@ -80,14 +80,19 @@ export const patchCoordToChunkLocalPatchCoord = (patchCoord: Vec2d, chunkCoord: 
     return { x: xIndexRowMajor, y: yIndexRowMajor }
 }
 
+/**
+ * 
+ * @param patchCoord a coordinate of a patch in tapestry coorindates
+ * @returns a chunkc coordinate which contains that patch coordinate
+ */
 export const patchCoordToChunkCoord = (patchCoord: Vec2d): Vec2d => {
     return {
         x: patchCoord.x >= 0 ?
             Math.floor(patchCoord.x / CHUNK_SIZE) :
-            Math.floor((patchCoord.x + 1) / CHUNK_SIZE) - 1,
-        y: patchCoord.y > 0 ?
+            Math.ceil((patchCoord.x + 1) / CHUNK_SIZE) - 1,
+        y: patchCoord.y >= 0 ?
             Math.floor(patchCoord.y / CHUNK_SIZE) :
-            Math.floor((patchCoord.y + 1) / CHUNK_SIZE) - 1,
+            Math.ceil((patchCoord.y + 1) / CHUNK_SIZE) - 1,
     }
 }
 

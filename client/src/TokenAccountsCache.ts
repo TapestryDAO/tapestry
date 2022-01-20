@@ -66,6 +66,8 @@ export class TokenAccountsCache {
                 timestamp: new Date().valueOf(),
                 token_accts_map: new Map<string, TokenAccount>(filteredAccounts),
             })
+
+            this.in_flight.delete(ownerB58)
         })
 
         this.in_flight.set(ownerB58, promise)

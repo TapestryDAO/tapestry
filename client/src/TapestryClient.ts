@@ -29,6 +29,7 @@ export class TapestryClient {
     private inFlightChunkFetch = new Map<string, Promise<TapestryChunk>>();
 
     public OnChunkUpdate = new Signal<ChunkUdateHandler>();
+    public OnTokenAccountsUpdate = new Signal<() => void>();
 
     private constructor(connection: Connection) {
         this.connection = connection
@@ -82,8 +83,12 @@ export class TapestryClient {
         // this.subscribeToPatchUpdates()
     }
 
-    public forceTokenAccountsCacheRefresh(owner: PublicKey) {
-        this.tokenAccountsCache.refreshCache(this.connection, owner, true)
+    public async forceTokenAccountsCacheRefresh(owner: PublicKey) {
+        // return the accounts that changed for this owner in the 
+        return this.tokenAccountsCache.refreshCache(this.connection, owner, true)
+        // this.tokenAccountsCache.refreshCache(this.connection, owner, true).then(() => {
+        //     this.OnTokenAccountsUpdate.dispatch()
+        // })
     }
 
     // Returns undefined if 

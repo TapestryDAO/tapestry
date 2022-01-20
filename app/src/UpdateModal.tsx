@@ -75,6 +75,8 @@ export const PatchModalProvider: FC = ({ children }) => {
 
         const chunkCoord = patchCoordToChunkCoord({ x: x, y: y })
 
+        await TapestryClient.getInstance().forceTokenAccountsCacheRefresh(publicKey)
+
         TapestryClient.getInstance().fetchChunk2(chunkCoord.x, chunkCoord.y, true, true)
 
         console.log("Completed Purchase: ", result.value.err);
