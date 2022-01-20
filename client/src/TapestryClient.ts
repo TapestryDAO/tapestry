@@ -164,16 +164,4 @@ export class TapestryClient {
 
         return TapestryChunk.getNullChunk(xChunk, yChunk);
     }
-
-    public async fetchChunk(xChunk: number, yChunk: number): Promise<TapestryChunk> {
-        let result = await this.connection.getProgramAccounts(TapestryProgram.PUBKEY, {
-            filters: TapestryPatchAccount.getChunkFilters(xChunk, yChunk)
-        })
-
-        let accounts = result.map((value) => {
-            return new TapestryPatchAccount(value.pubkey, value.account)
-        })
-
-        return new TapestryChunk(xChunk, yChunk, accounts)
-    }
 }

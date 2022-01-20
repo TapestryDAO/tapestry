@@ -199,6 +199,7 @@ export type MaybeTapestryPatchAccount = TapestryPatchAccount | null;
 
 export class TapestryPatchAccount extends Account<TapestryPatchData> {
 
+    // @ts-ignore
     image_bitmap?: ImageBitmap
 
     constructor(pubkey: AnyPublicKey, info: AccountInfo<Buffer>) {
@@ -219,7 +220,9 @@ export class TapestryPatchAccount extends Account<TapestryPatchData> {
         if (imageData !== undefined) {
             try {
                 let buffer = new Uint8Array(imageData)
+                // @ts-ignore
                 let blob = new Blob([buffer], { type: "image/gif" })
+                // @ts-ignore
                 return createImageBitmap(blob).then((value) => {
                     this.image_bitmap = value
                     return this
