@@ -2,10 +2,8 @@ import { PublicKey, AccountInfo, Connection, MemcmpFilter, GetProgramAccountsFil
 import { Borsh, Account, AnyPublicKey } from '@metaplex-foundation/mpl-core';
 import { Schema } from 'borsh';
 import { TapestryProgram } from '../TapestryProgram';
-import { TokenAccountsCache } from '../TokenAccountsCache';
 import { extendBorsh } from "../utils";
 import base58 from 'bs58';
-
 
 const MAX_X = 1023;
 const MIN_X = -1024;
@@ -34,6 +32,54 @@ const MAX_PATCH_TOTAL_LEN = 0 +
 
 const CHUNK_OFFSET = 1 + 32;
 
+type Vec2d = {
+    x: number,
+    y: number,
+}
+
+/**
+ * @param chunkCoord The chunk coordinate within the tapestry
+ * @param chunkLocalPatchCoord The coordinate of the patch within the chunks local row major coordinate system
+ * @returns the coordinate of the patch within the tapestry
+ */
+export const chunkLocalPatchCoordToTapestryPatchCoord = (
+    chunkLocalPatchCoord: Vec2d,
+    chunkCoord: Vec2d): Vec2d => {
+
+    return {
+        x: chunkCoord.x >= 0 ?
+            (CHUNK_SIZE * chunkCoord.x) + chunkLocalPatchCoord.x :
+            ((chunkCoord.x + 1) * CHUNK_SIZE) - (CHUNK_SIZE - chunkLocalPatchCoord.x),
+        y: chunkCoord.y >= 0 ?
+            (CHUNK_SIZE * chunkCoord.y) + ((CHUNK_SIZE - 1) - chunkLocalPatchCoord.y) :
+            (CHUNK_SIZE * (chunkCoord.y + 1)) - (chunkLocalPatchCoord.y + 1)
+    }
+}
+
+/**
+ * @param chunkCoord The chunk coordinate within the tapestry
+ * @param patchCoord The patch coordinate within the tapestry
+ * @returns A coordinate of the patch within the chunk's local row major coordinate system
+ */
+export const patchCoordToChunkLocalPatchCoord = (patchCoord: Vec2d, chunkCoord: Vec2d): Vec2d => {
+    const chunkOriginX = patchCoord.x >= 0 ?
+        chunkCoord.x * CHUNK_SIZE :
+        ((chunkCoord.x + 1) * CHUNK_SIZE) - 1
+
+    const chunkOriginY = patchCoord.y >= 0 ?
+        chunkCoord.y * CHUNK_SIZE :
+        ((chunkCoord.y + 1) * CHUNK_SIZE) - 1
+
+    const xIndexRowMajor = patchCoord.x >= 0 ?
+        patchCoord.x - chunkOriginX :
+        (CHUNK_SIZE - 1) - Math.abs(patchCoord.x - chunkOriginX);
+
+    const yIndexRowMajor = patchCoord.y >= 0 ?
+        (CHUNK_SIZE - 1) - Math.abs(patchCoord.y - chunkOriginY) :
+        chunkOriginY - patchCoord.y;
+    return { x: xIndexRowMajor, y: yIndexRowMajor }
+}
+
 export class TapestryChunk {
 
     /// Row major order, can be null
@@ -41,10 +87,14 @@ export class TapestryChunk {
     public xChunk: number
     public yChunk: number
 
-    constructor(xChunk: number, yChunk: number, unorderedChunk: TapestryPatchAccount[]) {
+    // Used to check if this is live data fetched from server, or is synthetic null chunk
+    public isNullChunk: boolean
+
+    constructor(xChunk: number, yChunk: number, unorderedChunk: TapestryPatchAccount[], isNullChunk: boolean = false) {
         this.chunkAccounts = TapestryPatchAccount.organizeChunk(unorderedChunk)
         this.xChunk = xChunk
         this.yChunk = yChunk
+        this.isNullChunk = isNullChunk
     }
 
     /**
@@ -52,7 +102,12 @@ export class TapestryChunk {
      * @param yIndex the yIndex of a patch in this chunks row major chunkAccounts array
      * @returns the x,y coordinates of the patch in "tapestry coordinates"
      */
-    public getPatchCoordsForChunkIndex(xIndex: number, yIndex: number): { x: number, y: number } {
+    public getPatchCoordsForChunkIndex(xIndex: number, yIndex: number): Vec2d {
+        // return chunkLocalPatchCoordToTapestryPatchCoord(
+        //     { x: xIndex, y: xIndex },
+        //     { x: this.xChunk, y: this.yChunk }
+        // )
+
         // TODO(will): Check that I did this correctly
         return {
             x: this.xChunk >= 0 ?
@@ -64,8 +119,18 @@ export class TapestryChunk {
         }
     }
 
-    public static getEmptyChunk(xChunk: number, yChunk: number): TapestryChunk {
-        return new TapestryChunk(xChunk, yChunk, [])
+    public updatePatch(patch: TapestryPatchAccount) {
+        let chunkLocalPatchCoords = patchCoordToChunkLocalPatchCoord(
+            { x: patch.data.x, y: patch.data.y },
+            { y: this.xChunk, x: this.yChunk },
+        )
+
+        // TODO(will): figure out where i fucked tis up later down the line
+        this.chunkAccounts[chunkLocalPatchCoords.x][chunkLocalPatchCoords.y] = patch;
+    }
+
+    public static getNullChunk(xChunk: number, yChunk: number): TapestryChunk {
+        return new TapestryChunk(xChunk, yChunk, [], true)
     }
 }
 
@@ -129,6 +194,8 @@ export type MaybeTapestryPatchAccount = TapestryPatchAccount | null;
 
 export class TapestryPatchAccount extends Account<TapestryPatchData> {
 
+    image_bitmap?: ImageBitmap
+
     constructor(pubkey: AnyPublicKey, info: AccountInfo<Buffer>) {
         extendBorsh();
         super(pubkey, info);
@@ -140,6 +207,25 @@ export class TapestryPatchAccount extends Account<TapestryPatchData> {
         }
 
         this.data = TapestryPatchData.deserialize(this.info.data);
+    }
+
+    public async loadBitmap() {
+        let imageData = this.data.image_data
+        if (imageData !== undefined) {
+            try {
+                let buffer = new Uint8Array(imageData)
+                let blob = new Blob([buffer], { type: "image/gif" })
+                return createImageBitmap(blob).then((value) => {
+                    this.image_bitmap = value
+                    return this
+                })
+            } catch (error) {
+                console.log("image decoding failed: ", error)
+                return Promise.resolve(this)
+            }
+        } else {
+            return Promise.resolve(this)
+        }
     }
 
     static getChunkFilters(xChunk: number, yChunk: number): GetProgramAccountsFilter[] {
@@ -198,6 +284,7 @@ export class TapestryPatchAccount extends Account<TapestryPatchData> {
                 (CHUNK_SIZE - 1) - Math.abs(y - chunkOriginY) :
                 chunkOriginY - y;
 
+            // TODO(will): This looks wrong, but must have also fucked up closer to rendering to reverse
             chunkArray[xIndexRowMajor][yIndexRowMajor] = patch
         }
 
@@ -214,12 +301,4 @@ export class TapestryPatchAccount extends Account<TapestryPatchData> {
         let account = new TapestryPatchAccount(patch_pda, info);
         return account;
     }
-
-    // async isOwnedBy(connection: Connection, owner: PublicKey) {
-    //     await TokenAccountsCache.singleton.refreshCache(connection, owner);
-    //     let cacheForOwner = TokenAccountsCache.singleton.cache.get(owner.toBase58());
-    //     let myMap = cacheForOwner?.token_accts_map;
-    //     let tokenAcct = myMap?.get(this.data.owned_by_mint.toBase58());
-    //     return !!tokenAcct
-    // }
 }

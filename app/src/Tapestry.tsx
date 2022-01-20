@@ -39,24 +39,24 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
         defaultIsOwned = TapestryClient.getInstance().isPatchOwnedBy(patch.data.owned_by_mint, userPublicKey)
     }
 
-    const [imageBitmap, setImageBitmap] = useState<ImageBitmap | undefined>(undefined);
+    // const [imageBitmap, setImageBitmap] = useState<ImageBitmap | undefined>(undefined);
     const [isOwned, setIsOwned] = useState<boolean>(defaultIsOwned)
 
-    useEffect(() => {
-        let imageData = patch?.data.image_data
-        if (!!imageData) {
-            console.log("Render Image")
-            let buffer = new Uint8Array(imageData);
-            let blob = new Blob([buffer], { type: "image/gif" })
-            try {
-                createImageBitmap(blob).then((value) => {
-                    setImageBitmap(value)
-                })
-            } catch (e) {
-                console.log("Error decoding image? " + e)
-            }
-        }
-    }, [patch])
+    // useEffect(() => {
+    //     let imageData = patch?.data.image_data
+    //     if (!!imageData) {
+    //         console.log("Render Image")
+    //         let buffer = new Uint8Array(imageData);
+    //         let blob = new Blob([buffer], { type: "image/gif" })
+    //         try {
+    //             createImageBitmap(blob).then((value) => {
+    //                 setImageBitmap(value)
+    //             })
+    //         } catch (e) {
+    //             console.log("Error decoding image? " + e)
+    //         }
+    //     }
+    // }, [patch])
 
     useEffect(() => {
         if (patch != null && userPublicKey != null) {
@@ -72,14 +72,6 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
     const handleClick = () => {
         console.log("clicked: ", patch_x, ",", patch_y)
         showModal(patch_x, patch_y, patch)
-        // usePatchModal.patch = patch ?? undefined;
-        // usePatchModal.x = patch_x;
-        // usePatchModal.y = patch_y;
-        // usePatchModal.show = true;
-        // const url = patch?.data.url
-        // if (url) {
-        //     window.open(url, '_blank');
-        // }
     }
 
     return (
@@ -90,7 +82,7 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
             width={WIDTH / 8}
             height={HEIGHT / 8}
             stroke={isOwned ? "red" : "black"}
-            image={imageBitmap}
+            image={patch?.image_bitmap}
             strokeWidth={isOwned ? 3 : 1}
             onMouseOver={() => { }}
             onClick={handleClick}>
@@ -110,12 +102,27 @@ type KonvaChunkProps = {
 export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanvas, showModal, userPublicKey }: KonvaChunkProps) => {
     const { publicKey } = useWallet();
 
-    const [chunk, setChunk] = useState<TapestryChunk>(TapestryChunk.getEmptyChunk(xChunk, yChunk));
+    const [chunk, setChunk] = useState<TapestryChunk>(TapestryChunk.getNullChunk(xChunk, yChunk));
+
+    // useEffect(() => {
+    //     TapestryClient.getInstance().fetchChunk(xChunk, yChunk).then((chunk) => {
+    //         setChunk(chunk);
+    //     })
+    // }, [xChunk, yChunk])
 
     useEffect(() => {
-        TapestryClient.getInstance().fetchChunk(xChunk, yChunk).then((chunk) => {
-            setChunk(chunk);
+
+        const binding = TapestryClient.getInstance().OnChunkUpdate.add((chunk) => {
+            if (chunk.xChunk == xChunk && chunk.yChunk == yChunk) {
+                setChunk(chunk)
+            }
         })
+
+        TapestryClient.getInstance().fetchChunk2(xChunk, yChunk)
+
+        return () => {
+            TapestryClient.getInstance().OnChunkUpdate.detach(binding)
+        }
     }, [xChunk, yChunk])
 
     const searchParams = new URLSearchParams(location.search)

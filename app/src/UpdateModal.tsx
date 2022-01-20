@@ -2,7 +2,7 @@ import React, { FC, useState, useContext } from 'react'
 import { Container, Typography, Box, Link, Button, Modal, TextField, Tooltip, Input } from '@mui/material'
 import { Transaction } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { TapestryPatchAccount, TapestryProgram, PurchasePatchParams } from '@tapestrydao/client';
+import { TapestryPatchAccount, TapestryProgram, PurchasePatchParams, TapestryClient } from '@tapestrydao/client';
 
 
 export type ShowModalFn = (x: number, y: number, patch: TapestryPatchAccount | null) => void
@@ -72,6 +72,8 @@ export const PatchModalProvider: FC = ({ children }) => {
         let tx = new Transaction().add(ix);
         const signature = await sendTransaction(tx, connection);
         let result = await connection.confirmTransaction(signature, 'confirmed');
+
+        // TapestryClient.getInstance().fetchChunk2()
 
         console.log("Completed Purchase: ", result.value.err);
     }

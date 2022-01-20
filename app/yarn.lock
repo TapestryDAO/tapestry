@@ -5837,6 +5837,11 @@ type-is@~1.6.18:
     media-typer "0.3.0"
     mime-types "~2.1.24"
 
+type-signals@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/type-signals/-/type-signals-1.1.0.tgz#c3b756a64c794f8c2750c981b36c1e6e1014124d"
+  integrity sha512-JzmQSmRNTIcQofZdYW9RHxAP8rrcq/N5I2fBy+V43oOqikOvsCTYlOIIX40Qpmr5GiRmYrptghIog84E1yz1Zg==
+
 typescript@~4.4.4:
   version "4.4.4"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.4.4.tgz#2cd01a1a1f160704d3101fd5a58ff0f9fcb8030c"
