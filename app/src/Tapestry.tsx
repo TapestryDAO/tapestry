@@ -43,7 +43,7 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
 
     useEffect(() => {
         if (patch != null && userPublicKey != null) {
-            console.log("checking ownership!", patch_x, patch_y)
+            // console.log("checking ownership!", patch_x, patch_y)
             let cacheResult = TapestryClient.getInstance().isPatchOwnedBy(patch.data.owned_by_mint, userPublicKey, (result) => {
                 setIsOwned(result)
             })
@@ -96,7 +96,8 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
             }
         })
 
-        TapestryClient.getInstance().fetchChunk2(xChunk, yChunk)
+        let cachedChunk = TapestryClient.getInstance().fetchChunk2(xChunk, yChunk)
+        setChunk(cachedChunk)
 
         return () => {
             TapestryClient.getInstance().OnChunkUpdate.detach(binding)

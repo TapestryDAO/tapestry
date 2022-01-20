@@ -154,7 +154,7 @@ export class TapestryClient {
         }).then(async (accounts) => {
             let accountsResolved = await Promise.all(accounts)
             let chunk = new TapestryChunk(xChunk, yChunk, accountsResolved);
-            console.log("Udating Cache: ", xChunk, yChunk);
+            console.log("Updating Chunk Cache: ", xChunk, yChunk);
             this.updateCache(chunk);
             this.inFlightChunkFetch.delete(chunkKey(xChunk, yChunk))
             return chunk
