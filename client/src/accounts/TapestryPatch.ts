@@ -131,8 +131,7 @@ export class TapestryChunk {
             { y: this.xChunk, x: this.yChunk },
         )
 
-        // TODO(will): figure out where i fucked tis up later down the line
-        this.chunkAccounts[chunkLocalPatchCoords.x][chunkLocalPatchCoords.y] = patch;
+        this.chunkAccounts[chunkLocalPatchCoords.y][chunkLocalPatchCoords.x] = patch;
     }
 
     public static getNullChunk(xChunk: number, yChunk: number): TapestryChunk {
@@ -259,39 +258,12 @@ export class TapestryPatchAccount extends Account<TapestryPatchData> {
 
         for (let i = 0; i < chunkAccounts.length; i++) {
             let patch = chunkAccounts[i];
+            let localChunkCoord = patchCoordToChunkLocalPatchCoord(
+                { x: patch.data.x, y: patch.data.y },
+                { x: patch.data.x_chunk, y: patch.data.y_chunk }
+            )
 
-            // Chunks can be thought of as a "corner", so the picture at the origin looks like this
-            //                 
-            //              |
-            //       -1,0   |   0,0
-            //       _______|________
-            //              |  
-            //      -1,-1   |   0,-1
-            //              |
-
-            const x = patch.data.x
-            const y = patch.data.y
-            const xChunk = patch.data.x_chunk;
-            const yChunk = patch.data.y_chunk;
-
-            const chunkOriginX = x >= 0 ?
-                xChunk * CHUNK_SIZE :
-                ((xChunk + 1) * CHUNK_SIZE) - 1
-
-            const chunkOriginY = y >= 0 ?
-                yChunk * CHUNK_SIZE :
-                ((yChunk + 1) * CHUNK_SIZE) - 1
-
-            const xIndexRowMajor = x >= 0 ?
-                x - chunkOriginX :
-                (CHUNK_SIZE - 1) - Math.abs(x - chunkOriginX);
-
-            const yIndexRowMajor = y >= 0 ?
-                (CHUNK_SIZE - 1) - Math.abs(y - chunkOriginY) :
-                chunkOriginY - y;
-
-            // TODO(will): This looks wrong, but must have also fucked up closer to rendering to reverse
-            chunkArray[xIndexRowMajor][yIndexRowMajor] = patch
+            chunkArray[localChunkCoord.y][localChunkCoord.x] = patch
         }
 
         return chunkArray

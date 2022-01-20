@@ -109,7 +109,7 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
     let patches = []
     for (var row = 0; row < 8; row++) {
         for (var col = 0; col < 8; col++) {
-            const patch = chunk.chunkAccounts[row][col]
+            const patch = chunk.chunkAccounts[col][row]
             const patchCoords = chunk.getPatchCoordsForChunkIndex(row, col);
             const key = "kpatch:" + patchCoords.x + "," + patchCoords.y
             patches.push(<KonvaPatch
