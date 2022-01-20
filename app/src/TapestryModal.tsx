@@ -77,7 +77,7 @@ export const PatchModalProvider: FC = ({ children }) => {
 
         await TapestryClient.getInstance().forceTokenAccountsCacheRefresh(publicKey)
 
-        TapestryClient.getInstance().fetchChunk2(chunkCoord.x, chunkCoord.y, true, true)
+        TapestryClient.getInstance().fetchChunk(chunkCoord.x, chunkCoord.y, true, true)
 
         console.log("Completed Purchase: ", result.value.err);
     }
@@ -144,7 +144,7 @@ export const PatchModal: FC<PatchModalProps> = ({ show, x, y, patch, closeModal 
         let result = await connection.confirmTransaction(signature, 'confirmed');
 
         const chunkCoord = patchCoordToChunkCoord({ x: x, y: y })
-        TapestryClient.getInstance().fetchChunk2(chunkCoord.x, chunkCoord.y, true, true)
+        TapestryClient.getInstance().fetchChunk(chunkCoord.x, chunkCoord.y, true, true)
 
         console.log("Completed Update: ", result.value.err);
     }
@@ -166,7 +166,7 @@ export const PatchModal: FC<PatchModalProps> = ({ show, x, y, patch, closeModal 
         let result = await connection.confirmTransaction(signature, 'confirmed');
 
         const chunkCoord = patchCoordToChunkCoord({ x: x, y: y })
-        TapestryClient.getInstance().fetchChunk2(chunkCoord.x, chunkCoord.y, true, true)
+        TapestryClient.getInstance().fetchChunk(chunkCoord.x, chunkCoord.y, true, true)
 
         console.log("Completed Update Metadata: ", result.value.err);
     };

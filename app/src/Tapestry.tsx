@@ -93,7 +93,7 @@ export const KonvaChunk: FC<KonvaChunkProps> = ({ xChunk, yChunk, xCanvas, yCanv
             }
         })
 
-        let cachedChunk = TapestryClient.getInstance().fetchChunk2(xChunk, yChunk)
+        let cachedChunk = TapestryClient.getInstance().fetchChunk(xChunk, yChunk)
         setChunk(cachedChunk)
 
         return () => {

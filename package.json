@@ -16,7 +16,8 @@
     "app:start": "cd app && yarn start",
     "localnet:up": "solana-test-validator --bpf-program Tapestry11111111111111111111111111111111111 program/target/deploy/solana_tapestry.so",
     "localnet:logs": "solana logs -u localhost",
-    "alljs:build": "yarn client:build && yarn app:build && tap --help"
+    "alljs:build": "yarn client:build && yarn app:build && tap --help",
+    "verify": "yarn alljs:build && yarn program:build && yarn program:test"
   },
   "dependencies": {
     "bs58": "^4.0.1",
