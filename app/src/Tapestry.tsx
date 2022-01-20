@@ -181,14 +181,11 @@ export const KonvaTapestry: FC = () => {
         TapestryClient.getInstance().setConnection(connection)
     }, [connection])
 
-    let tapStagePosX = stagePos.x
-    let tapStagePosY = stagePos.y
-
     // Find x and y coordinates that align with chunk boundaries
-    const startX = Math.floor((-tapStagePosX - (window.innerWidth * 1.5)) / WIDTH) * WIDTH
-    const endX = Math.floor((-tapStagePosX + (window.innerWidth * 1.5)) / WIDTH) * WIDTH
-    const startY = Math.floor((-tapStagePosY - (window.innerHeight * 1.5)) / HEIGHT) * HEIGHT
-    const endY = Math.floor((-tapStagePosY + (window.innerHeight * 1.5)) / HEIGHT) * HEIGHT
+    const startX = Math.floor((-stagePos.x - (window.innerWidth * 1.5)) / WIDTH) * WIDTH
+    const endX = Math.floor((-stagePos.x + (window.innerWidth * 1.5)) / WIDTH) * WIDTH
+    const startY = Math.floor((-stagePos.y - (window.innerHeight * 1.5)) / HEIGHT) * HEIGHT
+    const endY = Math.floor((-stagePos.y + (window.innerHeight * 1.5)) / HEIGHT) * HEIGHT
 
     console.log("Stage Pos: ", stagePos.x, " , ", stagePos.y)
 
@@ -208,15 +205,12 @@ export const KonvaTapestry: FC = () => {
                 continue
             }
 
-            const stageX = x
-            const stageY = y
-
             const newChunk = <KonvaChunk
                 key={key}
                 xChunk={indexX}
                 yChunk={indexY}
-                xCanvas={stageX}
-                yCanvas={stageY}
+                xCanvas={x}
+                yCanvas={y}
                 showModal={showModal}
                 userPublicKey={publicKey}
             />
