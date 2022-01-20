@@ -27,7 +27,7 @@ import {
 
 import { Input } from '@mui/material';
 import { KonvaTapestry } from './Tapestry'
-import { PatchModalProvider } from './UpdateModal';
+import { PatchModalProvider } from './TapestryModal';
 
 export const App: FC = () => {
   return (

@@ -1,12 +1,9 @@
 
 import { Layer, Rect, Stage, Image, Group, Text, Circle } from 'react-konva';
-import React, { FC, useEffect, useState, useCallback, useMemo, useContext, useReducer } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { TapestryPatchAccount, TapestryChunk, TapestryClient, MAX_CHUNK_IDX, MIN_CHUNK_IDX } from '@tapestrydao/client';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { string } from 'yargs';
-import { getThemeProps } from '@mui/system';
-import { Vector2d } from 'konva/lib/types';
-import { usePatchModal, PatchModalContext, ShowModalFn } from './UpdateModal';
+import { usePatchModal, ShowModalFn } from './TapestryModal';
 import { PublicKey } from '@solana/web3.js';
 
 const WIDTH = 48 * 8

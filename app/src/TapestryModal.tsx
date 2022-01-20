@@ -165,6 +165,9 @@ export const PatchModal: FC<PatchModalProps> = ({ show, x, y, patch, closeModal 
         const signature = await sendTransaction(tx, connection);
         let result = await connection.confirmTransaction(signature, 'confirmed');
 
+        const chunkCoord = patchCoordToChunkCoord({ x: x, y: y })
+        TapestryClient.getInstance().fetchChunk2(chunkCoord.x, chunkCoord.y, true, true)
+
         console.log("Completed Update Metadata: ", result.value.err);
     };
 
