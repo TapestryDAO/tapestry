@@ -6,52 +6,58 @@ use solana_program::program_error::ProgramError;
 pub enum TapestryError {
     /// Failed to parse instruction
     #[error("Invalid Instruction")]
-    InvalidInstruction,
+    InvalidInstruction, // 0
 
     #[error("Required account is not rent exempt")]
-    NotRentExempt,
+    NotRentExempt, // 1
 
     #[error("Account had incorrect owner")]
-    IncorrectOwner,
+    IncorrectOwner, // 2
 
     #[error("Invalid tapestry state pda account")]
-    InvalidTapestryStatePDA,
+    InvalidTapestryStatePDA, // 3
 
     #[error("Tapestry patch account did not match the coordinates")]
-    InvalidTapestryPatchPDA,
+    InvalidTapestryPatchPDA, // 4
 
     #[error("Tapestry patch account has already been allocated (already sold)")]
-    TapestryPatchAlreadySold,
+    TapestryPatchAlreadySold, // 5
 
     #[error("Invalid mint account pda for the provided patch")]
-    InvalidTapestryPatchMintPDA,
+    InvalidTapestryPatchMintPDA, // 6
 
     #[error("The associated token account to hold the patch NFT is invalid")]
-    InvalidTapestryPatchAssociatedTokenAccount,
+    InvalidTapestryPatchAssociatedTokenAccount, // 7
 
     #[error("The buyer account did not have enough lamports to purcahse a patch")]
-    InsufficientFundsForPurchase,
+    InsufficientFundsForPurchase, // 8
 
     #[error("The url for the patch is too long (in bytes)")]
-    PatchURLTooLong,
+    PatchURLTooLong, // 9
 
     #[error("The hover text for the patch is too long (in bytes)")]
-    PatchHoverTextTooLong,
+    PatchHoverTextTooLong, // 10
 
     #[error("The image data for the patch is too long (in bytes)")]
-    PatchImageDataTooLong,
+    PatchImageDataTooLong, // 11
 
     #[error("The token account was not valid")]
-    InvalidPatchTokenAccount,
+    InvalidPatchTokenAccount, // 12
 
     #[error("Unexpected Patch State")]
-    UnexpectedPatchState,
+    UnexpectedPatchState, // 13
 
     #[error("Invalid Patch Coordinates")]
-    InvalidPatchCoordinates,
+    InvalidPatchCoordinates, // 14
 
     #[error("Invalid Patch Chunk Coordinates")]
-    InvalidPatchChunkCoordinates,
+    InvalidPatchChunkCoordinates, // 15
+
+    #[error("Patch account not allocated (has no data)")]
+    PatchAccountNotAllocated, // 16
+
+    #[error("Patch account is not owned by mint address provided")]
+    PatchAccountNotOwnedByMint, // 17
 }
 
 impl From<TapestryError> for ProgramError {

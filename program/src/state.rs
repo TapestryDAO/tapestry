@@ -28,6 +28,8 @@ impl IsInitialized for TapestryState {
     }
 }
 
+// If you are changing this make sure to update TapestryPatch.ts as well
+
 pub const MAX_X: i16 = 1023;
 pub const MIN_X: i16 = -1024;
 pub const MAX_Y: i16 = 1023;
@@ -42,7 +44,7 @@ pub const MAX_PATCH_TOTAL_LEN: usize = 0 +
     1 + // is_initialized
     32 + // owned_by_mint
     1 + // x_chunk
-    1 + // y_region
+    1 + // y_chunk
     2 + // x
     2 + // y
     1 + 4 + MAX_PATCH_URL_LEN + // url

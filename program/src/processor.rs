@@ -416,16 +416,18 @@ fn process_update_patch_image(
     // is actually unecessary, because it would basically just be catching bugs in the purchase
     // instruction
 
+    // TODO(will): The bump is only 1 byte, should probably pass in ix data
+    // to reduce compute overhead
     let (patch_addr, patch_addr_bump) =
         find_patch_address_for_patch_coords(data_args.x, data_args.y, program_id);
 
-    let (tapestry_state_addr, tapestry_state_bump) = find_tapestry_state_address(program_id);
+    // let (tapestry_state_addr, tapestry_state_bump) = find_tapestry_state_address(program_id);
     if patch_addr != *patch_acct.key {
         return Err(TapestryError::InvalidTapestryPatchPDA.into());
     }
 
     if patch_acct.data_is_empty() {
-        return Err(TapestryError::InvalidTapestryPatchPDA.into());
+        return Err(TapestryError::PatchAccountNotAllocated.into());
     }
 
     let (mint_addr, mint_addr_bump) =
@@ -435,7 +437,7 @@ fn process_update_patch_image(
         try_from_slice_unchecked(&patch_acct.data.borrow_mut())?;
 
     if patch_acct_unpacked.owned_by_mint != mint_addr {
-        return Err(TapestryError::InvalidTapestryPatchPDA.into());
+        return Err(TapestryError::PatchAccountNotOwnedByMint.into());
     }
 
     let token_acct_unpacked = TokenAccount::unpack(&token_acct.data.borrow())?;
@@ -479,13 +481,13 @@ fn process_update_patch_metadata(
     let (patch_addr, patch_addr_bump) =
         find_patch_address_for_patch_coords(data_args.x, data_args.y, program_id);
 
-    let (tapestry_state_addr, tapestry_state_bump) = find_tapestry_state_address(program_id);
+    // let (tapestry_state_addr, tapestry_state_bump) = find_tapestry_state_address(program_id);
     if patch_addr != *patch_acct.key {
         return Err(TapestryError::InvalidTapestryPatchPDA.into());
     }
 
     if patch_acct.data_is_empty() {
-        return Err(TapestryError::InvalidTapestryPatchPDA.into());
+        return Err(TapestryError::PatchAccountNotAllocated.into());
     }
 
     let (mint_addr, mint_addr_bump) =
@@ -495,7 +497,7 @@ fn process_update_patch_metadata(
         try_from_slice_unchecked(&patch_acct.data.borrow_mut())?;
 
     if patch_acct_unpacked.owned_by_mint != mint_addr {
-        return Err(TapestryError::InvalidTapestryPatchPDA.into());
+        return Err(TapestryError::PatchAccountNotOwnedByMint.into());
     }
 
     let token_acct_unpacked = TokenAccount::unpack(&token_acct.data.borrow())?;
