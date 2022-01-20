@@ -52,7 +52,11 @@ export const KonvaPatch: FC<KonvaPatchProps> = ({
 
     const handleClick = () => {
         console.log("clicked: ", patch_x, ",", patch_y)
-        showModal(patch_x, patch_y, patch)
+        if (isOwned || patch == undefined) {
+            showModal(patch_x, patch_y, patch)
+        } else if (patch?.data.url !== undefined) {
+            window.open(patch.data.url, "_blank")
+        }
     }
 
     return (
