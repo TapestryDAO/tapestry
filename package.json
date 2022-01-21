@@ -1,10 +1,10 @@
 {
-  "name": "dapp-scaffold",
+  "name": "Solana Tapestry",
   "version": "0.1.0",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/solana-labs/dapp-scaffold"
+    "url": "https://github.com/TapestryDAO/tapestry"
   },
   "homepage": ".",
   "scripts": {
@@ -17,7 +17,8 @@
     "localnet:up": "solana-test-validator --bpf-program Tapestry11111111111111111111111111111111111 program/target/deploy/solana_tapestry.so",
     "localnet:logs": "solana logs -u localhost",
     "alljs:build": "yarn client:build && yarn app:build && tap --help",
-    "verify": "yarn alljs:build && yarn program:build && yarn program:test"
+    "verify": "yarn alljs:build && yarn program:build && yarn program:test",
+    "setup": "yarn install && cd app && yarn install && cd ../client && yarn install"
   },
   "dependencies": {
     "bs58": "^4.0.1",
