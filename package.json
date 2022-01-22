@@ -8,17 +8,23 @@
   },
   "homepage": ".",
   "scripts": {
+    "setup": "yarn setupjs && yarn setuppy && yarn setuprs",
+    "setuprs": "yarn meta:install && yarn program:build",
+    "setuppy": "poetry install",
+    "setupjs": "yarn install && cd app && yarn install && yarn client:build && yarn install",
+
+    "verify": "yarn alljs:build && yarn program:build && yarn program:test",
+
     "program:build": "cd program && cargo build-bpf",
     "program:test": "cd program && cargo test-bpf",
     "client:build": "cd client && yarn build",
     "client:test": "cd client && yarn test",
     "app:build": "cd app && yarn build",
     "app:start": "cd app && yarn start",
-    "localnet:up": "solana-test-validator --bpf-program Tapestry11111111111111111111111111111111111 program/target/deploy/solana_tapestry.so",
+    "localnet:up": "python -u scripts/start_test_validator.py",
     "localnet:logs": "solana logs -u localhost",
     "alljs:build": "yarn client:build && yarn app:build && tap --help",
-    "verify": "yarn alljs:build && yarn program:build && yarn program:test",
-    "setup": "yarn install && cd app && yarn install && cd ../client && yarn install"
+    "meta:install": "python -u scripts/custom_deps.py"
   },
   "dependencies": {
     "bs58": "^4.0.1",

@@ -61,6 +61,12 @@ pub struct PurchasePatchAccountArgs<'a, 'b: 'a> {
 
     /// `[]` The system program
     pub system_prog_acct: &'a AccountInfo<'b>,
+
+    /// `[]` The metaplex metadata program
+    pub mpl_token_metadata_acct: &'a AccountInfo<'b>,
+
+    /// '[writable]' The pda for the metaplex token metadata
+    pub mpl_metadata_pda_acct: &'a AccountInfo<'b>,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -146,6 +152,15 @@ pub fn get_ix_purchase_patch(
         &buyer_acct,
         &tapestry_patch_mint_acct,
     );
+
+    let meta_program_id = mpl_token_metadata::id();
+    let metadata_seeds = &[
+        mpl_token_metadata::state::PREFIX.as_bytes(),
+        meta_program_id.as_ref(),
+        tapestry_patch_mint_acct.as_ref(),
+    ];
+
+    let (metadata_pda, _) = Pubkey::find_program_address(metadata_seeds, &meta_program_id);
     // Do I need another account, such that the patch_pda isn't both the owner and the account address?
     Instruction {
         program_id,
@@ -159,6 +174,8 @@ pub fn get_ix_purchase_patch(
             AccountMeta::new_readonly(spl_associated_token_account::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new_readonly(mpl_token_metadata::id(), false),
+            AccountMeta::new(metadata_pda, false),
         ],
         data: TapestryInstruction::PurchasePatch(PurchasePatchDataArgs { x: x, y: y })
             .try_to_vec()

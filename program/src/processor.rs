@@ -28,6 +28,8 @@ use solana_program::{
     system_instruction,
 };
 
+use mpl_token_metadata::instruction::{create_metadata_accounts, CreateMetadataAccountArgs};
+
 use spl_token::{
     instruction::{initialize_mint, AuthorityType},
     state::{Account as TokenAccount, Mint},
@@ -74,6 +76,8 @@ impl Processor {
                 let associated_token_prog_acct = next_account_info(acct_info_iter)?;
                 let rent_sysvar_acct = next_account_info(acct_info_iter)?;
                 let system_prog_acct = next_account_info(acct_info_iter)?;
+                let mpl_token_metadata_acct = next_account_info(acct_info_iter)?;
+                let mpl_metadata_pda_acct = next_account_info(acct_info_iter)?;
 
                 let acct_args = PurchasePatchAccountArgs {
                     buyer_acct,
@@ -85,6 +89,8 @@ impl Processor {
                     associated_token_prog_acct,
                     rent_sysvar_acct,
                     system_prog_acct,
+                    mpl_token_metadata_acct,
+                    mpl_metadata_pda_acct,
                 };
 
                 process_purchase_patch(program_id, &acct_args, &args)
@@ -185,6 +191,8 @@ fn process_purchase_patch(
         associated_token_prog_acct,
         rent_sysvar_acct,
         system_prog_acct,
+        mpl_token_metadata_acct,
+        mpl_metadata_pda_acct,
     } = account_args;
 
     let PurchasePatchDataArgs { x, y } = data_args;
@@ -340,26 +348,28 @@ fn process_purchase_patch(
         &[tapestry_state_acct_seeds],
     )?;
 
-    msg!("Removing mint authority to limit supply to one");
+    // NOTE(will): maybe this can just be done after allocating token metatdata
 
-    let ix_remove_authority = spl_token::instruction::set_authority(
-        token_prog_acct.key,
-        tapestry_patch_mint_acct.key,
-        Option::None,
-        AuthorityType::MintTokens,
-        tapestry_state_acct.key,
-        &[&tapestry_state_acct.key],
-    )?;
+    // msg!("Removing mint authority to limit supply to one");
 
-    invoke_signed(
-        &ix_remove_authority,
-        &[
-            (*token_prog_acct).clone(),
-            (*tapestry_patch_mint_acct).clone(),
-            (*tapestry_state_acct).clone(),
-        ],
-        &[tapestry_patch_mint_acct_seeds, tapestry_state_acct_seeds],
-    )?;
+    // let ix_remove_authority = spl_token::instruction::set_authority(
+    //     token_prog_acct.key,
+    //     tapestry_patch_mint_acct.key,
+    //     Option::None,
+    //     AuthorityType::MintTokens,
+    //     tapestry_state_acct.key,
+    //     &[&tapestry_state_acct.key],
+    // )?;
+
+    // invoke_signed(
+    //     &ix_remove_authority,
+    //     &[
+    //         (*token_prog_acct).clone(),
+    //         (*tapestry_patch_mint_acct).clone(),
+    //         (*tapestry_state_acct).clone(),
+    //     ],
+    //     &[tapestry_patch_mint_acct_seeds, tapestry_state_acct_seeds],
+    // )?;
 
     msg!("Allocating patch account to hold patch data");
 
@@ -392,6 +402,50 @@ fn process_purchase_patch(
     };
 
     assert_patch_is_valid(&tapestry_patch);
+
+    // Create Token metadata
+
+    let meta_program_id = mpl_token_metadata::id();
+
+    let metadata_seeds = &[
+        mpl_token_metadata::state::PREFIX.as_bytes(),
+        meta_program_id.as_ref(),
+        tapestry_patch_mint_acct.key.as_ref(),
+    ];
+
+    let (metadata_pda, _) = Pubkey::find_program_address(metadata_seeds, &meta_program_id);
+
+    // TODO(will): assert this pda matches one passed in
+
+    let ix_create_metadata = create_metadata_accounts(
+        mpl_token_metadata::id(),
+        metadata_pda,
+        tapestry_patch_mint_acct.key.clone(),
+        tapestry_state_acct.key.clone(),
+        buyer_acct.key.clone(),
+        tapestry_state_acct.key.clone(),
+        String::from("Tapestry Meta"),
+        String::from("TAP"),
+        String::from("https://tapestry.art/uri"),
+        None,
+        0,
+        true,
+        false,
+    );
+
+    invoke_signed(
+        &ix_create_metadata,
+        &[
+            (*mpl_token_metadata_acct).clone(),
+            (*tapestry_patch_mint_acct).clone(),
+            (*buyer_acct).clone(),
+            (*tapestry_state_acct).clone(),
+            (*rent_sysvar_acct).clone(),
+            (*system_prog_acct).clone(),
+            (*mpl_metadata_pda_acct).clone(),
+        ],
+        &[tapestry_patch_mint_acct_seeds, tapestry_state_acct_seeds],
+    )?;
 
     // The rest of the state can be updated via 'UpdatePatch' instructions
     tapestry_patch.serialize(&mut *tapestry_patch_acct.data.borrow_mut())?;

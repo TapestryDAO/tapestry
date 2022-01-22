@@ -14,7 +14,7 @@ use {
         borsh::try_from_slice_unchecked, entrypoint::ProgramResult, program_option::COption,
         pubkey::Pubkey, system_instruction,
     },
-    solana_program_test::{processor, tokio, ProgramTest},
+    solana_program_test::{processor, tokio, ProgramTest, ProgramTestContext},
     solana_sdk::{signature::Keypair, signature::Signer, transaction::Transaction},
     solana_tapestry::{
         entrypoint::process_instruction,
@@ -209,13 +209,21 @@ async fn test_pdas() {
 async fn test_init_tapestry_instruction() {
     // let program_id = Pubkey::new_unique();
     let program_id = solana_tapestry::id();
-    let pt = ProgramTest::new(
+    let mut pt = ProgramTest::new(
         "solana_tapestry",
         program_id,
         processor!(process_instruction),
     );
 
-    let (mut banks_client, payer, recent_blockhash) = pt.start().await;
+    pt.add_program("mpl_token_metadata", mpl_token_metadata::id(), None);
+
+    // let (mut banks_client, payer, recent_blockhash) = pt.start().await;
+    let mut pt_ctx = pt.start_with_context().await;
+
+    let mut banks_client = pt_ctx.banks_client;
+    let payer = pt_ctx.payer;
+    let recent_blockhash = pt_ctx.last_blockhash;
+
     let initial_sale_price = 10_000_000u64;
     let init_tapestry_ix = get_ix_init_tapestry(program_id, payer.pubkey(), initial_sale_price);
 
