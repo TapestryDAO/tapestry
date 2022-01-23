@@ -9,6 +9,8 @@ import {
     Connection,
 } from '@solana/web3.js';
 import { Program } from '@metaplex-foundation/mpl-core'
+import { Metadata, MetadataProgram } from '@metaplex-foundation/mpl-token-metadata'
+
 import BufferLayout from '@solana/buffer-layout'
 import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
@@ -92,6 +94,8 @@ export class TapestryProgram extends Program {
         let tapestryPatchPDA = await this.findPatchAddressForPatchCoords(params.x, params.y);
         let tapestryPatchMint = await this.findMintAddressForPatchCoords(params.x, params.y);
         let patchAta = await this.findPatchATAForPatch(tapestryPatchMint, params.buyerPubkey);
+        let mplMetadataPda = await Metadata.getPDA(tapestryPatchMint);
+        let mplProgram = MetadataProgram.PUBKEY;
 
         // console.log("buyer pub: ", params.buyerPubkey.toBase58());
         // console.log("state pda: ", tapestryStateAddress.toBase58());
@@ -110,6 +114,8 @@ export class TapestryProgram extends Program {
                 { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
                 { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
                 { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+                { pubkey: mplMetadataPda, isSigner: false, isWritable: true },
+                { pubkey: mplProgram, isSigner: false, isWritable: false },
             ],
             programId: this.PUBKEY,
             data: data,
