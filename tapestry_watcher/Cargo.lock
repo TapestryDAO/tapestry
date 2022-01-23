@@ -3104,6 +3104,7 @@ dependencies = [
 name = "tapestry-watcher"
 version = "0.1.0"
 dependencies = [
+ "borsh",
  "solana-sdk",
  "solana-shadow",
  "solana-tapestry",

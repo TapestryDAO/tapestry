@@ -1,8 +1,17 @@
 use solana_sdk::commitment_config::CommitmentLevel;
 use solana_shadow::{BlockchainShadow, Network, SyncOptions};
-use solana_tapestry::state::find_tapestry_state_address;
+use solana_tapestry::state::{find_tapestry_state_address, TapestryPatch};
+use std::convert::TryInto;
 use std::thread::sleep;
 use std::time::Duration;
+
+use borsh::{maybestd::io::Error, BorshDeserialize, BorshSerialize};
+
+pub fn try_from_slice_unchecked<T: BorshDeserialize>(data: &[u8]) -> Result<T, Error> {
+    let mut data_mut = data;
+    let result = T::deserialize(&mut data_mut)?;
+    Ok(result)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,52 +31,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .unwrap();
 
-    loop {
-        local.for_each_account(|pubkey, account| {
-            println!(" - [{}]: {:?}", pubkey, account);
-        });
+    let mut updates_channel = local.updates_channel();
 
-        sleep(Duration::from_secs(3));
+    tokio::spawn(async move {
+        while let Ok((pubkey, account)) = updates_channel.recv().await {
+            println!("Got update for {}", pubkey);
 
-        // sleep(Duration::from_secs(3)).await;
-    }
+            // let result: Result<TapestryPatch, Error> =
+            //     try_from_slice_unchecked(account.data.as_slice());
 
-    local.worker().await.unwrap();
+            let mut data = account.data.as_slice();
+            // let mut data_mut = data;
+            let result = TapestryPatch::deserialize(&mut data);
+
+            match result {
+                Ok(patch) => {
+                    println!("Patch: {},{}", patch.x, patch.y);
+                }
+                Err(e) => {
+                    println!("{}", e);
+                }
+            }
+        }
+    });
+
+    local.worker().await;
 
     Ok(())
+
+    // loop {
+
+    //     let channel = local.updates_channel();
+
+    //     local.for_each_account(|pubkey, account| {
+    //         println!(" - [{}]: {:?}", pubkey, account);
+    //     });
+
+    //     sleep(Duration::from_secs(3));
+
+    //     // sleep(Duration::from_secs(3)).await;
+    // }
+
+    // local.worker().await.unwrap();
+
+    // Ok(())
 }
-
-// use solana_account_decoder::{UiAccountEncoding, UiDataSliceConfig};
-// use solana_client::pubsub_client::PubsubClient;
-// use solana_client::{rpc_client::RpcClient, rpc_config::RpcAccountInfoConfig};
-// use solana_sdk::commitment_config::CommitmentConfig;
-// /**
-//  * pub struct RpcAccountInfoConfig {
-//     pub encoding: Option<UiAccountEncoding>,
-//     pub data_slice: Option<UiDataSliceConfig>,
-//     #[serde(flatten)]
-//     pub commitment: Option<CommitmentConfig>,
-// }
-//  */
-// fn main() {
-//     let rpc_url = String::from("http://127.0.0.1:8899");
-//     // let my_client = RpcClient::new_with_commitment(rpc_url, CommitmentConfig::confirmed());
-
-//     let rpc_acct_info_config = RpcAccountInfoConfig {
-//         encoding: Some(UiAccountEncoding::JsonParsed),
-//         data_slice: None,
-//         commitment: Some(CommitmentConfig::confirmed()),
-//     };
-
-//     let my_sub = PubsubClient::account_subscribe(
-//         &rpc_url,
-//         &solana_tapestry::id(),
-//         Some(rpc_acct_info_config),
-//     );
-
-//     loop {
-//         my_sub.read_message()
-//     }
-
-//     println!("Hello World!");
-// }
