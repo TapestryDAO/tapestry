@@ -11,10 +11,8 @@
     "setup": "yarn setupjs && yarn setuppy && yarn setuprs",
     "setuprs": "yarn meta:install && yarn program:build",
     "setuppy": "poetry install",
-    "setupjs": "yarn install && cd app && yarn install && yarn client:build && yarn install",
-
+    "setupjs": "yarn install && cd app && yarn install && cd ../client && yarn install",
     "verify": "yarn alljs:build && yarn program:build && yarn program:test",
-
     "program:build": "cd program && cargo build-bpf",
     "program:test": "cd program && cargo test-bpf",
     "client:build": "cd client && yarn build",
