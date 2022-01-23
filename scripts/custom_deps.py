@@ -24,6 +24,10 @@ TAPESTRY_OUT_DIR = TAPESTRY_ROOT / "program" / "target" / "deploy"
 # NOTE(will): this exists to allow me to run rust integration tests against
 # the mpl library, I feel like there must be a better way to do this, but I haven't found it
 # and no one on the metaplex discord has responded to me :(
+
+# TODO(will): I think it might be best to clone this repo and depend on it
+# but actually load SO's from mainnet via `solana program dump`,
+# this way, the localnet set up will reflect what to actually expect on chain
 def main():
 
     parser = argparse.ArgumentParser()
