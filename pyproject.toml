@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "solana-tapestry"
+version = "0.1.0"
+description = "Solana Tapestry python stuff"
+authors = ["William Barksdale <wfbarksdale@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "3.9.2"
+
+[tool.poetry.dev-dependencies]
+GitPython = "^3.1.26"
+pathlib = "^1.0.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

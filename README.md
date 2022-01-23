@@ -3,24 +3,18 @@ The Solana Tapestry Project Repo
 
 # Environment Setup
 1. Install Rust from https://rustup.rs/
-2. Install Solana v1.9.X or later from https://docs.solana.com/cli/install-solana-cli-tools#use-solanas-install-tool
+2. Install Solana v1.8.12  using `sh -c "$(curl -sSfL https://release.solana.com/v1.8.12/install)"` for linux
+or see https://docs.solana.com/cli/install-solana-cli-tools#use-solanas-install-tool for other platforms
 3. Install Node
 4. Install NPM, Yarn
-
-# Tapestry Root
-add TAPESTRY_ROOT to your environment and path
+5. add TAPESTRY_ROOT to your environment and path
 ```
 # in ~/.bashrc
 
 export TAPESTRY_ROOT="/home/bizzle/solproj/soltapestry"
 export PATH="$TAPESTRY_ROOT:$PATH"
 ```
-
-# Install Dependencies via yarn
-```
-yarn install
-cd app && yarn install
-```
+6. run `yarn setup` from tapestry root
 
 
 # Quickstart
