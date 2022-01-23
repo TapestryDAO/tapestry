@@ -28,7 +28,10 @@ use solana_program::{
     system_instruction,
 };
 
-use mpl_token_metadata::instruction::{create_metadata_accounts, CreateMetadataAccountArgs};
+use mpl_token_metadata::{
+    instruction::{create_metadata_accounts_v2, CreateMetadataAccountArgs},
+    state::{Collection, Creator},
+};
 
 use spl_token::{
     instruction::{initialize_mint, AuthorityType},
@@ -415,22 +418,31 @@ fn process_purchase_patch(
 
     let (metadata_pda, _) = Pubkey::find_program_address(metadata_seeds, &meta_program_id);
 
-    // TODO(will): assert this pda matches one passed in
+    // TODO(will): assert this pda matches one passed in?
 
-    let ix_create_metadata = create_metadata_accounts(
+    let ix_create_metadata = create_metadata_accounts_v2(
         mpl_token_metadata::id(),
         metadata_pda,
         tapestry_patch_mint_acct.key.clone(),
         tapestry_state_acct.key.clone(),
         buyer_acct.key.clone(),
         tapestry_state_acct.key.clone(),
-        String::from("Tapestry Meta"),
-        String::from("TAP"),
-        String::from("https://tapestry.art/uri"),
-        None,
-        0,
+        format!("Tapestry {},{}", x, y),
+        String::from("TAPESTRY"),
+        String::from("https://tapestry.art/custom_uri"),
+        Some(vec![Creator {
+            address: tapestry_state_acct.key.clone(),
+            verified: true,
+            share: 100,
+        }]),
+        500,
         true,
         false,
+        Some(Collection {
+            verified: true,
+            key: tapestry_state_acct.key.clone(),
+        }),
+        None,
     );
 
     invoke_signed(
