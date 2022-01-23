@@ -8,7 +8,7 @@
   },
   "homepage": ".",
   "scripts": {
-    "setup": "yarn setupjs && yarn setuppy && yarn setuprs",
+    "setup": "yarn setupjs && yarn setuppy && yarn setuprs && yarn alljs:build",
     "setuprs": "yarn meta:install && yarn program:build",
     "setuppy": "poetry install",
     "setupjs": "yarn install && cd app && yarn install && cd ../client && yarn install",
