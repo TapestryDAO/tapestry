@@ -18,6 +18,7 @@ mpl-auction = {path="../build/custom_deps/mpl-program-library/auction/program", 
 
 [features]
 test-bpf = ["solana-validator"]
+no-entrypoint = []
 
 [dev-dependencies]
 assert_matches = "1.5.0"
