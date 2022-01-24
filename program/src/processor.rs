@@ -287,7 +287,9 @@ fn process_purchase_patch(
         token_prog_acct.key,
         tapestry_patch_mint_acct.key,
         tapestry_state_acct.key,
-        Option::None,
+        // NOTE(will): This is a hack to allow clients to get the address
+        // for a patch account from the token mint account
+        Some(tapestry_patch_acct.key),
         0,
     )?;
 
@@ -298,6 +300,7 @@ fn process_purchase_patch(
             (*tapestry_state_acct).clone(),
             (*tapestry_patch_mint_acct).clone(),
             (*rent_sysvar_acct).clone(),
+            (*tapestry_patch_acct).clone(),
         ],
         &[tapestry_state_acct_seeds],
     )?;
