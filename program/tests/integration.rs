@@ -1,3 +1,4 @@
+use solana_program::program_error::ProgramError;
 use solana_program::program_pack::Pack;
 use solana_tapestry::{
     error::TapestryError,

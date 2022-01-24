@@ -29,7 +29,7 @@ use solana_program::{
 };
 
 use mpl_token_metadata::{
-    instruction::{create_metadata_accounts_v2, CreateMetadataAccountArgs},
+    instruction::{create_metadata_accounts_v2, verify_collection, CreateMetadataAccountArgs},
     state::{Collection, Creator},
 };
 
@@ -429,7 +429,10 @@ fn process_purchase_patch(
         tapestry_state_acct.key.clone(),
         format!("Tapestry {},{}", x, y),
         String::from("TAPESTRY"),
-        String::from("https://tapestry.art/custom_uri"),
+        // TODO(will): ideally we store the metadata on the "permaweb" in arweave
+        // but practicaly may be easier to just host these ourselves, I can't figure out
+        // how to buy the arweave tokens, lol
+        format!("https://nft.tapestry.art/{}/{}", x, y),
         Some(vec![Creator {
             address: tapestry_state_acct.key.clone(),
             verified: true,
@@ -439,7 +442,7 @@ fn process_purchase_patch(
         true,
         false,
         Some(Collection {
-            verified: true,
+            verified: false, // Have to do this via a separate instruction
             key: tapestry_state_acct.key.clone(),
         }),
         None,
@@ -458,6 +461,17 @@ fn process_purchase_patch(
         ],
         &[tapestry_patch_mint_acct_seeds, tapestry_state_acct_seeds],
     )?;
+
+    // TODO(will): Verify the collection, I believe this involves calling the ApproveCollectionAuthority
+    // instruction on the token metadata program and then calling this verify_collection on each
+    // newly minted NFT
+    // let ix_verify_collection = verify_collection(
+    //     mpl_token_metadata::id(),
+    //     metadata_pda,
+    //     tapestry_patch_state_acct.key.clone(),
+    //     buyer_acct.key.clone(),
+
+    // )
 
     // The rest of the state can be updated via 'UpdatePatch' instructions
     tapestry_patch.serialize(&mut *tapestry_patch_acct.data.borrow_mut())?;

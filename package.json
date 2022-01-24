@@ -19,6 +19,7 @@
     "client:test": "cd client && yarn test",
     "app:build": "cd app && yarn build",
     "app:start": "cd app && yarn start",
+    "localnet:fresh": "python -u scripts/reload_sim.py",
     "localnet:up": "python -u scripts/start_test_validator.py",
     "localnet:logs": "solana logs -u localhost",
     "alljs:build": "yarn client:build && yarn app:build && tap --help",
