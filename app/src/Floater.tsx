@@ -145,7 +145,7 @@ export const MyPatches: FC = () => {
         bgcolor: 'background.paper',
         position: 'relative',
         overflow: 'auto',
-        maxHeight: 300,
+        maxHeight: 500,
     };
 
     return (
