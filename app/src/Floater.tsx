@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import {
     Container,
     Box,
@@ -13,6 +13,9 @@ import {
     Typography,
     Divider,
 } from '@mui/material'
+import { TapestryChunk, TapestryClient, TokenAccountsCache } from '@tapestrydao/client';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { borderColor } from '@mui/system';
 
 
 const theme = createTheme({});
@@ -34,77 +37,122 @@ enum MenuState {
     ForSale,
 }
 
-export const MyPatches: FC = () => {
+type MyPatchListItemProps = {
+    chunk: TapestryChunk,
+}
+
+export const MyPatchListItem: FC<MyPatchListItemProps> = ({
+    chunk,
+}) => {
+
+    // useEffect(() => {
+    //     for (let row of chunk.chunkAccounts) {
+    //         row[0]?.image_bitmap
+    //     }
+    // }, [chunk])
+
+    // 2D array of image elements
+    let imgs = []
+
+    let key = 0
+
+    for (let row of chunk.chunkAccounts) {
+        let rowImgs = []
+
+        const pushEmpty = () => {
+            rowImgs.push(<img key={"" + key} style={{ margin: 0, padding: 0, width: 10, height: 10 }}></img >)
+            key += 1
+        }
+
+        for (let item of row) {
+            if (item === null || item === undefined) {
+                pushEmpty();
+                continue;
+            }
+            let data = item.data;
+            if (data === undefined) {
+                pushEmpty();
+                continue;
+            }
+            let img_data = data.image_data;
+            if (img_data === undefined) {
+                pushEmpty();
+                continue;
+            }
+
+            let imgStrData = "data:image/gif;base64," + img_data.toString('base64');
+            rowImgs.push(<img key={"" + key} style={{ border: "1px solid red", margin: 0, padding: 0, width: 10, height: 10 }} src={imgStrData}></img>)
+            key += 1
+        }
+        imgs.push(rowImgs)
+    }
+
 
     return (
-        <List sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
-            <ListItem alignItems="flex-start">
-                <ListItemAvatar>
-                    <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" />
-                </ListItemAvatar>
-                <ListItemText
-                    primary="Brunch this weekend?"
-                    secondary={
-                        <React.Fragment>
-                            <Typography
-                                sx={{ display: 'inline' }}
-                                component="span"
-                                variant="body2"
-                                color="text.primary"
-                            >
-                                Ali Connors
-                            </Typography>
-                            {" — I'll be in your neighborhood doing errands this…"}
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <Divider variant="inset" component="li" />
-            <ListItem alignItems="flex-start">
-                <ListItemAvatar>
-                    <Avatar alt="Travis Howard" src="/static/images/avatar/2.jpg" />
-                </ListItemAvatar>
-                <ListItemText
-                    primary="Summer BBQ"
-                    secondary={
-                        <React.Fragment>
-                            <Typography
-                                sx={{ display: 'inline' }}
-                                component="span"
-                                variant="body2"
-                                color="text.primary"
-                            >
-                                to Scott, Alex, Jennifer
-                            </Typography>
-                            {" — Wish I could come, but I'm out of town this…"}
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <Divider variant="inset" component="li" />
-            <ListItem alignItems="flex-start">
-                <ListItemAvatar>
-                    <Avatar alt="Cindy Baker" src="/static/images/avatar/3.jpg" />
-                </ListItemAvatar>
-                <ListItemText
-                    primary="Oui Oui"
-                    secondary={
-                        <React.Fragment>
-                            <Typography
-                                sx={{ display: 'inline' }}
-                                component="span"
-                                variant="body2"
-                                color="text.primary"
-                            >
-                                Sandra Adams
-                            </Typography>
-                            {' — Do you have Paris recommendations? Have you ever…'}
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
+        <ListItem alignItems='flex-start' sx={{ margin: 0, padding: 0, height: 90, }}>
+            <Box sx={{ height: 80, padding: '0', margin: '0' }}>
+                {imgs.map((row) => { return <div style={{ height: 10, width: 80, padding: 0, margin: '0' }}> {row}</div> })}
+            </Box>
+            <Box justifyContent="center">
+                <Typography type="h2">Chunk {chunk.xChunk},{chunk.yChunk}</Typography>
+            </Box>
+        </ListItem >
+    );
+}
+
+export const MyPatches: FC = () => {
+
+    const { publicKey } = useWallet();
+
+    const [userOwnedChunks, setUserOwnedChunks] = useState<TapestryChunk[] | null>(null);
+
+    useEffect(() => {
+
+        let tapClient = TapestryClient.getInstance();
+
+        if (publicKey === null || publicKey === undefined) {
+            setUserOwnedChunks(null);
+        } else {
+            let userChunks = tapClient.tokenAccountsCache.userOwnedChunks.get(publicKey.toBase58())
+            if (userChunks != undefined) {
+                setUserOwnedChunks(userChunks)
+            } else {
+                setUserOwnedChunks(null);
+            }
+        }
+
+        let binding = tapClient.tokenAccountsCache.OnUserChunksUpdated.add((userPubkey, chunks) => {
+            console.log("got user owned chunks update")
+            if (userPubkey == publicKey) {
+                setUserOwnedChunks(chunks)
+            }
+        });
+
+        return () => {
+            tapClient.tokenAccountsCache.OnUserChunksUpdated.detach(binding)
+        }
+    }, [publicKey])
+
+    console.log("user Owned Chunks: ", userOwnedChunks?.length)
+
+    // Figure out how to turn patch chunk bitmaps into an image
+    // create a react element for the list item with chunk as props
+
+    const listSx = {
+        width: '100%',
+        height: '100%',
+        maxWidth: 360,
+        bgcolor: 'background.paper',
+        position: 'relative',
+        overflow: 'auto',
+        maxHeight: 300,
+    };
+
+    return (
+        <List sx={listSx}>
+            {userOwnedChunks != null ? userOwnedChunks.map((chunk) => { return <MyPatchListItem key={"" + chunk.xChunk + "," + chunk.yChunk} chunk={chunk}></MyPatchListItem> }) : <></>}
         </List>
-    )
+    );
 }
 
 export const Floater: FC = () => {

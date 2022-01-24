@@ -289,6 +289,7 @@ fn process_purchase_patch(
         tapestry_state_acct.key,
         // NOTE(will): This is a hack to allow clients to get the address
         // for a patch account from the token mint account
+        // Alternatively, this link could be made via token metadata
         Some(tapestry_patch_acct.key),
         0,
     )?;

@@ -135,6 +135,22 @@ export class TapestryChunk {
     }
 }
 
+/// A region of arbitrary dimensions, used to display a small patch region in parts of the UI
+/// accounts are stored in "row major"
+export class TapestryRegion {
+
+    public region: MaybeTapestryPatchAccount[][];
+
+    constructor(region: MaybeTapestryPatchAccount[][]) {
+        this.region = region;
+    }
+
+    public static computeRegions(accounts: TapestryPatchAccount[], maxRegionExtent: number): TapestryRegion[] {
+        return [];
+    }
+
+}
+
 type TapestryPatchArgs = {
     is_initialized: boolean;
     owned_by_mint: PublicKey;
@@ -269,13 +285,20 @@ export class TapestryPatchAccount extends Account<TapestryPatchData> {
     }
 
     static async fetch(connection: Connection, x: number, y: number) {
-        extendBorsh();
         let patch_pda = await TapestryProgram.findPatchAddressForPatchCoords(x, y);
+        return this.fetchWithPubkey(connection, patch_pda);
+        // let info = await connection.getAccountInfo(patch_pda);
+        // if (!info) return null;
 
-        let info = await connection.getAccountInfo(patch_pda);
+        // let account = new TapestryPatchAccount(patch_pda, info);
+        // return account;
+    }
+
+    static async fetchWithPubkey(connection: Connection, pubkey: PublicKey) {
+        extendBorsh(); // TODO(will): Figure out how to have this called once when the module loads
+        let info = await connection.getAccountInfo(pubkey);
         if (!info) return null;
 
-        let account = new TapestryPatchAccount(patch_pda, info);
-        return account;
+        return new TapestryPatchAccount(pubkey, info);
     }
 }

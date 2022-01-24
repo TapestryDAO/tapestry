@@ -4,7 +4,7 @@ import { MaybeTapestryPatchAccount, TapestryPatchAccount, TapestryChunk } from "
 import { Signal } from 'type-signals';
 
 
-type ChunkUdateHandler = (chunk: TapestryChunk) => void;
+type ChunkUpdateHandler = (chunk: TapestryChunk) => void;
 
 const chunkKey = (xChunk: number, yChunk: number): string => {
     return "" + xChunk + "," + yChunk;
@@ -20,7 +20,7 @@ export class TapestryClient {
     private connection: Connection;
 
     // Cache used to determine if a public key is the owner of a patch
-    private tokenAccountsCache: TokenAccountsCache;
+    public tokenAccountsCache: TokenAccountsCache;
 
     private chunkCache = new Map<string, TapestryChunk>();
 
@@ -28,7 +28,7 @@ export class TapestryClient {
     // a million mother fucking times, meaning we inadvertantly stack fucking requests for the same fucking patch
     private inFlightChunkFetch = new Map<string, Promise<TapestryChunk>>();
 
-    public OnChunkUpdate = new Signal<ChunkUdateHandler>();
+    public OnChunkUpdate = new Signal<ChunkUpdateHandler>();
     public OnTokenAccountsUpdate = new Signal<() => void>();
 
     private constructor(connection: Connection) {
