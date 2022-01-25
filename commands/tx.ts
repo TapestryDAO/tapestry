@@ -1,9 +1,10 @@
 
 import yargs, { ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import { TapestryProgram } from '../client/src/TapestryProgram'
+import { FeaturedStateAccount } from '../client/src/accounts/FeaturedState'
 import { ConfirmOptions, LAMPORTS_PER_SOL, sendAndConfirmRawTransaction, sendAndConfirmTransaction, Transaction } from '@solana/web3.js'
 import { confirmTxWithRetry, getBalance, getNewConnection, getRawTransaction, loadKey, loadKeyFromPath, loadPatternFromPath, makeJSONRPC, getPreparedTransaction } from './utils/utils'
-import { applyKeynameOption, applyXYArgOptions } from './utils/commandHelpers'
+import { applyKeynameOption, applyXYArgOptions, applyRectOption, KeynameOptionArgs, RectOptionArgs } from './utils/commandHelpers'
 import { inspect } from 'util';
 import fs from 'fs';
 import base58 from 'bs58'
@@ -47,6 +48,62 @@ const init_command = {
 
         console.log("TX Sig: " + signature);
         console.log("Err: " + result.value.err);
+    }
+}
+
+type PushFeaturedArgs =
+    { callout: string } &
+    { sol_domain: string } &
+    RectOptionArgs &
+    KeynameOptionArgs
+
+const push_featured_command = {
+    command: "pushfeat",
+    description: "Add a featured",
+    builder: (args: Argv): Argv<PushFeaturedArgs> => {
+        return applyRectOption(applyKeynameOption(args))
+            .option("callout", {
+                describe: "Callout text for this featured element",
+                type: "string",
+                required: true,
+            })
+            .option("sol_domain", {
+                describe: "The sol domain for attribution",
+                type: "string",
+                required: true,
+            });
+    },
+    handler: async (args: ArgumentsCamelCase<PushFeaturedArgs>) => {
+        let keypair = loadKey(args.keyname)
+        let connection = getNewConnection();
+
+        let params = {
+            time_ms: (new Date()).getTime(),
+            x: args.x,
+            y: args.y,
+            width: args.width,
+            height: args.height,
+            callout: args.callout,
+            sol_domain: args.sol_domain,
+            owner: keypair.publicKey,
+        }
+
+        let push_featured_ix = await TapestryProgram.pushFeatured(params);
+
+        let tx = new Transaction().add(push_featured_ix);
+
+        let rawTx = await getRawTransaction(connection, tx, [keypair])
+
+        console.log("TX Bytes: " + rawTx.length);
+
+        let signature = await sendAndConfirmRawTransaction(connection, rawTx);
+        let result = await connection.confirmTransaction(signature, "confirmed");
+
+        console.log("TX Sig: ", signature);
+        console.log("Err: ", result.value.err);
+
+        let state = await FeaturedStateAccount.fetchFeaturedState(connection);
+        console.log(inspect(state, true, null, true))
     }
 }
 
@@ -356,6 +413,7 @@ export const command = {
             .command(upload_image)
             .command(upload_meta)
             .command(fill_pattern_command)
+            .command(push_featured_command)
             .demandCommand()
     }
 }

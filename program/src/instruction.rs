@@ -1,6 +1,6 @@
 use crate::state::{
-    find_mint_address_for_patch_coords, find_patch_address_for_patch_coords,
-    find_tapestry_state_address,
+    assert_featured_region_valid, find_featured_state_address, find_mint_address_for_patch_coords,
+    find_patch_address_for_patch_coords, find_tapestry_state_address, FeaturedRegion,
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
@@ -26,6 +26,9 @@ pub struct InitTapestryAccountArgs<'a, 'b: 'a> {
     pub tapestry_state_acct: &'a AccountInfo<'b>,
     /// `[]` The system program
     pub system_acct: &'a AccountInfo<'b>,
+
+    /// `[writable]` The account to hold the featured section
+    pub featured_state_acct: &'a AccountInfo<'b>,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -100,6 +103,25 @@ pub struct UpdatePatchMetadataDataArgs {
     pub hover_text: Option<String>,
 }
 
+pub struct PushFeaturedAccountArgs<'a, 'b: 'a> {
+    /// `[signer]` The tapestry owner account
+    pub owner_acct: &'a AccountInfo<'b>,
+
+    /// `[]` The tapestry state acct (needed to verify owner)
+    pub tapestry_state_acct: &'a AccountInfo<'b>,
+
+    /// `[writable]` The account to hold the featured section
+    pub featured_state_acct: &'a AccountInfo<'b>,
+
+    /// `[]` The system program
+    pub system_acct: &'a AccountInfo<'b>,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct PushFeaturedDataArgs {
+    pub region: FeaturedRegion,
+}
+
 /// Instructions used by the Tapestry Program
 
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
@@ -116,6 +138,9 @@ pub enum TapestryInstruction {
 
     // Update the url and hover text for the patch
     UpdatePatchMetadata(UpdatePatchMetadataDataArgs),
+
+    // Push Featured
+    PushFeatured(PushFeaturedDataArgs),
 }
 
 pub fn get_ix_init_tapestry(
@@ -124,12 +149,14 @@ pub fn get_ix_init_tapestry(
     initial_sale_price: u64,
 ) -> Instruction {
     let (tapestry_state_acct, _) = find_tapestry_state_address(&program_id);
+    let (featured_state_acct, _) = find_featured_state_address(&program_id);
     Instruction {
         program_id,
         accounts: vec![
             AccountMeta::new(owner_acct, true),
             AccountMeta::new(tapestry_state_acct, false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new(featured_state_acct, false),
         ],
         data: TapestryInstruction::InitTapestry(InitTapestryDataArgs {
             initial_sale_price: initial_sale_price,
@@ -241,6 +268,32 @@ pub fn get_ix_update_patch_metadata(
             y: y,
             url: url,
             hover_text: hover_text,
+        })
+        .try_to_vec()
+        .unwrap(),
+    }
+}
+
+pub fn get_ix_push_featured(owner_acct: Pubkey, featured_region: FeaturedRegion) -> Instruction {
+    let program_id = crate::id();
+    let (tapestry_state_acct, _) = find_tapestry_state_address(&program_id);
+    let (featured_state_acct, _) = find_featured_state_address(&program_id);
+    let result = assert_featured_region_valid(&featured_region);
+
+    if let Err(e) = result {
+        println!("Warning: Invalid featured region, tx will fail - {}", e);
+    }
+
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new_readonly(owner_acct, true),
+            AccountMeta::new_readonly(tapestry_state_acct, false),
+            AccountMeta::new(featured_state_acct, false),
+            AccountMeta::new(solana_program::system_program::id(), false),
+        ],
+        data: TapestryInstruction::PushFeatured(PushFeaturedDataArgs {
+            region: featured_region,
         })
         .try_to_vec()
         .unwrap(),

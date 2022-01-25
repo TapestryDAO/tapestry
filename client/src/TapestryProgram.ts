@@ -23,6 +23,8 @@ import { PurchasePatchArgsData } from './instructions/PurchasePatch';
 import { UpdatePatchImageArgsData } from './instructions/UpdatePatchImage';
 import { extendBorsh } from "./utils";
 import { UpdatePatchMetadataArgsData } from './instructions/UpdatePatchMetadata';
+import { PushFeaturedArgsData } from './instructions/PushFeatured';
+import { FeaturedRegionData } from './accounts/FeaturedState';
 
 export type InitTapestryParams = {
     initialSalePrice: number;
@@ -50,6 +52,16 @@ export type UpdatePatchMetadataParams = {
     hover_text?: string,
 }
 
+export type PushFeaturedParams = {
+    time_ms: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    callout: string,
+    sol_domain: string,
+    owner: PublicKey,
+}
 
 /**
  * Factory for transactions to interact with the tapestry program
@@ -61,6 +73,7 @@ export class TapestryProgram extends Program {
 
     static readonly PUBKEY: PublicKey = TAPESTRY_PROGRAM_ID;
     static readonly tapestryStatePDAPrefix = "tapestry";
+    static readonly featuredStatePDAPrefix = "feat";
     static readonly tapestryMintPDAPrefix = "mint";
 
     static async initTapestry(params: InitTapestryParams): Promise<TransactionInstruction> {
@@ -69,12 +82,14 @@ export class TapestryProgram extends Program {
         })
 
         let tapestryStateAddress = await this.findTapestryStateAddress();
+        let featuredStateAddress = await this.findFeaturedStateAddress();
 
         return new TransactionInstruction({
             keys: [
                 { pubkey: params.ownerPubkey, isSigner: true, isWritable: true },
                 { pubkey: tapestryStateAddress, isSigner: false, isWritable: true },
                 { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+                { pubkey: featuredStateAddress, isSigner: false, isWritable: true },
             ],
             programId: this.PUBKEY,
             data
@@ -174,6 +189,36 @@ export class TapestryProgram extends Program {
         })
     }
 
+    static async pushFeatured(params: PushFeaturedParams) {
+        extendBorsh();
+        const region = new FeaturedRegionData({
+            time_ms: params.time_ms,
+            x: params.x,
+            y: params.y,
+            width: params.width,
+            height: params.height,
+            callout: params.callout,
+            sol_domain: params.sol_domain,
+        })
+
+        const data = PushFeaturedArgsData.serialize({
+            featured: region,
+        })
+
+        let tapestryStatePDA = await this.findTapestryStateAddress();
+        let featuredStatePDA = await this.findFeaturedStateAddress();
+        return new TransactionInstruction({
+            keys: [
+                { pubkey: params.owner, isSigner: true, isWritable: false },
+                { pubkey: tapestryStatePDA, isSigner: false, isWritable: false },
+                { pubkey: featuredStatePDA, isSigner: false, isWritable: true },
+                { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+            ],
+            programId: this.PUBKEY,
+            data: data,
+        })
+    }
+
     static async findPatchATAForPatch(
         mint: PublicKey,
         buyer: PublicKey) {
@@ -190,6 +235,14 @@ export class TapestryProgram extends Program {
         // cache this? how long does this actually take to compute?
         let result = await PublicKey.findProgramAddress([Buffer.from(this.tapestryStatePDAPrefix)], this.PUBKEY)
         return result[0]
+    }
+
+    static async findFeaturedStateAddress(): Promise<PublicKey> {
+        let result = await PublicKey.findProgramAddress([
+            Buffer.from(this.tapestryStatePDAPrefix),
+            Buffer.from(this.featuredStatePDAPrefix),
+        ], this.PUBKEY);
+        return result[0];
     }
 
     static async findPatchAddressForPatchCoords(x: number, y: number) {
