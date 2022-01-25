@@ -1,5 +1,4 @@
 import argparse
-from asyncio import subprocess
 from pathlib import Path
 import os
 import subprocess
@@ -12,7 +11,9 @@ KEYS_DIR = TAPESTRY_ROOT / "keys"
 
 # Expects array of any
 def run_command(args, cwd=TAPESTRY_ROOT):
-    subprocess.check_call(" ".join(map(lambda v: str(v), args)), cwd=TAPESTRY_ROOT, shell=True)
+    full_command = " ".join(map(lambda v: str(v), args))
+    print(f"Running Command: {full_command}")
+    subprocess.check_call(full_command, cwd=TAPESTRY_ROOT, shell=True)
 
 
 def fill_pattern(xLeft: int, yBot: int, xRight: int, yTop: int, pattern: str, keyname: str):
@@ -24,6 +25,17 @@ def fill_pattern(xLeft: int, yBot: int, xRight: int, yTop: int, pattern: str, ke
             "--pattern", f"res/patterns/{pattern}/", 
             "--keyname", keyname
             ])
+
+def set_featured(x: int, y: int, width: int, height: int, callout: str, sol_domain: str, keyname: str):
+    run_command(["tap", "tx", "pushfeat",
+        "-x", x,
+        "-y", y,
+        "--width", width,
+        "--height", height,
+        "--keyname", keyname,
+        "--callout", f"\"{callout}\"",
+        "--sol_domain", sol_domain,
+    ])
     
 
 def main():
@@ -49,13 +61,18 @@ def main():
     run_command(["tap", "tx", "airdrop", "--keyname", "owner", "--amount", "1000"])
     run_command(["tap", "tx", "airdrop", "--keyname", "buyer", "--amount", "1000"])
 
-
     print("Initializing Tapestry State")
     run_command(["tap", "tx", "init", "--keyname", "owner"])
     fill_pattern(0, 0, 20, 20, "hello", "buyer")
     fill_pattern(-8, -8, 0, 0, "chunk_border", "buyer")
     fill_pattern(-8, 0, 0, 8, "checker", "buyer")
+    fill_pattern(100, 100, 108, 108, "chunk_border", "buyer")
+    fill_pattern(512, 512, 512 + 8, 512 + 8, "chunk_border", "buyer")
 
+    print("Setting Featured State")
+    set_featured(100, 100, 8, 8, "Yo Check out 100, 100!", "willyb.sol", "owner")
+    set_featured(512, 512, 8, 8, "Yo Check out 512, 512!", "someoneelse.sol", "owner")
+    
     # Kill the locally running validator
     process.kill()
 

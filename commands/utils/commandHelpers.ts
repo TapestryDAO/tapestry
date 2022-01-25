@@ -1,4 +1,5 @@
-import { Argv } from 'yargs'
+import { Argv, describe } from 'yargs'
+
 
 export const applyXYArgOptions = (args: Argv) => {
     return args
@@ -14,7 +15,10 @@ export const applyXYArgOptions = (args: Argv) => {
         })
 };
 
-export const applyKeynameOption = (args: Argv) => {
+export type KeynameOptionArgs =
+    { keyname: string }
+
+export const applyKeynameOption = <T>(args: Argv<T>): Argv<T & KeynameOptionArgs> => {
     return args
         .option("keyname", {
             describe: "Keypair to use for the transaction",
@@ -22,3 +26,33 @@ export const applyKeynameOption = (args: Argv) => {
             required: true,
         })
 }
+
+export type RectOptionArgs =
+    { x: number } &
+    { y: number } &
+    { width: number } &
+    { height: number }
+
+export const applyRectOption = <T>(args: Argv<T>): Argv<T & RectOptionArgs> => {
+    return args
+        .option("x", {
+            describe: "X coordinate of the lower left of the rect",
+            type: "number",
+            required: true,
+        })
+        .option("y", {
+            describe: "Y coordinate of the lower left of the rect",
+            type: "number",
+            required: true,
+        })
+        .option("width", {
+            describe: "The width of the rect",
+            type: "number",
+            required: true,
+        })
+        .option("height", {
+            describe: "the height of the rect",
+            type: "number",
+            required: true,
+        })
+};

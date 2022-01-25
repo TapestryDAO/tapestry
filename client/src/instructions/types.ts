@@ -4,4 +4,5 @@ export enum TapestryInstruction {
     PurchasePatch,
     UpdatePatchImage,
     UpdatePatchMetadata,
+    PushFeatured,
 };

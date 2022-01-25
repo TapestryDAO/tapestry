@@ -1,10 +1,11 @@
 import yargs, { ArgumentsCamelCase, Argv, describe, number } from 'yargs'
 import { getNewConnection, makeJSONRPC } from './utils/utils'
-import util from 'util';
+import util, { inspect } from 'util';
 import { TapestryProgram } from '../client/src/TapestryProgram';
 import { TapestryStateAccount } from '../client/src/accounts/TapestryState';
 import { TapestryClient } from '../client/src/TapestryClient';
 import path from 'path/posix';
+import { FeaturedStateAccount } from '../client/src/accounts/FeaturedState';
 
 const get_tx = {
     command: "sig [signature]",
@@ -31,6 +32,16 @@ const get_state = {
         let connection = getNewConnection();
         let state = await TapestryStateAccount.fetchState(connection)
         console.log(state);
+    }
+}
+
+const get_featured = {
+    command: "featured",
+    describe: "get the featured state",
+    handler: async (args: ArgumentsCamelCase) => {
+        let conneciton = getNewConnection();
+        let state = await FeaturedStateAccount.fetchFeaturedState(conneciton);
+        console.log(inspect(state, true, null, true));
     }
 }
 
@@ -85,6 +96,7 @@ export const command = {
             .command(get_tx)
             .command(get_state)
             .command(get_chunk)
+            .command(get_featured)
             .demandCommand()
     }
 }

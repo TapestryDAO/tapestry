@@ -22,6 +22,8 @@ export const extendBorsh = () => {
     if (once) return;
     once = true;
 
+    console.log("Extending Borsh...");
+
     (BinaryReader.prototype as BinaryReaderExtended).readI8 = function (
         this: BinaryReaderExtended,
     ) {
