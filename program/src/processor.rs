@@ -6,9 +6,10 @@ use crate::{
         UpdatePatchImageDataArgs, UpdatePatchMetadataDataArgs,
     },
     state::{
-        assert_patch_is_valid, find_mint_address_for_patch_coords,
-        find_patch_address_for_patch_coords, find_tapestry_state_address, TapestryPatch,
-        TapestryState, MAX_PATCH_IMAGE_DATA_LEN, MAX_PATCH_TOTAL_LEN, TAPESTRY_MINT_PDA_PREFIX,
+        assert_patch_is_valid, find_featured_state_address, find_mint_address_for_patch_coords,
+        find_patch_address_for_patch_coords, find_tapestry_state_address, FeaturedRegion,
+        FeaturedState, TapestryPatch, TapestryState, MAX_PATCH_IMAGE_DATA_LEN, MAX_PATCH_TOTAL_LEN,
+        MAX_TAPESTRY_FEATURED_ACCOUNT_LEN, TAPESTRY_FEATURED_PDA_PREFIX, TAPESTRY_MINT_PDA_PREFIX,
         TAPESTRY_PDA_PREFIX, TAPESTRY_STATE_MAX_LEN,
     },
     utils::{
@@ -58,10 +59,12 @@ impl Processor {
                 let owner_acct = next_account_info(acct_info_iter)?;
                 let tapestry_state_acct = next_account_info(acct_info_iter)?;
                 let system_acct = next_account_info(acct_info_iter)?;
+                let featured_state_acct = next_account_info(acct_info_iter)?;
                 let account_args = InitTapestryAccountArgs {
                     owner_acct,
                     tapestry_state_acct,
                     system_acct,
+                    featured_state_acct,
                 };
 
                 process_init_tapestry(program_id, &account_args, &args)
@@ -141,13 +144,15 @@ fn process_init_tapestry(
         owner_acct,
         tapestry_state_acct,
         system_acct,
+        featured_state_acct,
     } = account_args;
 
     assert_signer(owner_acct)?;
 
     let InitTapestryDataArgs { initial_sale_price } = data_args;
 
-    let (key, bump) = Pubkey::find_program_address(&[TAPESTRY_PDA_PREFIX.as_bytes()], program_id);
+    let (key, state_bump) =
+        Pubkey::find_program_address(&[TAPESTRY_PDA_PREFIX.as_bytes()], program_id);
 
     if key != *tapestry_state_acct.key {
         return Err(TapestryError::InvalidTapestryStatePDA.into());
@@ -164,7 +169,7 @@ fn process_init_tapestry(
         system_acct,
         owner_acct,
         TAPESTRY_STATE_MAX_LEN,
-        &[TAPESTRY_PDA_PREFIX.as_bytes(), &[bump]],
+        &[TAPESTRY_PDA_PREFIX.as_bytes(), &[state_bump]],
     )?;
 
     let mut tapestry_state: TapestryState =
@@ -174,6 +179,36 @@ fn process_init_tapestry(
     tapestry_state.initial_sale_price = *initial_sale_price;
 
     tapestry_state.serialize(&mut *tapestry_state_acct.data.borrow_mut())?;
+
+    // Initialize the featured state account
+
+    let (key, featured_bump) = find_featured_state_address(program_id);
+
+    if key != *featured_state_acct.key {
+        return Err(TapestryError::InvalidTapestryFeaturedPDA.into());
+    }
+
+    if !featured_state_acct.data_is_empty() {
+        return Err(TapestryError::InvalidTapestryFeaturedPDA.into());
+    }
+
+    create_or_allocate_account_raw(
+        *program_id,
+        featured_state_acct,
+        system_acct,
+        owner_acct,
+        MAX_TAPESTRY_FEATURED_ACCOUNT_LEN,
+        &[
+            TAPESTRY_PDA_PREFIX.as_bytes(),
+            TAPESTRY_FEATURED_PDA_PREFIX.as_bytes(),
+            &[featured_bump],
+        ],
+    )?;
+
+    let featured: Vec<FeaturedRegion> = vec![];
+    let mut featured_state: FeaturedState = FeaturedState { featured };
+
+    featured_state.serialize(&mut *featured_state_acct.data.borrow_mut());
 
     Ok(())
 }

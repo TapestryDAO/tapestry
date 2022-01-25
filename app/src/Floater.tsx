@@ -190,8 +190,8 @@ export const Floater: FC = () => {
                 alignItems: "center"
             }}>
                 <ButtonGroup>
-                    <Button onClick={onClickedMyPatches}>My Patches</Button>
                     <Button>Featured</Button>
+                    <Button onClick={onClickedMyPatches}>My Patches</Button>
                     <Button>For Sale</Button>
                 </ButtonGroup>
             </Box>

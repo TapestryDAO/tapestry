@@ -1,6 +1,6 @@
 use crate::state::{
-    find_mint_address_for_patch_coords, find_patch_address_for_patch_coords,
-    find_tapestry_state_address,
+    find_featured_state_address, find_mint_address_for_patch_coords,
+    find_patch_address_for_patch_coords, find_tapestry_state_address,
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
@@ -26,6 +26,9 @@ pub struct InitTapestryAccountArgs<'a, 'b: 'a> {
     pub tapestry_state_acct: &'a AccountInfo<'b>,
     /// `[]` The system program
     pub system_acct: &'a AccountInfo<'b>,
+
+    /// `[writable]` The account to hold the featured section
+    pub featured_state_acct: &'a AccountInfo<'b>,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -124,12 +127,14 @@ pub fn get_ix_init_tapestry(
     initial_sale_price: u64,
 ) -> Instruction {
     let (tapestry_state_acct, _) = find_tapestry_state_address(&program_id);
+    let (featured_state_acct, _) = find_featured_state_address(&program_id);
     Instruction {
         program_id,
         accounts: vec![
             AccountMeta::new(owner_acct, true),
             AccountMeta::new(tapestry_state_acct, false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new(featured_state_acct, false),
         ],
         data: TapestryInstruction::InitTapestry(InitTapestryDataArgs {
             initial_sale_price: initial_sale_price,

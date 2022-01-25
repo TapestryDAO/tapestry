@@ -28,6 +28,47 @@ impl IsInitialized for TapestryState {
     }
 }
 
+/// Used to generate PDA for the featured account
+pub const TAPESTRY_FEATURED_PDA_PREFIX: &str = "feat";
+
+/// Maximum length for message to display with featured items
+pub const MAX_FEATURED_CALLOUT_LEN: usize = 64;
+
+/// Maximum length for the domain string in featured items
+pub const MAX_FEATURED_DOMAIN_LEN: usize = 64;
+
+/// Maximum number of featured regions
+pub const MAX_FEATURED_REGIONS: usize = 50;
+
+
+pub const MAX_TAPESTRY_FEATURED_ACCOUNT_LEN: usize = 4 + FEATURED_REGION_MAX_LEN * MAX_FEATURED_REGIONS;
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct FeaturedState {
+    pub featured: Vec<FeaturedRegion>,
+}
+
+pub const FEATURED_REGION_MAX_LEN: usize = 0 +
+    8 + // time_ms
+    2 + // x
+    2 + // y
+    2 + // width
+    2 + // height
+    4 + MAX_FEATURED_CALLOUT_LEN + // callout
+    4 + MAX_FEATURED_DOMAIN_LEN; // sol_domain
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct FeaturedRegion {
+    /// Time that this region was featured in ms since epoch
+    time_ms: u64,
+    x: i16,
+    y: i16,
+    width: i16,
+    height: i16,
+    callout: String,
+    sol_domain: String,
+}
+
 // If you are changing this make sure to update TapestryPatch.ts as well
 
 pub const MAX_X: i16 = 1023;
@@ -143,4 +184,11 @@ pub fn find_mint_address_for_patch_coords(x: i16, y: i16, program_id: &Pubkey) -
         &x.to_le_bytes(),
         &y.to_le_bytes(),
     ], program_id)
+}
+
+pub fn find_featured_state_address(program_id: &Pubkey) -> (Pubkey, u8) {
+    return Pubkey::find_program_address(&[
+        TAPESTRY_PDA_PREFIX.as_bytes(),
+        TAPESTRY_FEATURED_PDA_PREFIX.as_bytes(),
+    ], program_id);
 }

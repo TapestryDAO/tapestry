@@ -58,6 +58,9 @@ pub enum TapestryError {
 
     #[error("Patch account is not owned by mint address provided")]
     PatchAccountNotOwnedByMint, // 17
+
+    #[error("Featured account is incorrect or already allocated")]
+    InvalidTapestryFeaturedPDA, // 18
 }
 
 impl From<TapestryError> for ProgramError {
