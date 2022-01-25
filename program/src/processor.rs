@@ -2,13 +2,14 @@ use crate::{
     error::TapestryError,
     instruction::{
         InitTapestryAccountArgs, InitTapestryDataArgs, PurchasePatchAccountArgs,
-        PurchasePatchDataArgs, TapestryInstruction, UpdatePatchAccountArgs,
-        UpdatePatchImageDataArgs, UpdatePatchMetadataDataArgs,
+        PurchasePatchDataArgs, PushFeaturedAccountArgs, PushFeaturedDataArgs, TapestryInstruction,
+        UpdatePatchAccountArgs, UpdatePatchImageDataArgs, UpdatePatchMetadataDataArgs,
     },
     state::{
-        assert_patch_is_valid, find_featured_state_address, find_mint_address_for_patch_coords,
-        find_patch_address_for_patch_coords, find_tapestry_state_address, FeaturedRegion,
-        FeaturedState, TapestryPatch, TapestryState, MAX_PATCH_IMAGE_DATA_LEN, MAX_PATCH_TOTAL_LEN,
+        assert_featured_region_valid, assert_patch_is_valid, find_featured_state_address,
+        find_mint_address_for_patch_coords, find_patch_address_for_patch_coords,
+        find_tapestry_state_address, FeaturedRegion, FeaturedState, TapestryPatch, TapestryState,
+        MAX_FEATURED_REGIONS, MAX_PATCH_IMAGE_DATA_LEN, MAX_PATCH_TOTAL_LEN,
         MAX_TAPESTRY_FEATURED_ACCOUNT_LEN, TAPESTRY_FEATURED_PDA_PREFIX, TAPESTRY_MINT_PDA_PREFIX,
         TAPESTRY_PDA_PREFIX, TAPESTRY_STATE_MAX_LEN,
     },
@@ -130,6 +131,22 @@ impl Processor {
                 };
 
                 process_update_patch_metadata(program_id, &acct_args, &args)
+            }
+            TapestryInstruction::PushFeatured(args) => {
+                msg!("Instruction: PushFeatured");
+                let acct_info_iter = &mut accounts.iter();
+                let owner_acct = next_account_info(acct_info_iter)?;
+                let tapestry_state_acct = next_account_info(acct_info_iter)?;
+                let featured_state_acct = next_account_info(acct_info_iter)?;
+                let system_acct = next_account_info(acct_info_iter)?;
+                let acct_args = PushFeaturedAccountArgs {
+                    owner_acct,
+                    tapestry_state_acct,
+                    featured_state_acct,
+                    system_acct,
+                };
+
+                process_push_featured(program_id, acct_args, &args)
             }
         }
     }
@@ -639,6 +656,55 @@ fn process_update_patch_metadata(
     assert_patch_is_valid(&patch_acct_unpacked)?;
 
     patch_acct_unpacked.serialize(&mut *patch_acct.try_borrow_mut_data()?)?;
+
+    Ok(())
+}
+
+fn process_push_featured(
+    program_id: &Pubkey,
+    acct_args: PushFeaturedAccountArgs,
+    data_args: &PushFeaturedDataArgs,
+) -> ProgramResult {
+    let PushFeaturedAccountArgs {
+        owner_acct,
+        tapestry_state_acct,
+        featured_state_acct,
+        system_acct,
+    } = acct_args;
+
+    let PushFeaturedDataArgs { region } = data_args;
+
+    assert_signer(owner_acct)?;
+    assert_featured_region_valid(&region);
+
+    let (tapestry_state_pda, _) = find_tapestry_state_address(program_id);
+    let (featured_state_pda, _) = find_featured_state_address(program_id);
+
+    if *tapestry_state_acct.key != tapestry_state_pda {
+        return Err(TapestryError::InvalidTapestryStatePDA.into());
+    }
+
+    if *featured_state_acct.key != featured_state_pda {
+        return Err(TapestryError::InvalidTapestryFeaturedPDA.into());
+    }
+
+    let tapestry_state: TapestryState =
+        try_from_slice_unchecked(*tapestry_state_acct.try_borrow_data()?)?;
+
+    if *owner_acct.key != tapestry_state.owner {
+        return Err(TapestryError::IncorrectOwner.into());
+    }
+
+    let mut featured_state: FeaturedState =
+        try_from_slice_unchecked(*featured_state_acct.try_borrow_data()?)?;
+
+    featured_state.featured.insert(0, region.clone());
+
+    while featured_state.featured.len() > MAX_FEATURED_REGIONS {
+        featured_state.featured.pop();
+    }
+
+    featured_state.serialize(&mut *featured_state_acct.data.borrow_mut())?;
 
     Ok(())
 }

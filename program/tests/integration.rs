@@ -24,14 +24,17 @@ use {
             get_ix_update_patch_metadata,
         },
         state::{
-            assert_patch_is_valid, find_tapestry_state_address, TapestryPatch, TapestryState,
-            CHUNK_SIZE, MAX_PATCH_TOTAL_LEN, MAX_X, MAX_Y, MIN_X, MIN_Y,
+            assert_patch_is_valid, find_tapestry_state_address, FeaturedRegion, FeaturedState,
+            TapestryPatch, TapestryState, CHUNK_SIZE, MAX_PATCH_TOTAL_LEN, MAX_X, MAX_Y, MIN_X,
+            MIN_Y,
         },
         utils::{chunk_for_coords, ChunkCoords},
     },
     spl_token::state::{Account as TokenAccount, AccountState},
     std::str::FromStr,
 };
+
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn get_string(len: usize) -> String {
     // NOTE(will): tried to make this random but was having issues
@@ -435,6 +438,55 @@ async fn test_init_tapestry_instruction() {
         assert_eq!(tapestry_patch.url, Some(url.clone()));
         assert_eq!(tapestry_patch.hover_text, Some(hover_text.clone()));
         assert_eq!(tapestry_patch.image_data, Some(image_data.clone()));
+    }
+
+    let current_time: std::time::Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    let current_time_ms: u64 = current_time.as_secs() * 1000;
+    let featured_region = FeaturedRegion {
+        time_ms: current_time_ms,
+        x: 0,
+        y: 0,
+        width: 8,
+        height: 8,
+        callout: String::from("Check out this cool featured region"),
+        sol_domain: String::from("willyb.sol"),
+    };
+
+    let ix_push_featured =
+        solana_tapestry::instruction::get_ix_push_featured(payer.pubkey(), featured_region.clone());
+
+    let tx_push_featured = Transaction::new_signed_with_payer(
+        &[ix_push_featured],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    let push_featured_result = banks_client.process_transaction(tx_push_featured).await;
+
+    assert_matches!(push_featured_result, Ok(()));
+
+    {
+        let (featured_state_acct, _) =
+            solana_tapestry::state::find_featured_state_address(&program_id);
+        let featured_state_acct = banks_client
+            .get_account(featured_state_acct)
+            .await
+            .unwrap()
+            .unwrap();
+
+        let featured_state: FeaturedState =
+            try_from_slice_unchecked(&featured_state_acct.data).unwrap();
+
+        assert_eq!(featured_state.featured.len(), 1);
+        let region = featured_state.featured.first().unwrap();
+        assert_eq!(region.time_ms, current_time_ms);
+        assert_eq!(region.x, featured_region.x);
+        assert_eq!(region.y, featured_region.y);
+        assert_eq!(region.width, featured_region.width);
+        assert_eq!(region.height, featured_region.height);
+        assert_eq!(region.callout, featured_region.callout);
+        assert_eq!(region.sol_domain, featured_region.sol_domain);
     }
 
     // TODO(will): add off nominal / malicious test cases

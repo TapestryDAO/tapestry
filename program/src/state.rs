@@ -60,13 +60,16 @@ pub const FEATURED_REGION_MAX_LEN: usize = 0 +
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct FeaturedRegion {
     /// Time that this region was featured in ms since epoch
-    time_ms: u64,
-    x: i16,
-    y: i16,
-    width: i16,
-    height: i16,
-    callout: String,
-    sol_domain: String,
+    pub time_ms: u64,
+    pub x: i16,
+    pub y: i16,
+    pub width: i16,
+    pub height: i16,
+    pub callout: String,
+
+    // TODO(will): Whats the right way to incorporate sol domains?
+    // Need to figure out how they work
+    pub sol_domain: String,
 }
 
 // If you are changing this make sure to update TapestryPatch.ts as well
@@ -152,6 +155,21 @@ pub fn assert_patch_is_valid(
     // TODO(will): maybe check patch owner
 
     Ok(())
+}
+
+pub fn assert_featured_region_valid(region: &FeaturedRegion) -> ProgramResult {
+    assert_coords_valid(region.x, region.y);
+    assert_coords_valid(region.x + region.width, region.y + region.y);
+
+    if region.callout.len() > MAX_FEATURED_CALLOUT_LEN {
+        return Err(TapestryError::FeaturedCalloutTooLong.into());
+    }
+
+    if region.sol_domain.len() > MAX_FEATURED_DOMAIN_LEN {
+        return Err(TapestryError::FeaturedSolDomainTooLong.into());
+    }
+
+    return Ok(())
 }
 
 impl IsInitialized for TapestryPatch {

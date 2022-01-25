@@ -61,6 +61,12 @@ pub enum TapestryError {
 
     #[error("Featured account is incorrect or already allocated")]
     InvalidTapestryFeaturedPDA, // 18
+
+    #[error("Featured callout is too long")]
+    FeaturedCalloutTooLong, // 19
+
+    #[error("Featured callout is too long")]
+    FeaturedSolDomainTooLong, // 20
 }
 
 impl From<TapestryError> for ProgramError {
