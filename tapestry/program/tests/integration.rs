@@ -114,11 +114,6 @@ async fn test_patches() {
 
 #[tokio::test]
 async fn test_chunks() {
-    let my_max = 127i16;
-    assert_eq!(my_max as i8, std::i8::MAX);
-    let my_min = -128i16;
-    assert_eq!(my_min as i8, std::i8::MIN);
-
     assert_matches!(
         chunk_for_coords(0, 0),
         ChunkCoords {
@@ -154,32 +149,32 @@ async fn test_chunks() {
     assert_matches!(
         chunk_for_coords(MAX_X, MAX_Y),
         ChunkCoords {
-            x_chunk: 127,
-            y_chunk: 127,
+            x_chunk: 63,
+            y_chunk: 63,
         }
     );
 
     assert_matches!(
         chunk_for_coords(MIN_X, MIN_Y),
         ChunkCoords {
-            x_chunk: -128,
-            y_chunk: -128,
+            x_chunk: -64,
+            y_chunk: -64,
         }
     );
 
     assert_matches!(
         chunk_for_coords(MIN_X, MAX_Y),
         ChunkCoords {
-            x_chunk: -128,
-            y_chunk: 127,
+            x_chunk: -64,
+            y_chunk: 63,
         }
     );
 
     assert_matches!(
         chunk_for_coords(MAX_X, MIN_Y),
         ChunkCoords {
-            x_chunk: 127,
-            y_chunk: -128,
+            x_chunk: 63,
+            y_chunk: -64,
         }
     );
 }

@@ -5,14 +5,14 @@ import { TapestryProgram } from '../TapestryProgram';
 import { extendBorsh } from "../utils";
 import base58 from 'bs58';
 
-const MAX_X = 1023;
-const MIN_X = -1024;
-const MAX_Y = 1023;
-const MIN_Y = -1024;
+const MAX_X = 511;
+const MIN_X = -512;
+const MAX_Y = 511;
+const MIN_Y = -512;
 const CHUNK_SIZE = 8;
 
-export const MAX_CHUNK_IDX = 127
-export const MIN_CHUNK_IDX = -128
+export const MAX_CHUNK_IDX = 63
+export const MIN_CHUNK_IDX = -64
 
 // This has to be kept in sync with state.rs
 const MAX_PATCH_IMAGE_DATA_LEN = 1024;

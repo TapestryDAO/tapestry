@@ -74,10 +74,10 @@ pub struct FeaturedRegion {
 
 // If you are changing this make sure to update TapestryPatch.ts as well
 
-pub const MAX_X: i16 = 1023;
-pub const MIN_X: i16 = -1024;
-pub const MAX_Y: i16 = 1023;
-pub const MIN_Y: i16 = -1024;
+pub const MAX_X: i16 = 511;
+pub const MIN_X: i16 = -512;
+pub const MAX_Y: i16 = 511;
+pub const MIN_Y: i16 = -512;
 pub const CHUNK_SIZE: i16 = 8;
 
 pub const MAX_PATCH_IMAGE_DATA_LEN: usize = 1024;

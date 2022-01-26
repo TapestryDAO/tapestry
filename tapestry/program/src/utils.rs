@@ -13,6 +13,7 @@ use solana_program::{
     system_instruction,
     sysvar::{rent::Rent, Sysvar},
 };
+
 use std::convert::TryInto;
 
 #[derive(Debug)]
@@ -24,6 +25,8 @@ pub struct ChunkCoords {
 #[inline(always)]
 pub fn chunk_for_coords(x: i16, y: i16) -> ChunkCoords {
     // NOTE(will): maybe assert coords valid here?
+
+    // NOTE(will): amazingly the floor function doesn't seem to work in bpf
     let x_chunk = if x >= 0 {
         x / CHUNK_SIZE
     } else {

@@ -67,14 +67,15 @@ def main():
     fill_pattern(-8, -8, 0, 0, "chunk_border", "buyer")
     fill_pattern(-8, 0, 0, 8, "checker", "buyer")
     fill_pattern(100, 100, 108, 108, "chunk_border", "buyer")
-    fill_pattern(512, 512, 512 + 8, 512 + 8, "chunk_border", "buyer")
+    fill_pattern(504, 504, 504 + 8, 504 + 8, "chunk_border", "buyer")
 
     print("Setting Featured State")
     set_featured(100, 100, 8, 8, "Yo Check out 100, 100!", "willyb.sol", "owner")
-    set_featured(512, 512, 8, 8, "Yo Check out 512, 512!", "someoneelse.sol", "owner")
+    set_featured(504, 504, 8, 8, "Yo Check out 512, 512!", "someoneelse.sol", "owner")
     
     # Kill the locally running validator
     process.kill()
+    process.wait()
 
 if __name__ == "__main__":
     main()
