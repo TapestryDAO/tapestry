@@ -32,6 +32,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--clean", action="store_true")
+    parser.add_argument("--build", action="store_true")
+    parser.add_argument("--deploy", action="store_true")
 
     args = parser.parse_args()
     
@@ -47,14 +49,16 @@ def main():
     if args.clean:
         subprocess.check_call("cargo clean", cwd=MPL_ROOT, shell=True)
 
-    command = ["cargo", "build-bpf"]
-    subprocess.check_call(" ".join(command), cwd=MPL_ROOT, shell=True)
+    if args.build:
+        command = ["cargo", "build-bpf"]
+        subprocess.check_call(" ".join(command), cwd=MPL_ROOT, shell=True)
 
-    for program in MPL_PROGRAMS:
-        src_so = program + ".so"
-        src_key = program + "-keypair.json"
-        shutil.copy(MPL_OUT_DIR / src_so, TAPESTRY_OUT_DIR)
-        shutil.copy(MPL_OUT_DIR / src_key, TAPESTRY_OUT_DIR)
+    if args.deploy:
+        for program in MPL_PROGRAMS:
+            src_so = program + ".so"
+            src_key = program + "-keypair.json"
+            shutil.copy(MPL_OUT_DIR / src_so, TAPESTRY_OUT_DIR)
+            shutil.copy(MPL_OUT_DIR / src_key, TAPESTRY_OUT_DIR)
 
 
 if __name__ == "__main__":

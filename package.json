@@ -9,7 +9,7 @@
   "homepage": ".",
   "scripts": {
     "setup": "yarn setupjs && yarn setuppy && yarn setuprs",
-    "setuprs": "yarn meta:install && yarn tap:prog:build",
+    "setuprs": "yarn meta:install --build && yarn tap:prog:build && yarn meta:install --deploy",
     "setuppy": "poetry install",
     "setupjs": "yarn install && yarn tap:client:setup && yarn tap:app:setup",
     "tap:build": "yarn tap:prog:build && yarn tap:client:build && yarn tap:app:build",
