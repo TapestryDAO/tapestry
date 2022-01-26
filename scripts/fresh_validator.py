@@ -22,7 +22,7 @@ def fill_pattern(xLeft: int, yBot: int, xRight: int, yTop: int, pattern: str, ke
             "--yBot", yBot, 
             "--xRight", xRight, 
             "--yTop", yTop, 
-            "--pattern", f"res/patterns/{pattern}/", 
+            "--pattern", f"tapestry/res/patterns/{pattern}/", 
             "--keyname", keyname
             ])
 

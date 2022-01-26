@@ -24,7 +24,7 @@ def main():
 
     image_width = 24*bootstrap
     image_height = 24*bootstrap
-    image_count = 100 
+    image_count = 100
 
     if not args.skip_download:
         print(f"generating images into {BASE_DIR}")
