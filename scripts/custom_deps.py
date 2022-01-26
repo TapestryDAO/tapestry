@@ -19,7 +19,7 @@ MPL_PROGRAMS = [
     "mpl_token_metadata"
 ]
 
-TAPESTRY_OUT_DIR = TAPESTRY_ROOT / "program" / "target" / "deploy"
+TAPESTRY_OUT_DIR = TAPESTRY_ROOT / "tapestry" / "program" / "target" / "deploy"
 
 # NOTE(will): this exists to allow me to run rust integration tests against
 # the mpl library, I feel like there must be a better way to do this, but I haven't found it

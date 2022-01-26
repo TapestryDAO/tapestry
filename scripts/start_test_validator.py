@@ -17,9 +17,9 @@ MPL_PROGRAMS = [
     "mpl_token_metadata"
 ]
 
-TAPESTRY_OUT_DIR = TAPESTRY_ROOT / "program" / "target" / "release"
+TAPESTRY_OUT_DIR = TAPESTRY_ROOT / "tapestry" / "program" / "target" / "release"
 
-TAPESTRY_DEPLOY_DIR = TAPESTRY_ROOT / "program" / "target" / "deploy"
+TAPESTRY_DEPLOY_DIR = TAPESTRY_ROOT / "tapestry" / "program" / "target" / "deploy"
 MPL_DEPLOY_DIR = TAPESTRY_ROOT / "build" / "custom_deps" / "mpl-program-library" / "target" / "deploy"
 
 PROGRAMS = [
