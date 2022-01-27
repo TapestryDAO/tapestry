@@ -1,4 +1,5 @@
 import Jimp from "jimp"
+import GIF from "gif.js";
 
 const PATCH_WIDTH_PX = 24;
 const PATCH_HEIGHT_PX = 24;
@@ -36,7 +37,6 @@ export const processImage = async (buffer: Buffer, width: number, height: number
         .crop(xOffset, yOffset, imgCroppedWidth, imgCroppedHeight)
         .scale((width * PATCH_WIDTH_PX) / imgCroppedWidth)
 
-    // let bitmap = imgScaled.bitmap;
 
     // 2d array in row major order of patch image data
     let chunks: Buffer[][] = []
@@ -44,20 +44,33 @@ export const processImage = async (buffer: Buffer, width: number, height: number
     for (var y = 0; y < height; y++) {
         chunks.push([])
         for (var x = 0; x < width; x++) {
+
+
             let scapedCopy = await imgScaled.clone();
             let chunk = await scapedCopy.crop(
                 x * PATCH_WIDTH_PX,
                 y * PATCH_HEIGHT_PX,
                 PATCH_WIDTH_PX,
                 PATCH_HEIGHT_PX);
+
             let chunkData = await chunk.getBufferAsync("image/gif");
+            let logWarning = true;
+            let quality = 90
+
             // TODO(will): figure out what exactly this number is
-            if (chunkData.length > 930) {
-                console.log("WARNING: image chunk exceeded 930 bytes: ", chunkData.length)
-                let ditheredAgain = await chunk.dither565();
-                chunkData = await ditheredAgain.getBufferAsync("image/gif");
-                console.log("Post re-dither: ", chunkData.length)
+            while (chunkData.length > 950) {
+                quality = Math.max(50, quality - 10);
+                console.log("Len: " + chunkData.length, " Qual: ", quality);
+                if (logWarning) {
+                    console.log("WARNING: image chunk exceeded 930 bytes: ", chunkData.length, " Reducing Quality")
+                    logWarning = false;
+                }
+
+                chunk = await chunk.quality(quality);
+                chunkData = await chunk.getBufferAsync("image/gif");
             }
+
+
             chunks[y].push(chunkData);
         }
     }
