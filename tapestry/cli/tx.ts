@@ -3,7 +3,7 @@ import yargs, { ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import { TapestryProgram } from '../client/src/TapestryProgram'
 import { FeaturedStateAccount } from '../client/src/accounts/FeaturedState'
 import { ConfirmOptions, LAMPORTS_PER_SOL, sendAndConfirmRawTransaction, sendAndConfirmTransaction, Transaction } from '@solana/web3.js'
-import { confirmTxWithRetry, getBalance, getNewConnection, getRawTransaction, loadKey, loadKeyFromPath, loadPatternFromPath, makeJSONRPC, getPreparedTransaction } from './utils/utils'
+import { confirmTxWithRetry, MaybePatternPatch, Pattern, getBalance, getNewConnection, getRawTransaction, loadKey, loadKeyFromPath, loadPatternFromPath, makeJSONRPC, getPreparedTransaction } from './utils/utils'
 import { applyKeynameOption, applyXYArgOptions, applyRectOption, KeynameOptionArgs, RectOptionArgs } from './utils/commandHelpers'
 import { inspect } from 'util';
 import fs from 'fs';
@@ -246,10 +246,10 @@ const upload_meta = {
 }
 
 type FillCommandArgs =
-    { yTop: number } &
-    { yBot: number } &
-    { xLeft: number } &
-    { xRight: number } &
+    { x: number } &
+    { y: number } &
+    { width: number } &
+    { height: number } &
     { pattern: string } &
     { keyname: string } &
     { buyEmpty: boolean }
@@ -259,23 +259,23 @@ const fill_pattern_command = {
     description: "buy and fill an area with a pattern",
     builder: (args: Argv): Argv<FillCommandArgs> => {
         return applyKeynameOption(args)
-            .option("yTop", {
-                description: "y_top of region to fill",
+            .option("x", {
+                description: "lower left x coordinate of the pattern",
                 type: "number",
                 required: true,
             })
-            .option("yBot", {
-                description: "y_bot of region to fill",
+            .option("y", {
+                description: "lower left y coordinate of the pattern",
                 type: "number",
                 required: true,
             })
-            .option("xLeft", {
-                description: "x left of region to fill",
+            .option("width", {
+                description: "the width of the pattern rect",
                 type: "number",
                 required: true,
             })
-            .option("xRight", {
-                description: "x_right of region to fill",
+            .option("height", {
+                description: "the height of the pattern rect",
                 type: "number",
                 required: true,
             })
@@ -290,11 +290,10 @@ const fill_pattern_command = {
 
         let keypair = loadKey(args.keyname)
         let connection = getNewConnection();
-        let pattern = loadPatternFromPath(args.pattern)
-        let images = pattern.patches.map((p) => new Uint8Array(fs.readFileSync(path.resolve(args.pattern, p.image))))
-        let totalPatches = (args.xRight - args.xLeft) * (args.yTop - args.yBot)
+        let pattern = await loadPatternFromPath(args.pattern)
+        let totalPatches = args.width * args.height
 
-        console.log("Pattern: \n" + inspect(pattern, true, null, true));
+        // console.log("Pattern: \n" + inspect(pattern, true, null, true));
         console.log("Buyer Pubkey : " + keypair.publicKey)
         console.log("Buyer Balance (SOL) : " + await getBalance(keypair.publicKey))
         console.log("Bottom Left: x=" + args.xLeft + " y=" + args.yBot)
@@ -303,14 +302,17 @@ const fill_pattern_command = {
 
         let allPromises: Promise<string>[] = []
 
-        const getPatchIndex = (x: number, y: number): number => {
-            let patternX = (x - args.xLeft) % pattern.pattern[0].length
-            let patternY = (pattern.pattern.length - 1) - ((y - args.yBot) % pattern.pattern.length)
-            return pattern.pattern[patternY][patternX] - 1
+        const getPatch = (x: number, y: number): MaybePatternPatch => {
+            let patternX = (x - args.x) % pattern.patches[0].length;
+            let patternY = (pattern.patches.length - 1) - ((y - args.y) % pattern.patches.length);
+            return pattern.patches[patternY][patternX];
         }
 
-        for (let y = args.yBot; y < args.yTop; y++) {
-            for (let x = args.xLeft; x < args.xRight; x++) {
+        const yTop = args.y + args.height;
+        const xRight = args.x + args.width;
+
+        for (let y = args.y; y < yTop; y++) {
+            for (let x = args.x; x < xRight; x++) {
 
                 if (allPromises.length > 100) {
                     allPromises = allPromises.filter(p => {
@@ -327,9 +329,9 @@ const fill_pattern_command = {
                     }
                 }
 
-                const patchIndex = getPatchIndex(x, y)
+                const patch = getPatch(x, y)
 
-                if (!args.buyEmpty && patchIndex < 0) {
+                if (!args.buyEmpty && patch === null) {
                     continue
                 }
 
@@ -343,15 +345,19 @@ const fill_pattern_command = {
                 let updatePromise = sendAndConfirmTransaction(connection, tx, [keypair], txConfig).then(async (value) => {
                     console.log("Confirmed Purchase: " + x + " , " + y + "  SIG: " + value)
 
-                    if (patchIndex < 0) {
-                        return "no upload"
+                    if (patch === null || patch.imageBuffer === undefined) {
+                        return "no image upload"
                     }
+
+                    let imageData = new Uint8Array(patch.imageBuffer);
+
+                    console.log("Data len: ", imageData.length)
 
                     let tx = new Transaction().add(await TapestryProgram.updatePatchImage({
                         x: x,
                         y: y,
                         owner: keypair.publicKey,
-                        image_data: images[patchIndex],
+                        image_data: imageData,
                     }));
 
                     return sendAndConfirmTransaction(connection, tx, [keypair], txConfig)
@@ -360,12 +366,12 @@ const fill_pattern_command = {
                         console.log("Confirmed Upload: " + x + " , " + y + "  SIG: " + value)
                     }
 
-                    if (patchIndex < 0) {
-                        return "no upload"
+                    if (patch === null || (patch.url === null && patch.hoverText === null)) {
+                        return "no meta upload"
                     }
 
-                    const url = pattern.patches[patchIndex].url
-                    const hoverText = pattern.patches[patchIndex].hoverText
+                    const url = patch.url
+                    const hoverText = patch.hoverText
 
                     if (!url && !hoverText) {
                         return "no meta"

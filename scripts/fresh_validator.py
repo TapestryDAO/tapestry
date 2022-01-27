@@ -16,12 +16,12 @@ def run_command(args, cwd=TAPESTRY_ROOT):
     subprocess.check_call(full_command, cwd=TAPESTRY_ROOT, shell=True)
 
 
-def fill_pattern(xLeft: int, yBot: int, xRight: int, yTop: int, pattern: str, keyname: str):
+def fill_pattern(x: int, y: int, width: int, height: int, pattern: str, keyname: str):
         run_command(["tap", "tx", "fillpattern",
-            "--xLeft", xLeft,
-            "--yBot", yBot, 
-            "--xRight", xRight, 
-            "--yTop", yTop, 
+            "-x", x,
+            "-y", y, 
+            "--width", width, 
+            "--height", height, 
             "--pattern", f"tapestry/res/patterns/{pattern}/", 
             "--keyname", keyname
             ])
@@ -63,14 +63,17 @@ def main():
 
     print("Initializing Tapestry State")
     run_command(["tap", "tx", "init", "--keyname", "owner"])
-    fill_pattern(0, 0, 20, 20, "hello", "buyer")
-    fill_pattern(-8, -8, 0, 0, "chunk_border", "buyer")
-    fill_pattern(-8, 0, 0, 8, "checker", "buyer")
-    fill_pattern(100, 100, 108, 108, "chunk_border", "buyer")
-    fill_pattern(504, 504, 504 + 8, 504 + 8, "chunk_border", "buyer")
+
+    print("Purchasing initial patches")
+    fill_pattern(0, 0, 8, 13, "vango", "buyer")
+    fill_pattern(-8, -8, 8, 8, "chunk_border", "buyer")
+    fill_pattern(20, 20, 4, 5, "dino", "buyer")
+    fill_pattern(-16, -8, 8, 8, "checker", "buyer")
+    fill_pattern(100, 100, 8, 6, "greece", "buyer")
+    fill_pattern(504, 504, 8, 8, "chunk_border", "buyer")
 
     print("Setting Featured State")
-    set_featured(100, 100, 8, 8, "Yo Check out 100, 100!", "willyb.sol", "owner")
+    set_featured(100, 100, 8, 6, "Greece!", "willyb.sol", "owner")
     set_featured(504, 504, 8, 8, "Yo Check out 512, 512!", "someoneelse.sol", "owner")
     
     # Kill the locally running validator
