@@ -6,6 +6,7 @@ const PATCH_HEIGHT_PX = 24;
 
 export const processImage = async (buffer: Buffer, width: number, height: number) => {
     let image = await Jimp.read(buffer)
+
     let aspectOutput = width / height;
     let aspectInput = image.getWidth() / image.getHeight();
     let imgCroppedHeight = image.getHeight();
@@ -21,22 +22,22 @@ export const processImage = async (buffer: Buffer, width: number, height: number
         console.log("Aspects match, no initial crop needed");
     }
 
-    imgCroppedHeight = Math.floor(imgCroppedHeight);
-    imgCroppedWidth = Math.floor(imgCroppedWidth);
-
-    const xOffset = Math.floor((image.getWidth() - imgCroppedWidth) / 2);
-    const yOffset = Math.floor((image.getHeight() - imgCroppedHeight) / 2);
+    const xOffset = (image.getWidth() - imgCroppedWidth) / 2;
+    const yOffset = (image.getHeight() - imgCroppedHeight) / 2;
+    let xScale = (width * PATCH_WIDTH_PX) / imgCroppedWidth;
+    let yScale = (height * PATCH_HEIGHT_PX) / imgCroppedHeight;
+    let scale = Math.max(xScale, yScale);
 
     // console.log("SrcImg: ", image.getWidth(), image.getHeight());
     // console.log("DstImg: ", imgCroppedWidth, imgCroppedHeight);
     // console.log("Offset: ", xOffset, yOffset)
-    // Crop the image so it matches the input aspect ratio
-    // then scale it so it maches the true pixel size of the patches
+    // console.log("Scale: ", scale);
 
     let imgScaled = await image
         .crop(xOffset, yOffset, imgCroppedWidth, imgCroppedHeight)
-        .scale((width * PATCH_WIDTH_PX) / imgCroppedWidth)
+        .scale(scale)
 
+    // console.log("Scaled Size: ", imgScaled.getWidth(), imgScaled.getHeight());
 
     // 2d array in row major order of patch image data
     let chunks: Buffer[][] = []
