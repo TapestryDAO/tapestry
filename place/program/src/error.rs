@@ -6,6 +6,9 @@ use solana_program::program_error::ProgramError;
 pub enum PlaceError {
     #[error("Invalid Instruction")]
     InvalidInstruction, // 0
+
+    #[error("Incorrect patch pda")]
+    IncorrectPatchPDA, // 1
 }
 
 impl From<PlaceError> for ProgramError {

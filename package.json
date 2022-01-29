@@ -20,7 +20,6 @@
     "tap:prog:test": "cd tapestry/program && cargo test-bpf",
     "tap:client:setup": "cd tapestry/client && yarn install",
     "tap:client:build": "cd tapestry/client && yarn build",
-    "tap:client:testt": "cd tapestry/cient && yarn test",
     "tap:app:setup": "cd tapestry/app && yarn install",
     "tap:app:build": "cd tapestry/app && yarn build",
     "tap:app:start": "cd tapestry/app && yarn start",
