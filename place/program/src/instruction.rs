@@ -11,8 +11,7 @@ pub struct PurchaseAccountDataArgs {
     // any?
 }
 
-
-pub struct PuchaseAccountAccountArgs<'a, 'b: 'a> {
+pub struct PurchaseAccountAccountArgs<'a, 'b: 'a> {
     /// `[signer]` Account that will own this... account... fuck
     pub payer_acct: &'a AccountInfo<'b>,
 }

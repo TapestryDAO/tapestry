@@ -1,7 +1,8 @@
 use solana_program::{
-    account_info::{Account, AccountInfo},
+    account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     pubkey::Pubkey,
+    sysvar::{clock::Clock, Sysvar},
 };
 
 use crate::instruction::{PlaceInstruction, PurchaseAccountAccountArgs, PurchaseAccountDataArgs};
@@ -22,10 +23,12 @@ impl Processor {
                 let acct_info_iter = &mut accounts.iter();
                 let payer_acct = next_account_info(acct_info_iter)?;
 
-                let account_args = PurchaseAccountAccountArgs { payer_acct };
-                process_purchase_account()
+                let acct_args = PurchaseAccountAccountArgs { payer_acct };
+                process_purchase_account(program_id, acct_args, &args)
             }
         }
+
+        // TODO(will): Do i need to do something if nothing matches?
     }
 }
 
@@ -36,5 +39,6 @@ fn process_purchase_account(
 ) -> ProgramResult {
     let PurchaseAccountAccountArgs { payer_acct } = acct_args;
 
+    let clock = Clock::get();
     Ok(())
 }
