@@ -1,0 +1,6 @@
+pub const PLACE_HEIGHT_PX: u16 = 1024;
+
+pub const PLACE_WIDTH_PX: u16 = 1024;
+
+pub const BASE_ACCOUNT_COST_LAMPORTS: u64 = 100_000_000;
+
