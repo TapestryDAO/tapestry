@@ -28,7 +28,7 @@ pub const PLACE_WIDTH_PX: u16 = 1920;
 
 // 1080 / 40 = 27
 // 1920 / 40 = 48
-// 54 * 96 = 1296
+// 27 * 48 = 1296
 pub const PATCH_SIZE_PX: usize = 40;
 
 pub const PATCH_PDA_PREFIX: &str = "patch";
