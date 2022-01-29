@@ -13,6 +13,7 @@
     "setuppy": "poetry install",
     "setupjs": "yarn install && yarn tap:client:setup && yarn tap:app:setup",
     "place:prog:build": "cd place/program && cargo build-bpf",
+    "place:prog:test": "cd place/program && cargo test-bpf",
     "tap:build": "yarn tap:prog:build && yarn tap:client:build && yarn tap:app:build",
     "tap:test": "yarn tap:prog:test && echo \"You should probably make more tests...\"",
     "tap:prog:build": "cd tapestry/program && cargo build-bpf",
