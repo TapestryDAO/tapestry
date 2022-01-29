@@ -45,4 +45,15 @@ async fn test_purchase_account() {
     let set_pixel_result = banks_client.process_transaction(set_pixel_tx).await;
     assert_matches!(set_pixel_result, Ok(()));
 
+    {
+        let patch_acct = banks_client
+            .get_account(patch_pda)
+            .await
+            .unwrap()
+            .unwrap();
+
+        let mut row = 0;
+        
+    }
+
 }
