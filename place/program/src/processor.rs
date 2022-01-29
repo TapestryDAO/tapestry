@@ -90,8 +90,8 @@ fn process_set_pixel(
     let SetPixelDataArgs {
         x,
         y,
-        xOffset,
-        yOffset,
+        x_offset,
+        y_offset,
         pixel,
     } = data_args;
 
@@ -133,7 +133,7 @@ fn process_set_pixel(
 
     // TODO(will): maybe think about overflow
 
-    let num_pixels = ((yOffset * patch_size) + xOffset) as usize;
+    let num_pixels = ((y_offset * patch_size) + x_offset) as usize;
     let idx = num_pixels * PIXEL_SIZE_BYTES;
     patch.pixels[idx] = pixel[0];
     patch.pixels[idx + 1] = pixel[1];

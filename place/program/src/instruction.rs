@@ -18,8 +18,8 @@ pub enum PlaceInstruction {
 pub struct SetPixelDataArgs {
     pub x: u8,
     pub y: u8,
-    pub xOffset: u8,
-    pub yOffset: u8,
+    pub x_offset: u8,
+    pub y_offset: u8,
     // RGB pixel value
     pub pixel: [u8; 3],
 }
@@ -39,8 +39,8 @@ pub fn get_ix_set_pixel(
     payer: Pubkey,
     x: u8,
     y: u8,
-    xOffset: u8,
-    yOffset: u8,
+    x_offset: u8,
+    y_offset: u8,
     pixel: [u8; 3],
 ) -> Instruction {
     let (patch_pda, _) = find_address_for_patch(x, y, &program_id);
@@ -48,6 +48,7 @@ pub fn get_ix_set_pixel(
     Instruction {
         program_id,
         accounts: vec![
+            // TODO(will): this doesn't need to be writable after removing lazy alloc
             AccountMeta::new(payer, true),
             AccountMeta::new(patch_pda, false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
@@ -55,8 +56,8 @@ pub fn get_ix_set_pixel(
         data: PlaceInstruction::SetPixel(SetPixelDataArgs {
             x: x,
             y: y,
-            xOffset: xOffset,
-            yOffset: yOffset,
+            x_offset: x_offset,
+            y_offset: y_offset,
             pixel: pixel,
         })
         .try_to_vec()
