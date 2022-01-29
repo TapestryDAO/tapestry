@@ -31,6 +31,8 @@ pub const PLACE_WIDTH_PX: u16 = 1920;
 // 27 * 48 = 1296
 pub const PATCH_SIZE_PX: usize = 40;
 
+pub const PIXEL_SIZE_BYTES: usize = 3;
+
 pub const PATCH_PDA_PREFIX: &str = "patch";
 
 pub fn find_address_for_patch(x: u8, y: u8, program_id: &Pubkey) -> (Pubkey, u8) {
