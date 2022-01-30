@@ -14,7 +14,7 @@
             "module-resolver",
             {
                 "alias": {
-                    "^@tapestrydao/client": "../client/build"
+                    "^@tapestrydao/place-client": "../client/build"
                 }
             }
         ]

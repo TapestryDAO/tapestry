@@ -19,7 +19,7 @@
         // "checkJs": true /* Report errors in .js files. Works in tandem with allowJs. */,
         "baseUrl": "../",
         "paths": {
-            "@tapestry-place/client": [
+            "@tapestrydao/place-client": [
                 "client/build"
             ],
         }
