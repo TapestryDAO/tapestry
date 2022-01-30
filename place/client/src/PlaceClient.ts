@@ -45,6 +45,8 @@ export class PlaceClient {
             buf.writeUInt8(gValue, bufOffset + 1);
             buf.writeUInt8(bValue, bufOffset + 2);
             buf.writeUInt8(255, bufOffset + 3); // 0 or 255 for alpha?
+
+            counter += 1;
         }
 
         this.colorPallete = buf
