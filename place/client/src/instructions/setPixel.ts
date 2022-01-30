@@ -17,6 +17,17 @@ export class PixelColorData extends Borsh.Data<PixelColorArgs> {
             ['b', 'u8'],
         ])
     ])
+
+    r: number;
+    g: number;
+    b: number;
+
+    constructor(args: PixelColorArgs) {
+        super(args);
+        this.r = args.r;
+        this.g = args.g;
+        this.b = args.b;
+    }
 }
 
 export type SetPixelArgs = {

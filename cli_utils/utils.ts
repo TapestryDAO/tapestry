@@ -5,7 +5,7 @@ import { execSync, exec } from 'child_process'
 import axios from 'axios';
 import { exit } from 'process';
 import { inspect } from 'util';
-import { processImage } from '../../timp/src';
+import { processImage } from '../tapestry/timp/src';
 
 const TAPESTRY_ROOT = process.env.TAPESTRY_ROOT as string;
 

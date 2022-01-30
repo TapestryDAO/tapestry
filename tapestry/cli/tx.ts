@@ -3,8 +3,20 @@ import yargs, { ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import { TapestryProgram } from '../client/src/TapestryProgram'
 import { FeaturedStateAccount } from '../client/src/accounts/FeaturedState'
 import { ConfirmOptions, LAMPORTS_PER_SOL, sendAndConfirmRawTransaction, sendAndConfirmTransaction, Transaction } from '@solana/web3.js'
-import { confirmTxWithRetry, MaybePatternPatch, Pattern, getBalance, getNewConnection, getRawTransaction, loadKey, loadKeyFromPath, loadPatternFromPath, makeJSONRPC, getPreparedTransaction } from './utils/utils'
-import { applyKeynameOption, applyXYArgOptions, applyRectOption, KeynameOptionArgs, RectOptionArgs } from './utils/commandHelpers'
+import {
+    MaybePatternPatch,
+    Pattern,
+    getBalance,
+    getNewConnection,
+    getRawTransaction,
+    loadKey,
+    loadKeyFromPath,
+    loadPatternFromPath,
+    makeJSONRPC,
+    getPreparedTransaction
+} from '../../cli_utils/utils'
+
+import { applyKeynameOption, applyXYArgOptions, applyRectOption, KeynameOptionArgs, RectOptionArgs } from '../../cli_utils/commandHelpers'
 import { inspect } from 'util';
 import fs from 'fs';
 import base58 from 'bs58'

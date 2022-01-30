@@ -4,7 +4,7 @@ import {
     TransactionInstruction,
 } from '@solana/web3.js'
 import { Program } from '@metaplex-foundation/mpl-core'
-import { SetPixelArgsData } from './instructions/setPixel';
+import { SetPixelArgsData, PixelColorData } from './instructions/setPixel';
 
 export const PLACE_HEIGHT_PX = 1080;
 export const PLACE_WIDTH_PX = 1920;
@@ -26,23 +26,25 @@ type PixelPatchCoords = {
 }
 
 export class PlaceProgram extends Program {
-    static readonly PUBKEY: PublicKey = new PublicKey('TapestryArt11111111111111111111111111111111');
+    static readonly PUBKEY: PublicKey = new PublicKey('tapestry11111111111111111111111111111111111');
 
     static readonly PATCH_PDA_PREFIX = "patch";
 
     static async setPixel(params: SetPixelParams) {
         let patchCoords = this.computePatchCoords(params.x, params.y);
 
+        let pixelData = new PixelColorData({
+            r: params.pixel[0],
+            g: params.pixel[1],
+            b: params.pixel[2],
+        });
+
         let data = SetPixelArgsData.serialize({
             x: patchCoords.xPatch,
             y: patchCoords.yPatch,
             x_offset: patchCoords.xOffset,
             y_offset: patchCoords.yOffset,
-            pixel: {
-                r: params.pixel[0],
-                g: params.pixel[1],
-                b: params.pixel[2],
-            }
+            pixel: pixelData,
         });
 
         let patchPda = await this.findPatchPda(patchCoords.xPatch, patchCoords.yPatch);

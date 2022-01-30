@@ -7,4 +7,4 @@ pub mod utils;
 #[cfg(not(feature = "no-entrypoint"))]
 pub mod entrypoint;
 
-solana_program::declare_id!("TapestryArt11111111111111111111111111111111");
+solana_program::declare_id!("tapestry11111111111111111111111111111111111");

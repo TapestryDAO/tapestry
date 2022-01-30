@@ -5,6 +5,8 @@ import subprocess
 import sys
 from time import sleep
 
+import argparse
+
 TAPESTRY_ROOT = Path(os.environ["TAPESTRY_ROOT"])
 
 KEYS_DIR = TAPESTRY_ROOT / "keys"
@@ -40,6 +42,11 @@ def set_featured(x: int, y: int, width: int, height: int, callout: str, sol_doma
 
 def main():
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--place_only", action="store_true", default=False)
+
+    args = parser.parse_args()
+
     print("Checking Keys")
     buyer_keypath = KEYS_DIR / "buyer.json"
     if not buyer_keypath.exists():
@@ -64,17 +71,18 @@ def main():
     print("Initializing Tapestry State")
     run_command(["tap", "tx", "init", "--keyname", "owner"])
 
-    print("Purchasing initial patches")
-    fill_pattern(0, 0, 8, 13, "vango", "buyer")
-    fill_pattern(-8, -8, 8, 8, "chunk_border", "buyer")
-    fill_pattern(20, 20, 4, 5, "dino", "buyer")
-    fill_pattern(-16, -8, 8, 8, "checker", "buyer")
-    fill_pattern(100, 100, 8, 6, "greece", "buyer")
-    fill_pattern(504, 504, 8, 8, "chunk_border", "buyer")
+    if not args.place_only:
+        print("Purchasing initial patches")
+        fill_pattern(0, 0, 8, 13, "vango", "buyer")
+        fill_pattern(-8, -8, 8, 8, "chunk_border", "buyer")
+        fill_pattern(20, 20, 4, 5, "dino", "buyer")
+        fill_pattern(-16, -8, 8, 8, "checker", "buyer")
+        fill_pattern(100, 100, 8, 6, "greece", "buyer")
+        fill_pattern(504, 504, 8, 8, "chunk_border", "buyer")
 
-    print("Setting Featured State")
-    set_featured(100, 100, 8, 6, "Greece!", "willyb.sol", "owner")
-    set_featured(504, 504, 8, 8, "Yo Check out 512, 512!", "someoneelse.sol", "owner")
+        print("Setting Featured State")
+        set_featured(100, 100, 8, 6, "Greece!", "willyb.sol", "owner")
+        set_featured(504, 504, 8, 8, "Yo Check out 512, 512!", "someoneelse.sol", "owner")
     
     # Kill the locally running validator
     process.kill()
