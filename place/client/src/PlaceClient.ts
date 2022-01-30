@@ -17,6 +17,12 @@ export class PlaceClient {
     private didSubscribe = false
     private subscription: number | null = null;
 
+    // A buffer containing a color pallete
+    // a color pallete is mapping from 8 bit values to full 32 bit color values (RBGA)
+    // simply use the 8 bit value, multiplied by 4 to find the index of the mapping
+    // for that value
+    private colorPallete: Buffer | null = null;
+
     constructor(connection: Connection) {
         this.connection = connection;
     }
