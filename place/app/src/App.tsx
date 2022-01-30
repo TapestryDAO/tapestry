@@ -21,11 +21,15 @@ export const TapestryCanvas: FC = (props) => {
             return;
         }
 
+        context.imageSmoothingEnabled = false;
+
         console.log("DRAW!");
 
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d') as CanvasRenderingContext2D
-        context.imageSmoothingEnabled = false;
+
+    
+        // Setup Next Frame
         previousTimeRef.current = time;
         animateRequestRef.current = requestAnimationFrame(animate);
     }
