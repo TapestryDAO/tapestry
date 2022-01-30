@@ -4,7 +4,7 @@ import {
     TransactionInstruction,
 } from '@solana/web3.js'
 import { Program } from '@metaplex-foundation/mpl-core'
-import { SetPixelArgsData, PixelColorData } from './instructions/setPixel';
+import { SetPixelArgsData } from './instructions/setPixel';
 
 export const PLACE_HEIGHT_PX = 1080;
 export const PLACE_WIDTH_PX = 1920;
@@ -14,7 +14,7 @@ export const PIXEL_SIZE_BYTES = 3;
 export type SetPixelParams = {
     x: number,
     y: number,
-    pixel: number[],
+    pixel: number,
     payer: PublicKey,
 }
 
@@ -33,18 +33,12 @@ export class PlaceProgram extends Program {
     static async setPixel(params: SetPixelParams) {
         let patchCoords = this.computePatchCoords(params.x, params.y);
 
-        let pixelData = new PixelColorData({
-            r: params.pixel[0],
-            g: params.pixel[1],
-            b: params.pixel[2],
-        });
-
         let data = SetPixelArgsData.serialize({
             x: patchCoords.xPatch,
             y: patchCoords.yPatch,
             x_offset: patchCoords.xOffset,
             y_offset: patchCoords.yOffset,
-            pixel: pixelData,
+            pixel: params.pixel,
         });
 
         let patchPda = await this.findPatchPda(patchCoords.xPatch, patchCoords.yPatch);

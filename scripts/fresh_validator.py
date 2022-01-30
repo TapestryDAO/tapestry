@@ -95,9 +95,7 @@ def main():
                     "--keyname", "buyer", 
                     "-x", x * 40,
                     "-y", y * 40,
-                    "-r", 255,
-                    "-g", 0, 
-                    "-b", 0,
+                    "-c", 100,
                 ])
     
     # Kill the locally running validator

@@ -7,27 +7,15 @@ import { PlaceProgram, SetPixelParams } from '../client/src/PlaceProgram'
 type SetPixelCommandArgs =
     XYOptionArgs &
     KeynameOptionArgs &
-    { r: number } &
-    { g: number } &
-    { b: number }
+    { c: number }
 
 const set_pixel_command = {
     command: "set_pixel",
     description: "set a pixel to an rgb value",
     builder: (args: Argv): Argv<SetPixelCommandArgs> => {
         return applyXYArgOptions(applyKeynameOption(args))
-            .option("r", {
-                description: "red value",
-                type: "number",
-                required: true,
-            })
-            .option("g", {
-                description: "green value",
-                type: "number",
-                required: true,
-            })
-            .option("b", {
-                description: "blue value",
+            .option("c", {
+                description: "8 bit color value, 0-255",
                 type: "number",
                 required: true,
             })
@@ -40,7 +28,7 @@ const set_pixel_command = {
         let params: SetPixelParams = {
             x: args.x,
             y: args.y,
-            pixel: [args.r, args.g, args.b],
+            pixel: args.c,
             payer: payer.publicKey,
         }
 
