@@ -5,7 +5,7 @@ use solana_place::state::find_address_for_patch;
 use solana_program_test::{processor, tokio, ProgramTest, ProgramTestContext};
 use solana_sdk::{signature::Keypair, signature::Signer, transaction::Transaction};
 
-use solana_place::state::{Patch, PATCH_SIZE_PX, PIXEL_SIZE_BYTES};
+use solana_place::state::{Patch, PATCH_SIZE_PX};
 
 #[tokio::test]
 async fn test_purchase_account() {
@@ -27,7 +27,7 @@ async fn test_purchase_account() {
     let x_offset = 0u8;
     let y_offset = 0u8;
 
-    let pixel: [u8; 3] = [0, 0, 0];
+    let pixel: u8 = 0b10101010;
 
     let (patch_pda, _) = find_address_for_patch(x, y, &program_id);
 
@@ -61,18 +61,14 @@ async fn test_purchase_account() {
 
         let patch: Patch = try_from_slice_unchecked(&patch_acct.data).unwrap();
 
+        // iterate over patches
         for y in 0..PATCH_SIZE_PX {
             for x in 0..PATCH_SIZE_PX {
-                let num_pixels = y * PATCH_SIZE_PX + x;
-                let idx = num_pixels * PIXEL_SIZE_BYTES;
+                let idx = y * PATCH_SIZE_PX + x;
                 if x_offset == x as u8 && y_offset == y as u8 {
-                    assert_eq!(0, patch.pixels[idx]);
-                    assert_eq!(0, patch.pixels[idx + 1]);
-                    assert_eq!(0, patch.pixels[idx + 2]);
+                    assert_eq!(pixel, patch.pixels[idx])
                 } else {
-                    assert_eq!(255, patch.pixels[idx]);
-                    assert_eq!(255, patch.pixels[idx + 1]);
-                    assert_eq!(255, patch.pixels[idx + 2]);
+                    assert_eq!(255 as u8, patch.pixels[idx]);
                 }
             }
         }

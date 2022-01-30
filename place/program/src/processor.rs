@@ -15,7 +15,6 @@ use crate::error::PlaceError::{IncorrectPatchPDA, InvalidInstruction};
 
 use crate::state::{
     find_address_for_patch, Patch, PATCH_DATA_LEN, PATCH_PDA_PREFIX, PATCH_SIZE_PX,
-    PIXEL_SIZE_BYTES,
 };
 
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -128,17 +127,14 @@ fn process_set_pixel(
     if did_allocate {
         patch.x = *x;
         patch.y = *y;
-        patch.pixels = vec![255; PATCH_SIZE_PX * PATCH_SIZE_PX * 3];
+        patch.pixels = vec![255; PATCH_SIZE_PX * PATCH_SIZE_PX];
     }
 
     // TODO(will): maybe think about overflow
 
     let num_pixels = ((y_offset * patch_size) + x_offset) as usize;
-    let idx = num_pixels * PIXEL_SIZE_BYTES;
-    patch.pixels[idx] = pixel[0];
-    patch.pixels[idx + 1] = pixel[1];
-    patch.pixels[idx + 2] = pixel[2];
-
+    let idx = num_pixels;
+    patch.pixels[idx] = *pixel;
     patch.serialize(&mut *patch_pda_acct.data.borrow_mut())?;
 
     Ok(())

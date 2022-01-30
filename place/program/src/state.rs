@@ -31,8 +31,6 @@ pub const PLACE_WIDTH_PX: u16 = 1920;
 // 27 * 48 = 1296
 pub const PATCH_SIZE_PX: usize = 40;
 
-pub const PIXEL_SIZE_BYTES: usize = 3;
-
 pub const PATCH_PDA_PREFIX: &str = "patch";
 
 pub fn find_address_for_patch(x: u8, y: u8, program_id: &Pubkey) -> (Pubkey, u8) {
@@ -48,7 +46,7 @@ pub fn find_address_for_patch(x: u8, y: u8, program_id: &Pubkey) -> (Pubkey, u8)
 
 /// Length of this
 ///
-pub const PATCH_DATA_LEN: usize = 0 + 1 + 1 + 4 + (1600 * 3);
+pub const PATCH_DATA_LEN: usize = 0 + 1 + 1 + 4 + 1600;
 
 /// In order to prevent a global write lock, i'll chunk the pixel into regions
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]

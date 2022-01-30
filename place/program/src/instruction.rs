@@ -20,8 +20,9 @@ pub struct SetPixelDataArgs {
     pub y: u8,
     pub x_offset: u8,
     pub y_offset: u8,
-    // RGB pixel value
-    pub pixel: [u8; 3],
+
+    // 8 bit value, which gets mapped to a 32 bit color from a pallete on clients
+    pub pixel: u8,
 }
 
 pub struct SetPixelAccountArgs<'a, 'b: 'a> {
@@ -41,7 +42,7 @@ pub fn get_ix_set_pixel(
     y: u8,
     x_offset: u8,
     y_offset: u8,
-    pixel: [u8; 3],
+    pixel: u8,
 ) -> Instruction {
     let (patch_pda, _) = find_address_for_patch(x, y, &program_id);
 
