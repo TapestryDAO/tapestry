@@ -58,6 +58,8 @@ pub struct Patch {
     // y coordinate of the patch ULO
     pub y: u8,
 
+    // NOTE(will): might be easier to store lines here
+
     // Pixels in row major order
     pub pixels: Vec<u8>,
 }
