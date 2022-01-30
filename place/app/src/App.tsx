@@ -23,6 +23,9 @@ export const TapestryCanvas: FC = (props) => {
 
         console.log("DRAW!");
 
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d') as CanvasRenderingContext2D
+        context.imageSmoothingEnabled = false;
         previousTimeRef.current = time;
         animateRequestRef.current = requestAnimationFrame(animate);
     }
@@ -38,14 +41,14 @@ export const TapestryCanvas: FC = (props) => {
         }
     }, []);
 
-    useEffect(() => {
-        const canvas = canvasRef.current; // TODO(will): how to cast?
-        const context = canvas.getContext('2d') as CanvasRenderingContext2D
-        context.imageSmoothingEnabled = false;
+    // useEffect(() => {
+    //     const canvas = canvasRef.current; // TODO(will): how to cast?
+    //     const context = canvas.getContext('2d') as CanvasRenderingContext2D
+    //     context.imageSmoothingEnabled = false;
 
-        context.fillStyle = '#FF0000'
-        context.fillRect(0, 0, context.canvas.width, context.canvas.height)
-    })
+    //     context.fillStyle = '#FF0000'
+    //     context.fillRect(0, 0, context.canvas.width, context.canvas.height)
+    // })
 
     return (
         <div style={{ scale: "1,1" }} >
