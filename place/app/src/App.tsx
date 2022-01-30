@@ -31,8 +31,8 @@ export const TapestryCanvas: FC = (props) => {
             let update = placeClient.updatesQueue.pop();
 
             console.log("Draw: ", update.x, update.y, update.width, update.height);
-            let imageData = new ImageData(update.image, update.width, update.height);
-            context.putImageData(imageData, update.x, update.y)
+            let imageData = new ImageData(update.image, update.width, update.height, { colorSpace: "srgb" });
+            context.putImageData(imageData, 0, 0, update.x, update.y, update.width, update.height);
         }
 
         // Setup Next Frame
@@ -47,7 +47,6 @@ export const TapestryCanvas: FC = (props) => {
         let placeClient = PlaceClient.getInstance();
 
         placeClient.fetchAllPatches();
-        placeClient.subscribeToPatchUpdates();
 
         return () => {
             if (animateRequestRef.current !== null) {

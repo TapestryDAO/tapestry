@@ -57,7 +57,7 @@ export class PlaceClient {
             buf.writeUInt8(rValue, bufOffset);
             buf.writeUInt8(gValue, bufOffset + 1);
             buf.writeUInt8(bValue, bufOffset + 2);
-            buf.writeUInt8(255, bufOffset + 3); // 0 or 255 for alpha?
+            buf.writeUInt8(0, bufOffset + 3); // 0 or 255 for alpha?
 
             counter += 1;
         }
@@ -75,8 +75,7 @@ export class PlaceClient {
 
     public subscribeToPatchUpdates() {
         extendBorsh();
-        if (this.didSubscribe) return;
-        this.didSubscribe = true;
+        if (this.subscription != null) return;
 
         console.log("Subscribing to patch updates");
         this.subscription = this.connection.onProgramAccountChange(PlaceProgram.PUBKEY, async (accountInfo, ctx) => {
@@ -129,15 +128,6 @@ export class PlaceClient {
         });
 
         for (const acct of allAccountsParsed) {
-            // let buf = Buffer.alloc(acct.pixels.length * 4);
-            // for (const pixel8Bit of acct.pixels) {
-            //     let colorOffset = pixel8Bit * 4
-            //     buf.writeUInt8(this.colorPallete[colorOffset]);
-            //     buf.writeUInt8(this.colorPallete[colorOffset + 1]);
-            //     buf.writeUInt8(this.colorPallete[colorOffset + 2]);
-            //     buf.writeUInt8(this.colorPallete[colorOffset + 3]);
-            // }
-
             this.updatesQueue.push({
                 x: acct.x,
                 y: acct.y,
@@ -146,5 +136,7 @@ export class PlaceClient {
                 image: this.patchAccountToPixels(acct),
             })
         }
+
+        this.subscribeToPatchUpdates();
     }
 }
