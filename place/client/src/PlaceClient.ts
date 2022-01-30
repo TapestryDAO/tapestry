@@ -3,6 +3,7 @@ import { Signal } from 'type-signals';
 import { PlaceProgram } from ".";
 import { PatchData } from "./accounts/Patch";
 import { extendBorsh } from "./utils/borsh";
+import { pallete } from "./Pallete";
 
 
 const makeKey = (patch: PatchData): string => {
@@ -21,10 +22,32 @@ export class PlaceClient {
     // a color pallete is mapping from 8 bit values to full 32 bit color values (RBGA)
     // simply use the 8 bit value, multiplied by 4 to find the index of the mapping
     // for that value
-    private colorPallete: Buffer | null = null;
+    private colorPallete: Buffer;
 
     constructor(connection: Connection) {
         this.connection = connection;
+
+        let bufSize = pallete.length * 4;
+        let buf = Buffer.alloc(bufSize);
+
+        var counter = 0;
+        for (const color of pallete) {
+            let rString = color.substring(0, 2);
+            let gString = color.substring(2, 4);
+            let bString = color.substring(4, 6);
+
+            let rValue = parseInt(rString, 16);
+            let gValue = parseInt(gString, 16);
+            let bValue = parseInt(bString, 16);
+
+            let bufOffset = counter * 4
+            buf.writeUInt8(rValue, bufOffset);
+            buf.writeUInt8(gValue, bufOffset + 1);
+            buf.writeUInt8(bValue, bufOffset + 2);
+            buf.writeUInt8(255, bufOffset + 3); // 0 or 255 for alpha?
+        }
+
+        this.colorPallete = buf
     }
 
     public static getInstance(): PlaceClient {

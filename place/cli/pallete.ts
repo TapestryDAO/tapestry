@@ -24,7 +24,15 @@ const convert_pallete_command = {
     },
     handler: async (args: ArgumentsCamelCase<ConvertHexToJsonCommandArgs>) => {
         const data = fs.readFileSync(args.inFile, 'utf8');
-        const hexValues = data.split("\n").map((value) => value.trim());
+        const hexValues = data.split("\n")
+            .map((value) => value.trim())
+            .filter((value) => value != "");
+
+        if (hexValues.length > 256) {
+            throw Error("Invalid hex file, too many colors");
+        }
+
+        console.log("Hex file had ", hexValues.length, " colors")
         console.log(hexValues);
         console.log("Writing output json array to ", args.outFile);
         fs.writeFileSync(args.outFile, JSON.stringify(hexValues), 'utf8');
