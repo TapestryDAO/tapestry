@@ -21,14 +21,20 @@ export const TapestryCanvas: FC = (props) => {
             return;
         }
 
-        context.imageSmoothingEnabled = false;
-
-        console.log("DRAW!");
-
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d') as CanvasRenderingContext2D
+        context.imageSmoothingEnabled = false;
 
-    
+        let placeClient = PlaceClient.getInstance();
+
+        while (placeClient.updatesQueue.length > 0) {
+            let update = placeClient.updatesQueue.pop();
+
+            console.log("Draw: ", update.x, update.y, update.width, update.height);
+            let imageData = new ImageData(update.image, update.width, update.height);
+            context.putImageData(imageData, update.x, update.y)
+        }
+
         // Setup Next Frame
         previousTimeRef.current = time;
         animateRequestRef.current = requestAnimationFrame(animate);
@@ -37,6 +43,11 @@ export const TapestryCanvas: FC = (props) => {
     useEffect(() => {
 
         animateRequestRef.current = requestAnimationFrame(animate)
+
+        let placeClient = PlaceClient.getInstance();
+
+        placeClient.fetchAllPatches();
+        placeClient.subscribeToPatchUpdates();
 
         return () => {
             if (animateRequestRef.current !== null) {

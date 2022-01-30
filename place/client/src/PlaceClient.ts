@@ -5,10 +5,21 @@ import { PatchData } from "./accounts/Patch";
 import { extendBorsh } from "./utils/borsh";
 import { pallete } from "./Pallete";
 
+export const PATCH_WIDTH = 40;
+export const PATCH_HEIGHT = 40;
+
 
 const makeKey = (patch: PatchData): string => {
     return "" + patch.x + "," + patch.y;
 }
+
+export type CanvasUpdate = {
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    image: Uint8ClampedArray,
+};
 
 export class PlaceClient {
     private static instance: PlaceClient;
@@ -23,6 +34,8 @@ export class PlaceClient {
     // simply use the 8 bit value, multiplied by 4 to find the index of the mapping
     // for that value
     private colorPallete: Buffer;
+
+    public updatesQueue: CanvasUpdate[] = [];
 
     constructor(connection: Connection) {
         this.connection = connection;
@@ -71,16 +84,39 @@ export class PlaceClient {
             let data = accountInfo.accountInfo.data;
             if (data !== undefined) {
                 let patch = PatchData.deserialize(accountInfo.accountInfo.data)
-                console.log("PATCH: ", patch.x, patch.y);
+                console.log("GOT PATCH: ", patch.x, patch.y);
+                this.updatesQueue.push({
+                    x: patch.x,
+                    y: patch.y,
+                    width: PATCH_WIDTH,
+                    height: PATCH_HEIGHT,
+                    image: this.patchAccountToPixels(patch)
+                })
+            } else {
+                console.log("got update for account: ", accountInfo.accountId);
             }
-
-            console.log("got update for account: ", accountInfo.accountId);
         });
+    }
+
+    public patchAccountToPixels(acct: PatchData): Uint8ClampedArray {
+        let array = new Uint8ClampedArray(PATCH_HEIGHT * PATCH_WIDTH * 4);
+
+        let offset = 0;
+        for (const pixel8Bit of acct.pixels) {
+            let colorOffset = pixel8Bit * 4
+            array.set(this.colorPallete.slice(pixel8Bit, pixel8Bit + 3), offset);
+            offset = offset + 4;
+        }
+
+        return array;
     }
 
     public async fetchAllPatches() {
         extendBorsh();
-        this.connection.removeProgramAccountChangeListener(this.subscription);
+        if (this.subscription !== null) {
+            this.connection.removeProgramAccountChangeListener(this.subscription);
+        }
+
         this.subscription = null;
         let allAccounts = await this.connection.getProgramAccounts(PlaceProgram.PUBKEY);
         let allAccountsParsed = allAccounts.flatMap((value) => {
@@ -92,29 +128,23 @@ export class PlaceClient {
             }
         });
 
-        let mapOfAccounts = new Map<string, PatchData>();
+        for (const acct of allAccountsParsed) {
+            // let buf = Buffer.alloc(acct.pixels.length * 4);
+            // for (const pixel8Bit of acct.pixels) {
+            //     let colorOffset = pixel8Bit * 4
+            //     buf.writeUInt8(this.colorPallete[colorOffset]);
+            //     buf.writeUInt8(this.colorPallete[colorOffset + 1]);
+            //     buf.writeUInt8(this.colorPallete[colorOffset + 2]);
+            //     buf.writeUInt8(this.colorPallete[colorOffset + 3]);
+            // }
 
-        for (const account of allAccountsParsed) {
-            mapOfAccounts.set(makeKey(account), account);
-        }
-
-        let settings: ImageDataSettings = { colorSpace: "srgb" };
-        let data = new ImageData(1920, 1080, settings);
-
-        let buf = Buffer.alloc(5);
-        buf.writeUInt8(5);
-        console.log(buf[0]);
-
-        for (let y = 0; y < (1080 / 40); y++) {
-            for (let x = 0; x < (1920 / 40); x++) {
-
-            }
+            this.updatesQueue.push({
+                x: acct.x,
+                y: acct.y,
+                width: PATCH_WIDTH,
+                height: PATCH_HEIGHT,
+                image: this.patchAccountToPixels(acct),
+            })
         }
     }
-
-    // So I think the move here is:
-    // 1. subscribe to account updates using connection.onProgramAccountChange()
-    // 2. build accounts into a large bitmap
-    // 3. update update bitamp and redraw as new chunks load
-    // 4. May need to either generate a map from pda to x,y or put that data in the account data
 }
