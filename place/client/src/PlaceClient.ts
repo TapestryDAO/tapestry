@@ -46,7 +46,7 @@ export class PlaceClient {
             let gValue = parseInt(gString, 16);
             let bValue = parseInt(bString, 16);
 
-            console.log("Offset: ", bufOffset, " Color: ", rValue, gValue, bValue);
+            // console.log("Offset: ", bufOffset, " Color: ", rValue, gValue, bValue);
 
             buf.writeUInt8(rValue, bufOffset);
             buf.writeUInt8(gValue, bufOffset + 1);
@@ -77,7 +77,7 @@ export class PlaceClient {
             let data = accountInfo.accountInfo.data;
             if (data !== undefined) {
                 let patch = PatchData.deserialize(accountInfo.accountInfo.data)
-                console.log("GOT PATCH: ", patch.x, patch.y);
+                // console.log("GOT PATCH: ", patch.x, patch.y);
                 this.updatesQueue.push({
                     x: patch.x * PATCH_WIDTH,
                     y: patch.y * PATCH_HEIGHT,

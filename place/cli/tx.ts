@@ -1,4 +1,5 @@
-import { Keypair, sendAndConfirmTransaction, Transaction } from '@solana/web3.js'
+import { Keypair, sendAndConfirmTransaction, Transaction, ConfirmOptions } from '@solana/web3.js'
+import { inspect } from 'util'
 import yargs, { ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import { applyKeynameOption, applyXYArgOptions, KeynameOptionArgs, XYOptionArgs } from '../../cli_utils/commandHelpers'
 import { getNewConnection, loadKey } from '../../cli_utils/utils'
@@ -42,12 +43,89 @@ const set_pixel_command = {
     }
 }
 
+type RandomWalkerCommandArgs =
+    XYOptionArgs &
+    KeynameOptionArgs
+
+const PLACE_WIDTH = 1920;
+const PLACE_HEIGHT = 1080;
+const MAX_COLORS = 256;
+
+const random_walker_command = {
+    command: "walker",
+    description: "start an infinite random walker",
+    builder: (args: Argv): Argv<RandomWalkerCommandArgs> => {
+        return applyKeynameOption(applyXYArgOptions(args))
+    },
+    handler: async (args: ArgumentsCamelCase<RandomWalkerCommandArgs>) => {
+
+        const plusOrMinusOne = (): number => {
+            return Math.random() > 0.5 ? 1 : -1
+        }
+
+        const getNext = (current: SetPixelParams): SetPixelParams => {
+            return {
+                x: (current.x + plusOrMinusOne() + PLACE_WIDTH) % PLACE_WIDTH,
+                y: (current.y + plusOrMinusOne() + PLACE_HEIGHT) % PLACE_HEIGHT,
+                pixel: ((current.pixel + plusOrMinusOne()) + MAX_COLORS) % MAX_COLORS,
+                payer: current.payer,
+            }
+        }
+
+        let keypair = loadKey(args.keyname);
+        let connection = getNewConnection();
+        let connectionConfig: ConfirmOptions = {
+            skipPreflight: true,
+            commitment: 'confirmed',
+        };
+
+        let currentSetPixelParams = {
+            x: args.x,
+            y: args.y,
+            pixel: Math.floor(Math.random() * 256),
+            payer: keypair.publicKey,
+        }
+
+        let allPromises: Promise<string>[] = []
+
+        let tx = new Transaction().add(await PlaceProgram.setPixel(currentSetPixelParams))
+
+        allPromises.push(sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig))
+
+        while (true) {
+            while (allPromises.length < 100) {
+                currentSetPixelParams = getNext(currentSetPixelParams);
+                console.log(currentSetPixelParams);
+                let tx = new Transaction().add(await PlaceProgram.setPixel(currentSetPixelParams))
+                allPromises.push(sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig))
+            }
+
+            if (allPromises.length >= 100) {
+                console.log("Filtering")
+                allPromises = allPromises.filter(p => {
+                    return inspect(p).includes("pending")
+                });
+
+                while (allPromises.length > 50) {
+                    console.log("Waiting on promises")
+                    await allPromises.pop()
+
+                    allPromises = allPromises.filter(p => {
+                        return inspect(p).includes("pending")
+                    });
+                }
+            }
+        }
+    }
+}
+
 export const command = {
     command: "tx",
     description: "Execute various transations against the tapestry program running on the solana blockchain",
     builder: (argv: Argv) => {
         return argv
             .command(set_pixel_command)
+            .command(random_walker_command)
             .demandCommand()
     }
 }

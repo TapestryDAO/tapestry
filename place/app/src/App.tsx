@@ -1,7 +1,9 @@
-import React, { FC, useEffect, useRef } from 'react';
+import React, { FC, useEffect, useRef, useState } from 'react';
 import { PlaceClient } from '@tapestrydao/place-client'
 
 const DRAW_RATE_MS = 1000 / 10
+const MAX_SCALE = 40
+const MIN_SCALE = 0.5
 
 export const TapestryCanvas: FC = (props) => {
     let thing = PlaceClient.getInstance();
@@ -10,6 +12,11 @@ export const TapestryCanvas: FC = (props) => {
     const canvasRef = useRef(null);
     const animateRequestRef = useRef<number>(null);
     const previousTimeRef = useRef<number>(null);
+    const prevMousePos = useRef<number[]>([0, 0])
+
+    const [scale, setScale] = useState<number>(1);
+    const [canvasTranslation, setCanvasTranslation] = useState<number[]>([0, 0]);
+    const [isDraggingCanvas, setIsDraggingCanvas] = useState<boolean>(false);
 
     const animate = (time: number) => {
         // put image data
@@ -23,12 +30,11 @@ export const TapestryCanvas: FC = (props) => {
 
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d') as CanvasRenderingContext2D
-        context.imageSmoothingEnabled = false;
 
         let placeClient = PlaceClient.getInstance();
 
         if (placeClient.updatesQueue.length > 0) {
-            console.log("Processing Updates: ", placeClient.updatesQueue.length);
+            // console.log("Processing Updates: ", placeClient.updatesQueue.length);
         }
 
         while (placeClient.updatesQueue.length > 0) {
@@ -54,9 +60,16 @@ export const TapestryCanvas: FC = (props) => {
 
         const canvas = canvasRef.current; // TODO(will): how to cast?
         const context = canvas.getContext('2d') as CanvasRenderingContext2D
-        context.imageSmoothingEnabled = false;
-        context.fillStyle = '#FF0000'
-        console.log("FILLING");
+
+        // NOTE(will): This seems to be taken care of via css imageRendering: 'pixelated'
+        // but leaving here in case needed 
+        // context.imageSmoothingEnabled = false;
+        // context.webkitImageSmoothingEnabled = false;
+        // context.mozImageSmoothingEnabled = false;
+        // context.msImageSmoothingEnabled = false;
+        // context.oImageSmoothingEnabled = false;
+
+        context.fillStyle = '#FFFFFF'
         context.fillRect(0, 0, context.canvas.width, context.canvas.height)
 
         return () => {
@@ -66,18 +79,53 @@ export const TapestryCanvas: FC = (props) => {
         }
     }, []);
 
-    // useEffect(() => {
-    //     const canvas = canvasRef.current; // TODO(will): how to cast?
-    //     const context = canvas.getContext('2d') as CanvasRenderingContext2D
-    //     context.imageSmoothingEnabled = false;
+    const onMouseWheel = (event: WheelEvent) => {
+        // console.log("dx ", event.deltaX, " dy ", event.deltaY, " dz ", event.deltaZ)
+        let newScale = scale + (scale * (-event.deltaY / 1000))
+        newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale))
+        setScale(newScale)
+    }
 
-    //     context.fillStyle = '#FF0000'
-    //     context.fillRect(0, 0, context.canvas.width, context.canvas.height)
-    // })
+    const onMouseDown = (event: MouseEvent) => {
+        console.log("mouse down");
+        prevMousePos.current = [event.x, event.y];
+        setIsDraggingCanvas(true);
+    }
+
+    const onMouseMove = (event: MouseEvent) => {
+        if (!isDraggingCanvas) return;
+
+
+        const newXTrans = (canvasTranslation[0] + event.movementX);
+        const newYTrans = (canvasTranslation[1] + event.movementY);
+        if (!isNaN(newXTrans) && !isNaN(newYTrans)) {
+            setCanvasTranslation([newXTrans, newYTrans])
+        }
+
+        prevMousePos.current = [event.x, event.y];
+    }
+
+    const onMouseUp = (event: MouseEvent) => {
+        console.log("mouse up");
+        setIsDraggingCanvas(false);
+    }
 
     return (
-        <div style={{ scale: "1, 1" }} >
-            <canvas ref={canvasRef} width={1920} height={1080} />
+        <div style={{ transform: "scale(" + scale + "," + scale + ")" }} >
+            <div style={{ transform: "translate(" + canvasTranslation[0] + "px," + canvasTranslation[1] + "px)" }} >
+                <canvas
+                    ref={canvasRef}
+                    width={1920}
+                    height={1080}
+                    onWheel={onMouseWheel}
+                    onMouseDown={onMouseDown}
+                    onMouseUp={onMouseUp}
+                    onMouseMove={onMouseMove}
+                    onMouseLeave={onMouseUp}
+                    style={{
+                        imageRendering: "pixelated"
+                    }} />
+            </div>
         </div>
     );
 }

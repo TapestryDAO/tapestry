@@ -132,8 +132,7 @@ fn process_set_pixel(
 
     // TODO(will): maybe think about overflow
 
-    let num_pixels = ((y_offset * patch_size) + x_offset) as usize;
-    let idx = num_pixels;
+    let idx = ((y_offset * patch_size) + x_offset) as usize;
     patch.pixels[idx] = *pixel;
     patch.serialize(&mut *patch_pda_acct.data.borrow_mut())?;
 

@@ -81,12 +81,11 @@ export class PlaceProgram extends Program {
             throw Error("non-integer pixel coordinates passed: " + x + "," + y);
         }
 
-
         return {
             xPatch: Math.floor(x / PATCH_SIZE_PX),
             yPatch: Math.floor(y / PATCH_SIZE_PX),
             xOffset: x % PATCH_SIZE_PX,
-            yOffset: x % PATCH_SIZE_PX,
+            yOffset: y % PATCH_SIZE_PX,
         }
     }
 }
