@@ -5,8 +5,8 @@ import { PatchData } from "./accounts/Patch";
 import { extendBorsh } from "./utils/borsh";
 import { pallete } from "./Pallete";
 
-export const PATCH_WIDTH = 40;
-export const PATCH_HEIGHT = 40;
+export const PATCH_WIDTH = 20;
+export const PATCH_HEIGHT = 20;
 
 export type CanvasUpdate = {
     x: number,
@@ -88,7 +88,7 @@ export class PlaceClient {
             } else {
                 console.log("got update for account: ", accountInfo.accountId);
             }
-        });
+        }, "processed");
     }
 
     public patchAccountToPixels(acct: PatchData): Uint8ClampedArray {

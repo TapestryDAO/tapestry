@@ -6,9 +6,9 @@ import {
 import { Program } from '@metaplex-foundation/mpl-core'
 import { SetPixelArgsData } from './instructions/setPixel';
 
-export const PLACE_HEIGHT_PX = 1080;
-export const PLACE_WIDTH_PX = 1920;
-export const PATCH_SIZE_PX = 40;
+export const PLACE_HEIGHT_PX = 1000;
+export const PLACE_WIDTH_PX = 1000;
+export const PATCH_SIZE_PX = 20;
 export const PIXEL_SIZE_BYTES = 3;
 
 export type SetPixelParams = {

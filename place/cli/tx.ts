@@ -47,8 +47,8 @@ type RandomWalkerCommandArgs =
     XYOptionArgs &
     KeynameOptionArgs
 
-const PLACE_WIDTH = 1920;
-const PLACE_HEIGHT = 1080;
+const PLACE_WIDTH = 1000;
+const PLACE_HEIGHT = 1000;
 const MAX_COLORS = 256;
 
 const random_walker_command = {
@@ -77,7 +77,8 @@ const random_walker_command = {
             return {
                 x: (current.x + plusOrMinusOne() + PLACE_WIDTH) % PLACE_WIDTH,
                 y: (current.y + plusOrMinusOne() + PLACE_HEIGHT) % PLACE_HEIGHT,
-                pixel: ((current.pixel + plusOrMinusOne()) + MAX_COLORS) % MAX_COLORS,
+                // pixel: ((current.pixel + plusOrMinusOne()) + MAX_COLORS) % MAX_COLORS,
+                pixel: color,
                 payer: current.payer,
             }
         }
@@ -89,10 +90,12 @@ const random_walker_command = {
             commitment: 'confirmed',
         };
 
+        let color = Math.floor(Math.random() * 256)
+
         let currentSetPixelParams = {
             x: args.x,
             y: args.y,
-            pixel: Math.floor(Math.random() * 256),
+            pixel: color,
             payer: keypair.publicKey,
         }
 

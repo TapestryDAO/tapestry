@@ -86,15 +86,16 @@ def main():
         set_featured(100, 100, 8, 6, "Greece!", "willyb.sol", "owner")
         set_featured(504, 504, 8, 8, "Yo Check out 512, 512!", "someoneelse.sol", "owner")
 
+    patch_size = 20
     if args.place:
         print("Setting Initial pixels")
-        for x in range(0, math.floor(1920 / 40)):
-            for y in range(0, math.floor(1080 / 40)):
+        for x in range(0, math.floor(1000 / patch_size)):
+            for y in range(0, math.floor(1000 / patch_size)):
                 run_command([
                     "pla", "tx", "set_pixel", 
                     "--keyname", "buyer", 
-                    "-x", x * 40,
-                    "-y", y * 40,
+                    "-x", x * patch_size,
+                    "-y", y * patch_size,
                     "-c", 100,
                 ])
     

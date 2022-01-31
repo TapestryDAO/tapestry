@@ -22,15 +22,9 @@ pub struct UserAccount {
 //////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// PATCH ACCOUNT //////////////////////////////////
 
-pub const PLACE_HEIGHT_PX: u16 = 1080;
-
-pub const PLACE_WIDTH_PX: u16 = 1920;
-
-// 1080 / 40 = 27
-// 1920 / 40 = 48
-// 27 * 48 = 1296
-pub const PATCH_SIZE_PX: usize = 40;
-
+pub const PLACE_HEIGHT_PX: u16 = 1000;
+pub const PLACE_WIDTH_PX: u16 = 1000;
+pub const PATCH_SIZE_PX: usize = 20;
 pub const PATCH_PDA_PREFIX: &str = "patch";
 
 pub fn find_address_for_patch(x: u8, y: u8, program_id: &Pubkey) -> (Pubkey, u8) {
@@ -46,7 +40,7 @@ pub fn find_address_for_patch(x: u8, y: u8, program_id: &Pubkey) -> (Pubkey, u8)
 
 /// Length of this
 ///
-pub const PATCH_DATA_LEN: usize = 0 + 1 + 1 + 4 + 1600;
+pub const PATCH_DATA_LEN: usize = 0 + 1 + 1 + 4 + (PATCH_SIZE_PX * PATCH_SIZE_PX);
 
 /// In order to prevent a global write lock, i'll chunk the pixel into regions
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]

@@ -4,6 +4,8 @@ import { PlaceClient } from '@tapestrydao/place-client'
 const DRAW_RATE_MS = 1000 / 10
 const MAX_SCALE = 40
 const MIN_SCALE = 0.5
+const PLACE_WIDTH = 1000;
+const PLACE_HEIGHT = 1000;
 
 export const TapestryCanvas: FC = (props) => {
     let thing = PlaceClient.getInstance();
@@ -95,9 +97,11 @@ export const TapestryCanvas: FC = (props) => {
     const onMouseMove = (event: MouseEvent) => {
         if (!isDraggingCanvas) return;
 
+        const scaledMovementX = event.movementX / scale;
+        const scaledMovementY = event.movementY / scale;
 
-        const newXTrans = (canvasTranslation[0] + event.movementX);
-        const newYTrans = (canvasTranslation[1] + event.movementY);
+        const newXTrans = (canvasTranslation[0] + scaledMovementX);
+        const newYTrans = (canvasTranslation[1] + scaledMovementY);
         if (!isNaN(newXTrans) && !isNaN(newYTrans)) {
             setCanvasTranslation([newXTrans, newYTrans])
         }
@@ -115,8 +119,8 @@ export const TapestryCanvas: FC = (props) => {
             <div style={{ transform: "translate(" + canvasTranslation[0] + "px," + canvasTranslation[1] + "px)" }} >
                 <canvas
                     ref={canvasRef}
-                    width={1920}
-                    height={1080}
+                    width={PLACE_WIDTH}
+                    height={PLACE_HEIGHT}
                     onWheel={onMouseWheel}
                     onMouseDown={onMouseDown}
                     onMouseUp={onMouseUp}

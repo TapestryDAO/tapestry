@@ -123,7 +123,6 @@ fn process_set_pixel(
 
     let mut patch: Patch = try_from_slice_unchecked(&patch_pda_acct.try_borrow_data()?)?;
 
-    let patch_size = PATCH_SIZE_PX as u8;
     if did_allocate {
         patch.x = *x;
         patch.y = *y;
