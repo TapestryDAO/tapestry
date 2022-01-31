@@ -26,42 +26,6 @@ body {
     align-items: stretch;
 }
 
-
-nav {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 2rem;
-    background: #2c2d30;
-}
-
-nav>div {
-    display: flex;
-}
-
-nav>div>* {
-    margin: 0.5rem;
-}
-
-@media (max-width: 576px) {
-    nav>div {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    nav {
-        flex-direction: column;
-        align-items: center;
-        padding: 2rem;
-    }
-}
-
-.Sidebar {
-    width: 100px;
-    height: 100%;
-}
-
 .App {
     padding: 0;
     margin: 0;

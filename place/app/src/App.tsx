@@ -7,14 +7,6 @@ const MIN_SCALE = 0.5;
 const PLACE_WIDTH = 1000;
 const PLACE_HEIGHT = 1000;
 
-type TranslationPos = {
-    oldX: number,
-    oldY: number,
-    x: number,
-    y: number,
-    z: number,
-};
-
 export const TapestryCanvas: FC = (props) => {
     let thing = PlaceClient.getInstance();
     thing.subscribeToPatchUpdates();
@@ -26,16 +18,7 @@ export const TapestryCanvas: FC = (props) => {
 
     const [scale, setScale] = useState<number>(1);
     const [canvasTranslation, setCanvasTranslation] = useState<number[]>([0, 0]);
-
-    const containerRef = useRef(null);
     const [isPanning, setIsPanning] = useState<boolean>(false);
-    const [transPos, setTransPos] = useState<TranslationPos>({
-        oldX: 0,
-        oldY: 0,
-        x: 0,
-        y: 0,
-        z: 1,
-    })
 
     const animate = (time: number) => {
         // put image data
@@ -159,14 +142,6 @@ export const TapestryCanvas: FC = (props) => {
             </div>
         </div>
     );
-}
-
-export const Sidebar: FC = () => {
-
-    return <div className='Sidebar'
-        style={{
-            backgroundColor: "#EEE"
-        }}></div>
 }
 
 export const App: FC = () => {

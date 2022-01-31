@@ -13,7 +13,7 @@ import {
 import { clusterApiUrl } from '@solana/web3.js';
 import React, { FC, useCallback, useMemo } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { Navigation } from './Navigation';
+import { Toolbox } from './Toolbox';
 import { Notification } from './Notification';
 import { App } from './App';
 
@@ -56,7 +56,7 @@ export const Wallet: FC = () => {
         <ConnectionProvider endpoint={endpoint}>
             <WalletProvider wallets={wallets} onError={onError} autoConnect>
                 <WalletModalProvider>
-                    <Navigation />
+                    <Toolbox />
                     <App />
                 </WalletModalProvider>
                 <Toaster position="bottom-left" reverseOrder={false} />

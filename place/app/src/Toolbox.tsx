@@ -2,18 +2,21 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { FC } from 'react';
 
-require('./navigation.css');
+require('./toolbox.css');
 
-export const Navigation: FC = () => {
+export const Toolbox: FC = () => {
     const { wallet } = useWallet();
 
     return (
-        <nav className="nav">
-            <h1 className="nav__heading">Tapestry</h1>
+        <div className="toolbox__container">
+            <div className='toolbox__header-container'>
+                <h1 className="toolbox__header-heading">Tapestry</h1>
+            </div>
+
             <div className="nav__actions">
-                <WalletMultiButton />
+                <WalletMultiButton > Connect </WalletMultiButton>
                 {wallet && <WalletDisconnectButton />}
             </div>
-        </nav>
+        </div>
     );
 };
