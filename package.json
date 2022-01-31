@@ -31,7 +31,8 @@
     "localnet:fresh": "python -u scripts/fresh_validator.py",
     "localnet:up": "python -u scripts/start_test_validator.py",
     "localnet:logs": "solana logs -u localhost",
-    "meta:install": "python -u scripts/custom_deps.py"
+    "meta:install": "python -u scripts/custom_deps.py",
+    "swarm": "python -u scripts/swarm.py --walkers"
   },
   "dependencies": {},
   "devDependencies": {
