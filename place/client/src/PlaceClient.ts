@@ -94,8 +94,11 @@ export class PlaceClient {
     public patchAccountToPixels(acct: PatchData): Uint8ClampedArray {
         let array = new Uint8ClampedArray(PATCH_HEIGHT * PATCH_WIDTH * 4);
 
+        // console.log("pixels length: ", acct.pixels.length);
+
         let offset = 0;
-        for (const pixel8Bit of acct.pixels) {
+        for (let i = 0; i < acct.pixels.length; i++) {
+            const pixel8Bit = acct.pixels.readUInt8(i);
             let colorOffset = pixel8Bit * 4
             let pixelValueArr = this.colorPallete.slice(colorOffset, colorOffset + 4)
             // console.log(pixelValueArr);

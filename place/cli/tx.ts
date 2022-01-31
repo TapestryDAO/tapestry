@@ -60,7 +60,17 @@ const random_walker_command = {
     handler: async (args: ArgumentsCamelCase<RandomWalkerCommandArgs>) => {
 
         const plusOrMinusOne = (): number => {
-            return Math.random() > 0.5 ? 1 : -1
+            let value = Math.floor(Math.random() * 3)
+            if (value < 1) {
+                return -1;
+            } else if (value < 2) {
+                return 0;
+            } else if (value < 3) {
+                return 1;
+            } else {
+                console.log("strange thing happened");
+                return 0;
+            }
         }
 
         const getNext = (current: SetPixelParams): SetPixelParams => {
@@ -104,6 +114,7 @@ const random_walker_command = {
                 console.log("Filtering")
                 allPromises = allPromises.filter(p => {
                     return inspect(p).includes("pending")
+
                 });
 
                 while (allPromises.length > 50) {

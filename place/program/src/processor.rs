@@ -130,9 +130,10 @@ fn process_set_pixel(
         patch.pixels = vec![255; PATCH_SIZE_PX * PATCH_SIZE_PX];
     }
 
-    // TODO(will): maybe think about overflow
+    let y_offset_usize = *y_offset as usize;
+    let x_offset_usize = *x_offset as usize;
 
-    let idx = ((y_offset * patch_size) + x_offset) as usize;
+    let idx = (y_offset_usize * PATCH_SIZE_PX) + x_offset_usize;
     patch.pixels[idx] = *pixel;
     patch.serialize(&mut *patch_pda_acct.data.borrow_mut())?;
 
