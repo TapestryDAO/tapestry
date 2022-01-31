@@ -8,11 +8,6 @@ import { pallete } from "./Pallete";
 export const PATCH_WIDTH = 40;
 export const PATCH_HEIGHT = 40;
 
-
-const makeKey = (patch: PatchData): string => {
-    return "" + patch.x + "," + patch.y;
-}
-
 export type CanvasUpdate = {
     x: number,
     y: number,
@@ -25,8 +20,6 @@ export class PlaceClient {
     private static instance: PlaceClient;
 
     private connection: Connection;
-
-    private didSubscribe = false
     private subscription: number | null = null;
 
     // A buffer containing a color pallete
@@ -43,7 +36,7 @@ export class PlaceClient {
         let bufSize = pallete.length * 4;
         let buf = Buffer.alloc(bufSize);
 
-        var counter = 0;
+        var bufOffset = 0;
         for (const color of pallete) {
             let rString = color.substring(0, 2);
             let gString = color.substring(2, 4);
@@ -53,13 +46,14 @@ export class PlaceClient {
             let gValue = parseInt(gString, 16);
             let bValue = parseInt(bString, 16);
 
-            let bufOffset = counter * 4
+            console.log("Offset: ", bufOffset, " Color: ", rValue, gValue, bValue);
+
             buf.writeUInt8(rValue, bufOffset);
             buf.writeUInt8(gValue, bufOffset + 1);
             buf.writeUInt8(bValue, bufOffset + 2);
-            buf.writeUInt8(0, bufOffset + 3); // 0 or 255 for alpha?
+            buf.writeUInt8(255, bufOffset + 3); // 0 or 255 for alpha?
 
-            counter += 1;
+            bufOffset += 4;
         }
 
         this.colorPallete = buf
@@ -85,8 +79,8 @@ export class PlaceClient {
                 let patch = PatchData.deserialize(accountInfo.accountInfo.data)
                 console.log("GOT PATCH: ", patch.x, patch.y);
                 this.updatesQueue.push({
-                    x: patch.x,
-                    y: patch.y,
+                    x: patch.x * PATCH_WIDTH,
+                    y: patch.y * PATCH_HEIGHT,
                     width: PATCH_WIDTH,
                     height: PATCH_HEIGHT,
                     image: this.patchAccountToPixels(patch)
@@ -97,15 +91,21 @@ export class PlaceClient {
         });
     }
 
+    static seenColors: number[] = []
+
     public patchAccountToPixels(acct: PatchData): Uint8ClampedArray {
         let array = new Uint8ClampedArray(PATCH_HEIGHT * PATCH_WIDTH * 4);
 
         let offset = 0;
         for (const pixel8Bit of acct.pixels) {
             let colorOffset = pixel8Bit * 4
-            array.set(this.colorPallete.slice(pixel8Bit, pixel8Bit + 3), offset);
+            let pixelValueArr = this.colorPallete.slice(colorOffset, colorOffset + 4)
+            // console.log(pixelValueArr);
+            array.set(pixelValueArr, offset);
             offset = offset + 4;
         }
+
+        console.log("array: ", array);
 
         return array;
     }
@@ -129,8 +129,8 @@ export class PlaceClient {
 
         for (const acct of allAccountsParsed) {
             this.updatesQueue.push({
-                x: acct.x,
-                y: acct.y,
+                x: acct.x * PATCH_WIDTH,
+                y: acct.y * PATCH_HEIGHT,
                 width: PATCH_WIDTH,
                 height: PATCH_HEIGHT,
                 image: this.patchAccountToPixels(acct),
