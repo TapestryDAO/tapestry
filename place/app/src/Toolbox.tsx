@@ -13,7 +13,7 @@ export const Toolbox: FC = () => {
                 <h1 className="toolbox__header-heading">Tapestry</h1>
             </div>
 
-            <div className="nav__actions">
+            <div className="toolbox__actions">
                 <WalletMultiButton > Connect </WalletMultiButton>
                 {wallet && <WalletDisconnectButton />}
             </div>
