@@ -91,8 +91,6 @@ export class PlaceClient {
         });
     }
 
-    static seenColors: number[] = []
-
     public patchAccountToPixels(acct: PatchData): Uint8ClampedArray {
         let array = new Uint8ClampedArray(PATCH_HEIGHT * PATCH_WIDTH * 4);
 
@@ -105,7 +103,7 @@ export class PlaceClient {
             offset = offset + 4;
         }
 
-        console.log("array: ", array);
+        // console.log("array: ", array);
 
         return array;
     }
