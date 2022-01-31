@@ -73,7 +73,7 @@ export class PlaceProgram extends Program {
 
     static computePatchCoords(x: number, y: number): PixelPatchCoords {
 
-        if (x > PLACE_WIDTH_PX || y > PLACE_HEIGHT_PX) {
+        if (x > PLACE_WIDTH_PX || y > PLACE_HEIGHT_PX || x < 0 || y < 0) {
             throw Error("Invalid pixel coordinates: " + x + "," + y);
         }
 
