@@ -77,8 +77,8 @@ const random_walker_command = {
             return {
                 x: (current.x + plusOrMinusOne() + PLACE_WIDTH) % PLACE_WIDTH,
                 y: (current.y + plusOrMinusOne() + PLACE_HEIGHT) % PLACE_HEIGHT,
-                // pixel: ((current.pixel + plusOrMinusOne()) + MAX_COLORS) % MAX_COLORS,
-                pixel: color,
+                pixel: ((current.pixel + plusOrMinusOne()) + MAX_COLORS) % MAX_COLORS,
+                // pixel: color,
                 payer: current.payer,
             }
         }
@@ -107,6 +107,8 @@ const random_walker_command = {
 
         while (true) {
             while (allPromises.length < 100) {
+                let sleep = new Promise((resolve) => setTimeout(resolve, 500));
+                await sleep;
                 currentSetPixelParams = getNext(currentSetPixelParams);
                 console.log(currentSetPixelParams);
                 let tx = new Transaction().add(await PlaceProgram.setPixel(currentSetPixelParams))
