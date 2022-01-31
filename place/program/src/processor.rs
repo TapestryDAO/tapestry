@@ -127,7 +127,7 @@ fn process_set_pixel(
     if did_allocate {
         patch.x = *x;
         patch.y = *y;
-        patch.pixels = vec![255; PATCH_SIZE_PX * PATCH_SIZE_PX];
+        patch.pixels = vec![0; PATCH_SIZE_PX * PATCH_SIZE_PX];
     }
 
     let y_offset_usize = *y_offset as usize;
