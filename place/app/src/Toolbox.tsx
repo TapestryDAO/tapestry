@@ -14,7 +14,7 @@ export const Toolbox: FC = () => {
             </div>
 
             <div className="toolbox__actions">
-                <WalletMultiButton > Connect </WalletMultiButton>
+                {!wallet && <WalletMultiButton>Connect Wallet</WalletMultiButton>}
                 {wallet && <WalletDisconnectButton />}
             </div>
         </div>
