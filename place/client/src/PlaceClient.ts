@@ -67,6 +67,22 @@ export class PlaceClient {
         return this.instance;
     }
 
+    // Returns all colors in the pallete as hex strings
+    public getColorPalleteHex(): string[] {
+        let palleteColors: string[] = []
+        for (let i = 0; i < this.colorPallete.length; i = i + 4) {
+            let r = this.colorPallete[i];
+            let g = this.colorPallete[i + 1];
+            let b = this.colorPallete[i + 2];
+            // ignore alpha
+
+            let hex = ((b | g << 8 | r << 16) | 1 << 24).toString(16).slice(1)
+            palleteColors.push("#" + hex);
+        }
+
+        return palleteColors;
+    }
+
     public subscribeToPatchUpdates() {
         extendBorsh();
         if (this.subscription != null) return;
