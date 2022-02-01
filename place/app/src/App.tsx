@@ -1,5 +1,8 @@
 import React, { FC, useEffect, useRef, useState } from 'react';
-import { PlaceClient } from '@tapestrydao/place-client'
+import { PlaceClient, PlaceProgram } from '@tapestrydao/place-client'
+import { renderToStaticMarkup } from "react-dom/server"
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { Transaction } from '@solana/web3.js'
 
 const DRAW_RATE_MS = 1000 / 10;
 const MAX_SCALE = 40;
@@ -11,22 +14,26 @@ export const TapestryCanvas: FC = (props) => {
     let thing = PlaceClient.getInstance();
     thing.subscribeToPatchUpdates();
 
+    const { publicKey, sendTransaction } = useWallet();
+    const { connection } = useConnection();
+
     const canvasRef = useRef(null);
     const animateRequestRef = useRef<number>(null);
     const previousTimeRef = useRef<number>(null);
     const prevMousePos = useRef<number[]>([0, 0])
+    const dragImageRef = useRef(null);
 
     const [scale, setScale] = useState<number>(1);
     const [canvasTranslation, setCanvasTranslation] = useState<number[]>([0, 0]);
     const [isPanning, setIsPanning] = useState<boolean>(false);
 
-    const animate = (time: number) => {
+    const renderPlace = (time: number) => {
         // put image data
         const shouldDraw = previousTimeRef.current === null
             || time - previousTimeRef.current > DRAW_RATE_MS;
 
         if (!shouldDraw) {
-            animateRequestRef.current = requestAnimationFrame(animate);
+            animateRequestRef.current = requestAnimationFrame(renderPlace);
             return;
         }
 
@@ -49,12 +56,12 @@ export const TapestryCanvas: FC = (props) => {
 
         // Setup Next Frame
         previousTimeRef.current = time;
-        animateRequestRef.current = requestAnimationFrame(animate);
+        animateRequestRef.current = requestAnimationFrame(renderPlace);
     }
 
     useEffect(() => {
 
-        animateRequestRef.current = requestAnimationFrame(animate)
+        animateRequestRef.current = requestAnimationFrame(renderPlace)
 
         let placeClient = PlaceClient.getInstance();
 
@@ -114,8 +121,42 @@ export const TapestryCanvas: FC = (props) => {
         setIsPanning(false);
     }
 
+    const onDragOver = (event: DragEvent) => {
+        // this looks strange but apparently the default is not to allow the
+        // drop event, and doing this prevents that.
+        event.preventDefault();
+
+        // TODO(will): Figure out how to style this with dataTransfer.setDragImage
+        // const draggedColor = event.dataTransfer?.getData("text/plain")
+    }
+
+    const onDrop = async (event: DragEvent) => {
+        const droppedColor = event.dataTransfer?.getData("text/plain")
+        console.log("Dropped Color: ", droppedColor);
+        // NOTE(will): So these offsets give us the coordinates we want within the canvs
+        // but unfortunately, they are rounded integers, the effect of this is that
+        // only dropping in the top left of a pixel is rounded to the correct coordinates
+        // I don't see floats anywhere on this object so unsure how to resolve this at the moment. 
+        console.log("target: ", event.nativeEvent.offsetX, ",", event.nativeEvent.offsetY);
+
+        if (publicKey === null) return;
+
+        let pixelParams = {
+            x: event.nativeEvent.offsetX as number,
+            y: event.nativeEvent.offsetY as number,
+            pixel: PlaceClient.getInstance().pixelColorToPalletColor(droppedColor),
+            payer: publicKey,
+        }
+
+        let ix = await PlaceProgram.setPixel(pixelParams);
+        let tx = new Transaction().add(ix);
+        let result = await sendTransaction(tx, connection)
+        console.log(result)
+    }
+
     return (
         <div className="TapestryCanvas_Container">
+            <img ref={dragImageRef} id="dragimage" hidden={true}></img>
             <div style={{
                 transform: "scale(" + scale + "," + scale + ")",
                 width: PLACE_WIDTH,
@@ -135,6 +176,8 @@ export const TapestryCanvas: FC = (props) => {
                         onMouseUp={onMouseUp}
                         onMouseMove={onMouseMove}
                         onMouseLeave={onMouseUp}
+                        onDragOver={onDragOver}
+                        onDrop={onDrop}
                         style={{
                             imageRendering: "pixelated"
                         }} />
@@ -144,6 +187,7 @@ export const TapestryCanvas: FC = (props) => {
     );
 }
 
+// TODO(will): "App" element here is awkward because its nested
 export const App: FC = () => {
     return (
         <div className="App">

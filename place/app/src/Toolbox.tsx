@@ -1,9 +1,29 @@
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { PlaceClient } from '@tapestrydao/place-client';
-import { FC } from 'react';
+import { DragEventHandler, FC } from 'react';
 
 require('./toolbox.css');
+
+type PalleteColorProps = {
+    color: string,
+}
+
+export const PalleteColor: FC<PalleteColorProps> = ({ color }) => {
+
+    const handleDragStart = (event: DragEvent) => {
+        console.log("drag start for color: ", color);
+        event.dataTransfer?.setData("text/plain", color)
+    }
+
+    return <div
+        title={color}
+        className='toolbox__pallete-pixel'
+        style={{ backgroundColor: color }}
+        draggable={true}
+        onDragStart={handleDragStart}>
+    </div>
+}
 
 export const Pallete: FC = () => {
 
@@ -11,7 +31,7 @@ export const Pallete: FC = () => {
 
     return <div className='toolbox__pallete-container'>
         {palleteColors.map(color => {
-            return <div title={color} className='toolbox__pallete-pixel' style={{ backgroundColor: color }}></div>
+            return <PalleteColor color={color} />
         })}
     </div>;
 }

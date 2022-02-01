@@ -9,7 +9,6 @@ import { SetPixelArgsData } from './instructions/setPixel';
 export const PLACE_HEIGHT_PX = 1000;
 export const PLACE_WIDTH_PX = 1000;
 export const PATCH_SIZE_PX = 20;
-export const PIXEL_SIZE_BYTES = 3;
 
 export type SetPixelParams = {
     x: number,
@@ -33,6 +32,7 @@ export class PlaceProgram extends Program {
     static async setPixel(params: SetPixelParams) {
         let patchCoords = this.computePatchCoords(params.x, params.y);
 
+        console.log("Setting Patch Coords: ", patchCoords, "to color: ", params.pixel);
         let data = SetPixelArgsData.serialize({
             x: patchCoords.xPatch,
             y: patchCoords.yPatch,

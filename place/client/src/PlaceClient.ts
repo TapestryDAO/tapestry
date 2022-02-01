@@ -83,6 +83,37 @@ export class PlaceClient {
         return palleteColors;
     }
 
+    // #ffffff string -> uint8 
+    public pixelColorToPalletColor(rgb: string): number {
+
+        let offset = 0;
+        if (rgb.startsWith("#")) {
+            offset += 1;
+        }
+
+        console.log("OFFSET: ", offset);
+
+        let r = rgb.substring(offset, offset += 2);
+        let g = rgb.substring(offset, offset += 2);
+        let b = rgb.substring(offset, offset += 2);
+        let rValue = parseInt(r, 16);
+        let gValue = parseInt(g, 16);
+        let bValue = parseInt(b, 16);
+        let aValue = 255;
+
+        for (let i = 0; i < this.colorPallete.length; i = i + 4) {
+            if (this.colorPallete[i] == rValue
+                && this.colorPallete[i + 1] == gValue
+                && this.colorPallete[i + 2] == bValue) {
+                return i / 4;
+            }
+        }
+
+        console.log("COLOR NOT FOUND");
+
+        return 123;
+    }
+
     public subscribeToPatchUpdates() {
         extendBorsh();
         if (this.subscription != null) return;
