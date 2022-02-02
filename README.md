@@ -7,7 +7,7 @@ The Solana Tapestry Project Repo
 or see https://docs.solana.com/cli/install-solana-cli-tools#use-solanas-install-tool for other platforms
 3. Install Node
 4. Install NPM, Yarn
-5. add TAPESTRY_ROOT to your environment and path
+5. add TAPESTRY_ROOT to your environment and path (NOTE: this is should be set to the root of the repo, not the tapestry directory within the repo)
 ```
 # in ~/.bashrc
 
