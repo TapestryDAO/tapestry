@@ -49,9 +49,6 @@ yarn tap:prog:test
 
 # Directory structure
 
-## tapestry
-The original tapestry idea
-
 ## place
 The new place idea
 
@@ -69,3 +66,13 @@ Rust program for the "Place" idea
 
 ## place/res/palletes
 Color palletes, ".hex" files which are apparently just a text file with the RGB color info and /n delimiters
+
+## cli_utils
+Some helper function for typescript CLI scripts
+
+## Scripts
+python scripts for some automation
+
+## tapestry
+The original tapestry idea
+
