@@ -137,13 +137,18 @@ export const TapestryCanvas: FC = (props) => {
         // but unfortunately, they are rounded integers, the effect of this is that
         // only dropping in the top left of a pixel is rounded to the correct coordinates
         // I don't see floats anywhere on this object so unsure how to resolve this at the moment. 
-        console.log("target: ", event.nativeEvent.offsetX, ",", event.nativeEvent.offsetY);
+
+
+        // NOTE(will): subtracting 1 works here because I am offseting the canvas by 0.5 on top and left
+        let eventX = event.nativeEvent.offsetX as number - 1;
+        let eventY = event.nativeEvent.offsetY as number - 1;
+        console.log("drop location: ", eventX, ",", eventY);
 
         if (publicKey === null) return;
 
         let pixelParams = {
-            x: event.nativeEvent.offsetX as number,
-            y: event.nativeEvent.offsetY as number,
+            x: eventX,
+            y: eventY,
             pixel: PlaceClient.getInstance().pixelColorToPalletColor(droppedColor),
             payer: publicKey,
         }
@@ -167,20 +172,31 @@ export const TapestryCanvas: FC = (props) => {
                     width: PLACE_WIDTH,
                     height: PLACE_HEIGHT,
                 }} >
-                    <canvas
-                        ref={canvasRef}
-                        width={PLACE_WIDTH}
-                        height={PLACE_HEIGHT}
-                        onWheel={onMouseWheel}
-                        onMouseDown={onMouseDown}
-                        onMouseUp={onMouseUp}
-                        onMouseMove={onMouseMove}
-                        onMouseLeave={onMouseUp}
+                    <div style={{
+                        // NOTE(will): these are position hacks to deal with the fact that the drop
+                        // event gives us a rounded integer
+                        width: PLACE_WIDTH + 0.5,
+                        height: PLACE_HEIGHT + 0.5,
+                        padding: "0.5px 0px 0px 0.5px",
+                        margin: 0,
+                    }}
                         onDragOver={onDragOver}
-                        onDrop={onDrop}
-                        style={{
-                            imageRendering: "pixelated"
-                        }} />
+                        onDrop={onDrop}>
+                        <canvas
+                            ref={canvasRef}
+                            width={PLACE_WIDTH}
+                            height={PLACE_HEIGHT}
+                            onWheel={onMouseWheel}
+                            onMouseDown={onMouseDown}
+                            onMouseUp={onMouseUp}
+                            onMouseMove={onMouseMove}
+                            onMouseLeave={onMouseUp}
+                            style={{
+                                margin: 0,
+                                padding: 0,
+                                imageRendering: "pixelated"
+                            }} />
+                    </div>
                 </div>
             </div>
         </div>
