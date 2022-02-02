@@ -4,6 +4,9 @@ import os
 import subprocess
 import sys
 from time import sleep
+import math
+
+import argparse
 
 TAPESTRY_ROOT = Path(os.environ["TAPESTRY_ROOT"])
 
@@ -40,6 +43,12 @@ def set_featured(x: int, y: int, width: int, height: int, callout: str, sol_doma
 
 def main():
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--place", action="store_true", default=False)
+    parser.add_argument("--tapestry", action="store_true", default=False)
+
+    args = parser.parse_args()
+
     print("Checking Keys")
     buyer_keypath = KEYS_DIR / "buyer.json"
     if not buyer_keypath.exists():
@@ -55,7 +64,7 @@ def main():
     process = subprocess.Popen(["yarn", "localnet:up", "--reset"], cwd=TAPESTRY_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     print(f"Waiting for validator: {process.pid}")
-    sleep(10)
+    sleep(5)
 
     print("Airdroping SOL")
     run_command(["tap", "tx", "airdrop", "--keyname", "owner", "--amount", "1000"])
@@ -64,17 +73,31 @@ def main():
     print("Initializing Tapestry State")
     run_command(["tap", "tx", "init", "--keyname", "owner"])
 
-    print("Purchasing initial patches")
-    fill_pattern(0, 0, 8, 13, "vango", "buyer")
-    fill_pattern(-8, -8, 8, 8, "chunk_border", "buyer")
-    fill_pattern(20, 20, 4, 5, "dino", "buyer")
-    fill_pattern(-16, -8, 8, 8, "checker", "buyer")
-    fill_pattern(100, 100, 8, 6, "greece", "buyer")
-    fill_pattern(504, 504, 8, 8, "chunk_border", "buyer")
+    if args.tapestry:
+        print("Purchasing initial patches")
+        fill_pattern(0, 0, 8, 13, "vango", "buyer")
+        fill_pattern(-8, -8, 8, 8, "chunk_border", "buyer")
+        fill_pattern(20, 20, 4, 5, "dino", "buyer")
+        fill_pattern(-16, -8, 8, 8, "checker", "buyer")
+        fill_pattern(100, 100, 8, 6, "greece", "buyer")
+        fill_pattern(504, 504, 8, 8, "chunk_border", "buyer")
 
-    print("Setting Featured State")
-    set_featured(100, 100, 8, 6, "Greece!", "willyb.sol", "owner")
-    set_featured(504, 504, 8, 8, "Yo Check out 512, 512!", "someoneelse.sol", "owner")
+        print("Setting Featured State")
+        set_featured(100, 100, 8, 6, "Greece!", "willyb.sol", "owner")
+        set_featured(504, 504, 8, 8, "Yo Check out 512, 512!", "someoneelse.sol", "owner")
+
+    patch_size = 20
+    if args.place:
+        print("Setting Initial pixels")
+        for x in range(0, math.floor(1000 / patch_size)):
+            for y in range(0, math.floor(1000 / patch_size)):
+                run_command([
+                    "pla", "tx", "set_pixel", 
+                    "--keyname", "buyer", 
+                    "-x", x * patch_size,
+                    "-y", y * patch_size,
+                    "-c", 100,
+                ])
     
     # Kill the locally running validator
     process.kill()

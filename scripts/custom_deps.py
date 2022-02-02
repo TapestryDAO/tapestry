@@ -19,7 +19,7 @@ MPL_PROGRAMS = [
     "mpl_token_metadata"
 ]
 
-TAPESTRY_OUT_DIR = TAPESTRY_ROOT / "tapestry" / "program" / "target" / "deploy"
+CARGO_DEPLOY_DIR = TAPESTRY_ROOT / "target" / "deploy"
 
 # NOTE(will): this exists to allow me to run rust integration tests against
 # the mpl library, I feel like there must be a better way to do this, but I haven't found it
@@ -57,8 +57,8 @@ def main():
         for program in MPL_PROGRAMS:
             src_so = program + ".so"
             src_key = program + "-keypair.json"
-            shutil.copy(MPL_OUT_DIR / src_so, TAPESTRY_OUT_DIR)
-            shutil.copy(MPL_OUT_DIR / src_key, TAPESTRY_OUT_DIR)
+            shutil.copy(MPL_OUT_DIR / src_so, CARGO_DEPLOY_DIR)
+            shutil.copy(MPL_OUT_DIR / src_key, CARGO_DEPLOY_DIR)
 
 
 if __name__ == "__main__":

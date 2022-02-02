@@ -1,6 +1,6 @@
 
 import yargs, { ArgumentsCamelCase, Argv } from 'yargs'
-import { allKeys, generateRandomKey, generateVanityKey, loadKey } from './utils/utils'
+import { allKeys, generateRandomKey, generateVanityKey, loadKey } from '../../cli_utils/utils'
 
 const create_command = {
     command: "create [keyname]",

@@ -1,7 +1,10 @@
 import { Argv, describe } from 'yargs'
 
+export type XYOptionArgs =
+    { x: number } &
+    { y: number }
 
-export const applyXYArgOptions = (args: Argv) => {
+export const applyXYArgOptions = <T>(args: Argv<T>): Argv<T & XYOptionArgs> => {
     return args
         .option("x", {
             describe: "X coordinate of the patch",

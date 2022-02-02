@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;700&display=swap');
+
+html {
+    height: 100%;
+    width: 100%;
+}
+
+body {
+    margin: 0;
+    overflow-x: hidden;
+    font-family: 'Source Code Pro', monospace;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #383838;
+    color: #ffffff;
+    height: 100%;
+    width: 100%;
+}
+
+#root {
+    height: 100%;
+    min-width: 100%;
+    width: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+/* TODO(will): having "App" in the hierarchy is wierd, can probably remove it? */
+.App {
+    padding: 0;
+    margin: 0;
+    min-width: 100%;
+    width: auto;
+    overflow: hidden;
+    align-content: stretch;
+}
+
+.TapestryCanvas_Container {
+    min-width: 100%;
+    min-height: 100%;
+    overflow: hidden;
+}

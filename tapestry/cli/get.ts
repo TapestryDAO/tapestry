@@ -1,5 +1,5 @@
 import yargs, { ArgumentsCamelCase, Argv, describe, number } from 'yargs'
-import { getNewConnection, makeJSONRPC } from './utils/utils'
+import { getNewConnection, makeJSONRPC } from '../../cli_utils/utils'
 import util, { inspect } from 'util';
 import { TapestryProgram } from '../client/src/TapestryProgram';
 import { TapestryStateAccount } from '../client/src/accounts/TapestryState';
