@@ -155,7 +155,7 @@ export const TapestryCanvas: FC = (props) => {
 
         let ix = await PlaceProgram.setPixel(pixelParams);
         let tx = new Transaction().add(ix);
-        let result = await sendTransaction(tx, connection)
+        let result = await sendTransaction(tx, connection);
         console.log(result)
     }
 
