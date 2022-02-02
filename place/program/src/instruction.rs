@@ -18,7 +18,7 @@ pub enum PlaceInstruction {
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct PurchaseAccountDataArgs {
-    // any?
+    // none for now
 }
 
 pub struct PurchaseAccountAccountArgs<'a, 'b: 'a> {

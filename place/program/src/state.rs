@@ -21,10 +21,14 @@ pub const BASE_ACCOUNT_COST_LAMPORTS: u64 = 100_000_000;
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Clone)]
 pub struct GameplayTokenMeta {
     pub acct_type: PlaceAccountType,
-    // NOTE(will): Instead of a user account, this would become a mint pda
-    pub owner: Pubkey,
+    
+    // the token mint associated with this metadata
+    pub token_mint_pda: Pubkey,
 
-    // Time this account last updated a pixel (ms since epoch)
+    // amount of time after an update which this token needs to cooldown
+    pub cooldown_ms: u32,
+
+    // wall clock time after which this gameplay token can be used for an update (ms since epoch)
     pub update_allowed_after_ms: u64,
 }
 
