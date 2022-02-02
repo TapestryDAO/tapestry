@@ -18,40 +18,54 @@ export PATH="$TAPESTRY_ROOT:$PATH"
 
 
 # Quickstart
-Start the test validator
+build rust programs
+
+```bash
+yarn tap:prog:build
+yarn place:prog:build
+```
+
+Reset validator / reload new programs 
+```bash
+yarn localnet:fresh
+```
+
+Start the test validator (does not reset state)
 ```bash
 yarn localnet:up
 ```
 
-Start the App
+Start the "Place" App
 ```bash
-yarn app:start
-```
-
-Build rust program code
-```bash
-yarn program:build
+yarn place:client:build
+yarn place:app:start
 ```
 
 Test rust program code (no need to start the test validator)
 ```bash
-yarn pogram:test
+yarn placeProg:test
+yarn tap:prog:test
 ```
 
 # Directory structure
 
-## program
+## tapestry
+The original tapestry idea
 
-Solana program 
+## place
+The new place idea
 
-## app
+## place/app
+React app code
 
-Tapestry React App
+## place/client
+Typescript client, wraps blockchain interactions / serialization and deserialization
 
-## client
+## place/cli
+Typescript CLI that uses the `client` to interact with the onchain program type `pla --help` for details
 
-Wrapper for helping with serializing and deserializing state and communicating with the on chain program and the solana blockchain, Ideally this would be it's wn separate module with its own integration tests.
+## place/program
+Rust program for the "Place" idea
 
-## commands
-
-CLI commands to interact with the tapestry and show state
+## place/res/palletes
+Color palletes, ".hex" files which are apparently just a text file with the RGB color info and /n delimiters
