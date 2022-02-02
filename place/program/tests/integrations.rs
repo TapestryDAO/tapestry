@@ -68,7 +68,7 @@ async fn test_purchase_account() {
                 if x_offset == x as u8 && y_offset == y as u8 {
                     assert_eq!(pixel, patch.pixels[idx])
                 } else {
-                    assert_eq!(255 as u8, patch.pixels[idx]);
+                    assert_eq!(0 as u8, patch.pixels[idx]);
                 }
             }
         }

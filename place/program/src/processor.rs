@@ -35,8 +35,14 @@ impl Processor {
             PlaceInstruction::PurchaseAccount(args) => {
                 let acct_info_iter = &mut accounts.iter();
                 let payer_acct = next_account_info(acct_info_iter)?;
+                let gameplay_meta_pda_acct = next_account_info(acct_info_iter)?;
+                let system_acct = next_account_info(acct_info_iter)?;
 
-                let acct_args = PurchaseAccountAccountArgs { payer_acct };
+                let acct_args = PurchaseAccountAccountArgs {
+                    payer_acct,
+                    gameplay_meta_pda_acct,
+                    system_acct,
+                };
                 process_purchase_account(program_id, acct_args, &args)
             }
             PlaceInstruction::SetPixel(args) => {
@@ -54,8 +60,6 @@ impl Processor {
                 process_set_pixel(program_id, acct_args, &args)
             }
         }
-
-        // TODO(will): Do i need to do something if nothing matches?
     }
 }
 
@@ -64,7 +68,11 @@ fn process_purchase_account(
     acct_args: PurchaseAccountAccountArgs,
     data_args: &PurchaseAccountDataArgs,
 ) -> ProgramResult {
-    let PurchaseAccountAccountArgs { payer_acct } = acct_args;
+    let PurchaseAccountAccountArgs {
+        payer_acct,
+        gameplay_meta_pda_acct,
+        system_acct,
+    } = acct_args;
 
     // Make sure account hasn't already been initialized?
     // allocate account
@@ -120,6 +128,8 @@ fn process_set_pixel(
 
         did_allocate = true;
     }
+
+    // This could be sped up by just computing the offset and setting directly.
 
     let mut patch: Patch = try_from_slice_unchecked(&patch_pda_acct.try_borrow_data()?)?;
 

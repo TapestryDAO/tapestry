@@ -14,6 +14,26 @@ pub enum PlaceInstruction {
     SetPixel(SetPixelDataArgs),
 }
 
+//////////////// Purchase Account ////////////////
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct PurchaseAccountDataArgs {
+    // any?
+}
+
+pub struct PurchaseAccountAccountArgs<'a, 'b: 'a> {
+    /// `[signer]` Account that will own this... account... fuck
+    pub payer_acct: &'a AccountInfo<'b>,
+
+    // `[writable]` PDA for the GameplayTokenMeta account
+    pub gameplay_meta_pda_acct: &'a AccountInfo<'b>,
+
+    // `[]` the system program
+    pub system_acct: &'a AccountInfo<'b>,
+}
+
+//////////////// SET PIXEL ////////////////
+
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct SetPixelDataArgs {
     pub x: u8,
@@ -32,6 +52,7 @@ pub struct SetPixelAccountArgs<'a, 'b: 'a> {
     // `[writable]` the pda of the patch being set
     pub patch_pda_acct: &'a AccountInfo<'b>,
 
+    // `[]` the system program
     pub system_acct: &'a AccountInfo<'b>,
 }
 
@@ -64,14 +85,4 @@ pub fn get_ix_set_pixel(
         .try_to_vec()
         .unwrap(),
     }
-}
-
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
-pub struct PurchaseAccountDataArgs {
-    // any?
-}
-
-pub struct PurchaseAccountAccountArgs<'a, 'b: 'a> {
-    /// `[signer]` Account that will own this... account... fuck
-    pub payer_acct: &'a AccountInfo<'b>,
 }

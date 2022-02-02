@@ -1,5 +1,6 @@
 import { Borsh } from '@metaplex-foundation/mpl-core';
 import { Schema } from 'borsh';
+import { PlaceAccountType } from '../instructions/types';
 import { extendBorsh } from '../utils/borsh';
 
 
@@ -12,12 +13,14 @@ export type PatchArgs = {
 export class PatchData extends Borsh.Data<PatchArgs> {
     static readonly SCHEMA: Schema = new Map([
         ...PatchData.struct([
+            ["acct_type", "u8"],
             ['x', 'u8'],
             ['y', 'u8'],
             ['pixels', 'vecU8'],
         ])
     ])
 
+    acct_type: PlaceAccountType = PlaceAccountType.Patch;
     x: number;
     y: number;
     pixels: Buffer;

@@ -1,22 +1,31 @@
-use crate::id;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::pubkey::Pubkey;
 
+// Identifies an Account type in the first byte of the account data
+// Useful for queries
+#[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Clone, Copy)]
+pub enum PlaceAccountType {
+    Patch,
+    GameplayTokenMeta,
+}
+
 //////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////// USER ACCOUNT //////////////////////////////////
+/////////////////////// GAMEPLAY TOKEN METADATA //////////////////////////////////
 
 /// PDA prefix for user accounts
-pub const USER_ACCOUNT_PDA_PREFIX: &str = "acct";
+pub const GAMEPLAY_TOKEN_META_PREFIX: &str = "game";
 
 pub const BASE_ACCOUNT_COST_LAMPORTS: u64 = 100_000_000;
 
+/// Holds the metadata and relevant state for a gameplay token
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Clone)]
-pub struct UserAccount {
+pub struct GameplayTokenMeta {
+    pub acct_type: PlaceAccountType,
     // NOTE(will): Instead of a user account, this would become a mint pda
     pub owner: Pubkey,
 
     // Time this account last updated a pixel (ms since epoch)
-    pub last_update_ms: u64,
+    pub update_allowed_after_ms: u64,
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -40,11 +49,17 @@ pub fn find_address_for_patch(x: u8, y: u8, program_id: &Pubkey) -> (Pubkey, u8)
 
 /// Length of this
 ///
-pub const PATCH_DATA_LEN: usize = 0 + 1 + 1 + 4 + (PATCH_SIZE_PX * PATCH_SIZE_PX);
+pub const PATCH_DATA_LEN: usize = 0 
+    + 1 // acct_type
+    + 1 // x
+    + 1 // y
+    + 4 // length of pixels
+    + (PATCH_SIZE_PX * PATCH_SIZE_PX); // Pixels
 
 /// In order to prevent a global write lock, i'll chunk the pixel into regions
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct Patch {
+    pub acct_type: PlaceAccountType,
     // x coordinate of the patch ULO
     pub x: u8,
     // y coordinate of the patch ULO
