@@ -1,7 +1,8 @@
 
 // Duplicate in instruction.rs
 export enum PlaceInstruction {
-    PurchaseAccount,
+    InitPatch,
+    PurchaseGameplayToken,
     SetPixel,
 };
 

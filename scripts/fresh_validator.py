@@ -89,15 +89,11 @@ def main():
     patch_size = 20
     if args.place:
         print("Setting Initial pixels")
-        for x in range(0, math.floor(1000 / patch_size)):
-            for y in range(0, math.floor(1000 / patch_size)):
-                run_command([
-                    "pla", "tx", "set_pixel", 
-                    "--keyname", "buyer", 
-                    "-x", x * patch_size,
-                    "-y", y * patch_size,
-                    "-c", 100,
-                ])
+        run_command([
+            "pla", "tx", "initpatches", 
+            "--keyname", "owner", 
+        ])
+                
     
     # Kill the locally running validator
     process.kill()
