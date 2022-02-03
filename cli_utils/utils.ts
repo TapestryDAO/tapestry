@@ -16,6 +16,8 @@ const KEYS_DIR = path.resolve(TAPESTRY_ROOT, "keys")
 // So hiding hese constants here and accessing indirectly 
 const SOLANA_ENDPOINT_LOCAL = "http://127.0.0.1:8899"
 
+export const SOLANA_MAINNET_ENDPOINT = "https://api.mainnet-beta.solana.com"
+
 const SOLANA_CONFIG_LOCAL: ConnectionConfig = {
     commitment: "confirmed",
 }
@@ -24,13 +26,15 @@ const removeFileSuffix = (filename: string): string => {
     return filename.substring(0, filename.lastIndexOf("."))
 }
 
-export const makeJSONRPC = async (method: string, params: string[]) => {
+export const makeJSONRPC = async (method: string, params: any[], endpoint = SOLANA_ENDPOINT_LOCAL) => {
     const rpcPayload = {
+        jsonrpc: "2.0",
+        id: 1,
         method: method,
         params: params,
     };
 
-    let result = await axios.post(SOLANA_ENDPOINT_LOCAL, rpcPayload, {
+    let result = await axios.post(endpoint, rpcPayload, {
         headers: {
             "Content-Type": "application/json"
         }

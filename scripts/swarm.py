@@ -20,7 +20,7 @@ def main():
         if not keypath.exists():
             run_command(["solana-keygen", "new", "-o", keypath, "--no-bip39-passphrase"])
 
-        run_command(["solana", "airdrop", "1000", keypath, ])
+        run_command(["solana", "airdrop", "1000", keypath])
 
         random_x = math.floor(random() * 1000)
         random_y = math.floor(random() * 1000)
