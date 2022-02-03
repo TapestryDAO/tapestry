@@ -3,7 +3,94 @@ import { inspect } from 'util'
 import yargs, { ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import { applyKeynameOption, applyXYArgOptions, KeynameOptionArgs, XYOptionArgs } from '../../cli_utils/commandHelpers'
 import { getNewConnection, loadKey } from '../../cli_utils/utils'
-import { PlaceProgram, SetPixelParams } from '../client/src/PlaceProgram'
+import { PlaceProgram, SetPixelParams, PLACE_HEIGHT_PX, PLACE_WIDTH_PX, PATCH_SIZE_PX } from '../client/src/PlaceProgram'
+
+const MAX_COLORS = 256;
+
+type Vec2d = { x: number, y: number }
+
+type InitAllPatchesCommandArgs = KeynameOptionArgs
+
+const init_all_patches_command = {
+    command: "initpatches",
+    description: "initialize all the patches",
+    builder: (args: Argv): Argv<InitAllPatchesCommandArgs> => {
+        return applyKeynameOption(args);
+    },
+    handler: async (args: ArgumentsCamelCase<InitAllPatchesCommandArgs>) => {
+
+        let keypair = loadKey(args.keyname);
+        let connection = getNewConnection();
+        let connectionConfig: ConfirmOptions = {
+            skipPreflight: true,
+            commitment: 'confirmed',
+        };
+
+        const maxXPatch = PLACE_WIDTH_PX / PATCH_SIZE_PX;
+        const maxYPatch = PLACE_HEIGHT_PX / PATCH_SIZE_PX;
+
+        const getNext = (current: Vec2d): Vec2d | null => {
+            let nextX = current.x + 1;
+            if (nextX > maxXPatch) {
+                let nextY = current.y + 1;
+                if (nextY > maxYPatch) {
+                    return null;
+                } else {
+                    return { x: 0, y: nextY };
+                }
+            } else {
+                return { x: nextX, y: current.y };
+            }
+        }
+
+        let done = false;
+        let allTxSent = false;
+
+        let allPromises: Promise<string>[] = [];
+        let currentXY: Vec2d = { x: 0, y: 0 };
+        while (!done) {
+            while (allPromises.length < 100 && !allTxSent) {
+                console.log("Init: ", currentXY);
+                let tx = new Transaction().add(await PlaceProgram.initPatch({
+                    xPatch: currentXY.x,
+                    yPatch: currentXY.y,
+                    payer: keypair.publicKey,
+                }))
+
+                allPromises.push(sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig))
+                let next = getNext(currentXY);
+
+                if (next == null) {
+                    allTxSent = true;
+                } else {
+                    currentXY = next;
+                }
+            }
+
+            if (allPromises.length >= 100 || allTxSent) {
+                console.log("Filtering")
+                allPromises = allPromises.filter(p => {
+                    return inspect(p).includes("pending")
+                });
+
+                while (allPromises.length > 50 || (allTxSent && allPromises.length > 0)) {
+                    console.log("Waiting on promises")
+                    await allPromises.pop()
+
+                    allPromises = allPromises.filter(p => {
+                        return inspect(p).includes("pending")
+                    });
+                };
+            }
+
+            if (allPromises.length == 0 && allTxSent) {
+                done = true;
+            }
+        }
+
+        console.log("All done, hopefully nothing failed");
+    }
+}
 
 type SetPixelCommandArgs =
     XYOptionArgs &
@@ -47,10 +134,6 @@ type RandomWalkerCommandArgs =
     XYOptionArgs &
     KeynameOptionArgs
 
-const PLACE_WIDTH = 1000;
-const PLACE_HEIGHT = 1000;
-const MAX_COLORS = 256;
-
 const random_walker_command = {
     command: "walker",
     description: "start an infinite random walker",
@@ -75,8 +158,8 @@ const random_walker_command = {
 
         const getNext = (current: SetPixelParams): SetPixelParams => {
             return {
-                x: (current.x + plusOrMinusOne() + PLACE_WIDTH) % PLACE_WIDTH,
-                y: (current.y + plusOrMinusOne() + PLACE_HEIGHT) % PLACE_HEIGHT,
+                x: (current.x + plusOrMinusOne() + PLACE_WIDTH_PX) % PLACE_WIDTH_PX,
+                y: (current.y + plusOrMinusOne() + PLACE_HEIGHT_PX) % PLACE_HEIGHT_PX,
                 pixel: ((current.pixel + plusOrMinusOne()) + MAX_COLORS) % MAX_COLORS,
                 // pixel: color,
                 payer: current.payer,
@@ -119,7 +202,6 @@ const random_walker_command = {
                 console.log("Filtering")
                 allPromises = allPromises.filter(p => {
                     return inspect(p).includes("pending")
-
                 });
 
                 while (allPromises.length > 50) {
@@ -142,6 +224,7 @@ export const command = {
         return argv
             .command(set_pixel_command)
             .command(random_walker_command)
+            .command(init_all_patches_command)
             .demandCommand()
     }
 }

@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::{Account, AccountInfo},
+    account_info::AccountInfo,
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
 };
@@ -9,19 +9,65 @@ use crate::state::find_address_for_patch;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub enum PlaceInstruction {
-    PurchaseAccount(PurchaseAccountDataArgs),
+    // Allocate a patch
+    InitPatch(InitPatchDataArgs),
 
+    // Purchase a token that allos setting pixels
+    PurchaseGameplayToken(PurchaseGameplayTokenDataArgs),
+
+    // Set a pixel to a particular value
     SetPixel(SetPixelDataArgs),
 }
 
-//////////////// Purchase Account ////////////////
+/////////////////// InitPatch ////////////////////
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
-pub struct PurchaseAccountDataArgs {
+pub struct InitPatchDataArgs {
+    pub x_patch: u8,
+    pub y_patch: u8,
+}
+
+pub struct InitPatchAccountArgs<'a, 'b: 'a> {
+    /// `[signer]` the payer for the data allocation
+    pub payer_acct: &'a AccountInfo<'b>,
+
+    /// `[writable]` the patch pda we are going to allocate
+    pub patch_pda_acct: &'a AccountInfo<'b>,
+
+    /// `[]` the system program
+    pub system_acct: &'a AccountInfo<'b>,
+}
+
+pub fn get_ix_init_patch(
+    program_id: Pubkey,
+    payer: Pubkey,
+    x_patch: u8,
+    y_patch: u8,
+) -> Instruction {
+    let (patch_pda, _) = find_address_for_patch(x_patch, y_patch, &program_id);
+
+    Instruction {
+        program_id,
+        accounts: vec![
+            // TODO(will): this doesn't need to be writable after removing lazy alloc
+            AccountMeta::new(payer, true),
+            AccountMeta::new(patch_pda, false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+        ],
+        data: PlaceInstruction::InitPatch(InitPatchDataArgs { x_patch, y_patch })
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+//////////////// Purchase GameplayToken ////////////////
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct PurchaseGameplayTokenDataArgs {
     // none for now
 }
 
-pub struct PurchaseAccountAccountArgs<'a, 'b: 'a> {
+pub struct PurchaseGameplayTokenAccountArgs<'a, 'b: 'a> {
     /// `[signer]` Account that will own this... account... fuck
     pub payer_acct: &'a AccountInfo<'b>,
 

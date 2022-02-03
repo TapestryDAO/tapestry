@@ -5,6 +5,7 @@ import {
 } from '@solana/web3.js'
 import { Program } from '@metaplex-foundation/mpl-core'
 import { SetPixelArgsData } from './instructions/setPixel';
+import { InitPatchArgsData } from './instructions/initPatch';
 
 export const PLACE_HEIGHT_PX = 1000;
 export const PLACE_WIDTH_PX = 1000;
@@ -14,6 +15,12 @@ export type SetPixelParams = {
     x: number,
     y: number,
     pixel: number,
+    payer: PublicKey,
+}
+
+export type InitPatchParams = {
+    xPatch: number,
+    yPatch: number,
     payer: PublicKey,
 }
 
@@ -28,6 +35,25 @@ export class PlaceProgram extends Program {
     static readonly PUBKEY: PublicKey = new PublicKey('tapestry11111111111111111111111111111111111');
 
     static readonly PATCH_PDA_PREFIX = "patch";
+
+    static async initPatch(params: InitPatchParams) {
+        let data = InitPatchArgsData.serialize({
+            xPatch: params.xPatch,
+            yPatch: params.yPatch,
+        })
+
+        let patchPda = await this.findPatchPda(params.xPatch, params.yPatch);
+
+        return new TransactionInstruction({
+            keys: [
+                { pubkey: params.payer, isSigner: true, isWritable: true },
+                { pubkey: patchPda, isSigner: false, isWritable: true },
+                { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+            ],
+            programId: this.PUBKEY,
+            data: data,
+        })
+    }
 
     static async setPixel(params: SetPixelParams) {
         let patchCoords = this.computePatchCoords(params.x, params.y);

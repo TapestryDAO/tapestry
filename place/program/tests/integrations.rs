@@ -31,6 +31,21 @@ async fn test_purchase_account() {
 
     let (patch_pda, _) = find_address_for_patch(x, y, &program_id);
 
+    // initialize the patch (allocate data)
+
+    let init_patch_ix =
+        solana_place::instruction::get_ix_init_patch(solana_place::id(), payer.pubkey(), x, y);
+
+    let init_patch_tx = Transaction::new_signed_with_payer(
+        &[init_patch_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    let init_patch_result = banks_client.process_transaction(init_patch_tx).await;
+    assert_matches!(init_patch_result, Ok(()));
+
     let set_pixel_ix = solana_place::instruction::get_ix_set_pixel(
         solana_place::id(),
         payer.pubkey(),

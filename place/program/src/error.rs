@@ -9,6 +9,12 @@ pub enum PlaceError {
 
     #[error("Incorrect patch pda")]
     IncorrectPatchPDA, // 1
+
+    #[error("Invalid Patch coordiantes")]
+    InvalidPatchCoordinates, // 2
+
+    #[error("Patch account already Initialized")]
+    PatchAccountAlreadyInitialized,
 }
 
 impl From<PlaceError> for ProgramError {
