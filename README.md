@@ -29,7 +29,7 @@ yarn rust:build
 
 Reset validator / reload new programs 
 ```bash
-yarn localnet:fresh
+yarn localnet:fresh --place
 ```
 
 Start the test validator (does not reset state)
