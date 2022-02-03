@@ -5,7 +5,7 @@ description = "Solana Tapestry python stuff"
 authors = ["William Barksdale <wfbarksdale@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "3.9.2"
+python = "^3.9.2"
 
 [tool.poetry.dev-dependencies]
 GitPython = "^3.1.26"

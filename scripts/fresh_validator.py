@@ -58,7 +58,7 @@ def main():
     if not owner_keypath.exists():
         run_command(["solana-keygen", "new", "-o", owner_keypath, "--no-bip39-passphrase"])
 
-    run_command(["yarn", "tap:prog:build"])
+    run_command(["yarn", "rust:build"])
 
     print("Starting and resetting local validator")
     process = subprocess.Popen(["yarn", "localnet:up", "--reset"], cwd=TAPESTRY_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

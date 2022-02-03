@@ -3,26 +3,28 @@ The Solana Tapestry Project Repo
 
 # Environment Setup
 1. Install Rust from https://rustup.rs/
-2. Install Solana v1.8.12  using `sh -c "$(curl -sSfL https://release.solana.com/v1.8.12/install)"` for linux
+1. Install Solana v1.8.12  using `sh -c "$(curl -sSfL https://release.solana.com/v1.8.12/install)"` for linux
 or see https://docs.solana.com/cli/install-solana-cli-tools#use-solanas-install-tool for other platforms
-3. Install Node
-4. Install NPM, Yarn
-5. add TAPESTRY_ROOT to your environment and path (NOTE: this is should be set to the root of the repo, not the tapestry directory within the repo)
+1. Install Node
+1. Install NPM, Yarn
+1. Install [Poetry](https://python-poetry.org/docs/#osx--linux--bashonwindows-install-instructions)
+1. add TAPESTRY_ROOT to your environment and path (NOTE: this is should be set to the root of the repo, not the tapestry directory within the repo)
 ```
 # in ~/.bashrc
 
 export TAPESTRY_ROOT="/home/bizzle/solproj/soltapestry"
 export PATH="$TAPESTRY_ROOT:$PATH"
 ```
-6. run `yarn setup` from tapestry root
+1. run `poetry shell`
+1. run `yarn setup` from tapestry root
 
 
 # Quickstart
 build rust programs
 
 ```bash
-yarn tap:prog:build
-yarn place:prog:build
+yarn rust:build
+yarn rust:build
 ```
 
 Reset validator / reload new programs 
@@ -43,8 +45,7 @@ yarn place:app:start
 
 Test rust program code (no need to start the test validator)
 ```bash
-yarn placeProg:test
-yarn tap:prog:test
+yarn rust:test
 ```
 
 # Directory structure

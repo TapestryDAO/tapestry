@@ -38,8 +38,8 @@ python-versions = ">=3.6"
 
 [metadata]
 lock-version = "1.1"
-python-versions = "3.9.2"
-content-hash = "38abcdfbad61061d90697dfa62f55999d1bab276f06821e74084b03f9a6f8419"
+python-versions = "^3.9.2"
+content-hash = "a7e9c832727b30283665c66aaea95971fd449f6e85055234eb4c9605f948abb9"
 
 [metadata.files]
 gitdb = [

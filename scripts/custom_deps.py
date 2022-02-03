@@ -8,7 +8,8 @@ import argparse
 TAPESTRY_ROOT = Path(os.environ.get("TAPESTRY_ROOT"))
 MPL_URL = "https://github.com/metaplex-foundation/metaplex-program-library.git"
 # MPL_TAG = "@metaplex-foundation/mpl-metaplex@0.0.2"
-MPL_TAG = "master" # bad
+# MPL_TAG = "master" # bad
+MPL_TAG = "@metaplex-foundation/mpl-token-vault@0.1.0"
 
 # 5d5cb81fcd4e23e3e51c252a2e2f1ab5c8dc8de9 - 0.0.2
 
