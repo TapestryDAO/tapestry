@@ -77,7 +77,7 @@ impl Processor {
                     system_acct,
                 };
 
-                process_purchase_account(program_id, acct_args, &args)
+                process_purchase_gameplay_token(program_id, acct_args, &args)
             }
             PlaceInstruction::SetPixel(args) => {
                 let acct_info_iter = &mut accounts.iter();
@@ -241,13 +241,7 @@ fn process_init_patch(
     return Ok(());
 }
 
-// Lamports
-pub const DEFAULT_GAMEPLAY_TOKEN_PRICE: u64 = 1_000_000;
-
-// milliseconds
-pub const DEFAULT_GAMEPLAY_TOKEN_COOLROWN: u64 = 1_000 * 60;
-
-fn process_purchase_account(
+fn process_purchase_gameplay_token(
     program_id: &Pubkey,
     acct_args: PurchaseGameplayTokenAccountArgs,
     data_args: &PurchaseGameplayTokenDataArgs,

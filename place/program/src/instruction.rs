@@ -14,7 +14,7 @@ pub enum PlaceInstruction {
     // Allocate a patch
     InitPatch(InitPatchDataArgs),
 
-    // Purchase a token that allos setting pixels
+    // Purchase a token that allows setting pixels
     PurchaseGameplayToken(PurchaseGameplayTokenDataArgs),
 
     // Set a pixel to a particular value
@@ -50,7 +50,8 @@ pub struct UpdatePlaceStateAccountArgs<'a, 'b: 'a> {
     pub system_acct: &'a AccountInfo<'b>,
 }
 
-/////////////////// InitPatch ////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////// INIT PATCH ////////////////////////////////////
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct InitPatchDataArgs {
@@ -91,12 +92,21 @@ pub fn get_ix_init_patch(
     }
 }
 
-//////////////// Purchase GameplayToken ////////////////
+//////////////////////////////////////////////////////////////////////////////////
+////////////////////////// Purchase GameplayToken ////////////////////////////////
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct PurchaseGameplayTokenDataArgs {
     // The type of token to purchase
     pub token_type: GameplayTokenType,
+
+    // Random number used to generate the GameplayTokenAccount PDA
+    // this creates a small probability of a collision but avoids a write lock
+    // on the purchase instruction
+    pub random_seed: u64,
+
+    // The price the buyer is expecting to pay
+    pub desired_price: u64,
 }
 
 pub struct PurchaseGameplayTokenAccountArgs<'a, 'b: 'a> {
@@ -110,7 +120,8 @@ pub struct PurchaseGameplayTokenAccountArgs<'a, 'b: 'a> {
     pub system_acct: &'a AccountInfo<'b>,
 }
 
-//////////////// SET PIXEL ////////////////
+//////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// SET PIXEL //////////////////////////////////////
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct SetPixelDataArgs {
