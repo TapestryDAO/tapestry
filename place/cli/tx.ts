@@ -4,6 +4,8 @@ import yargs, { ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import { applyKeynameOption, applyXYArgOptions, KeynameOptionArgs, XYOptionArgs } from '../../cli_utils/commandHelpers'
 import { getNewConnection, loadKey } from '../../cli_utils/utils'
 import { PlaceProgram, SetPixelParams, PLACE_HEIGHT_PX, PLACE_WIDTH_PX, PATCH_SIZE_PX } from '../client/src/PlaceProgram'
+// @ts-ignore
+import asyncPool from "tiny-async-pool"
 
 const MAX_COLORS = 256;
 
@@ -43,51 +45,28 @@ const init_all_patches_command = {
             }
         }
 
-        let done = false;
-        let allTxSent = false;
-
-        let allPromises: Promise<string>[] = [];
-        let currentXY: Vec2d = { x: 0, y: 0 };
-        while (!done) {
-            while (allPromises.length < 100 && !allTxSent) {
-                console.log("Init: ", currentXY);
-                let tx = new Transaction().add(await PlaceProgram.initPatch({
-                    xPatch: currentXY.x,
-                    yPatch: currentXY.y,
-                    payer: keypair.publicKey,
-                }))
-
-                allPromises.push(sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig))
-                let next = getNext(currentXY);
-
-                if (next == null) {
-                    allTxSent = true;
-                } else {
-                    currentXY = next;
-                }
-            }
-
-            if (allPromises.length >= 100 || allTxSent) {
-                console.log("Filtering")
-                allPromises = allPromises.filter(p => {
-                    return inspect(p).includes("pending")
-                });
-
-                while (allPromises.length > 50 || (allTxSent && allPromises.length > 0)) {
-                    console.log("Waiting on promises")
-                    await allPromises.pop()
-
-                    allPromises = allPromises.filter(p => {
-                        return inspect(p).includes("pending")
-                    });
-                };
-            }
-
-            if (allPromises.length == 0 && allTxSent) {
-                done = true;
-            }
+        console.time('xy')
+        const AllXY: Vec2d[] = [{ x: 0, y: 0 }]
+        getNext(AllXY[AllXY.length - 1])
+        let next = getNext(AllXY[AllXY.length - 1])
+        while (next) {
+            AllXY.push(next)
+            next = getNext(next)
         }
 
+        const results = await asyncPool(50, AllXY, (async (currentXY: Vec2d) => {
+
+            console.log("Init: ", currentXY);
+            let tx = new Transaction().add(await PlaceProgram.initPatch({
+                xPatch: currentXY.x,
+                yPatch: currentXY.y,
+                payer: keypair.publicKey,
+            }))
+
+            await sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig)
+
+        }));
+        console.timeEnd('xy')
         console.log("All done, hopefully nothing failed");
     }
 }
