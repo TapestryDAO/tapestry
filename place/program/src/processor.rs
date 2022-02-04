@@ -9,7 +9,7 @@ use solana_program::{
 use crate::instruction::{
     InitPatchAccountArgs, InitPatchDataArgs, PlaceInstruction, PurchaseGameplayTokenAccountArgs,
     PurchaseGameplayTokenDataArgs, SetPixelAccountArgs, SetPixelDataArgs,
-    UpdateTapestryStateAccountArgs, UpdateTapestryStateDataArgs,
+    UpdatePlaceStateAccountArgs, UpdatePlaceStateDataArgs,
 };
 
 use crate::error::PlaceError::{
@@ -36,13 +36,13 @@ impl Processor {
         let instruction = PlaceInstruction::try_from_slice(instruction_data)?;
 
         match instruction {
-            PlaceInstruction::UpdateTapestryState(args) => {
+            PlaceInstruction::UpdatePlaceState(args) => {
                 let acct_info_iter = &mut accounts.iter();
                 let current_owner_acct = next_account_info(acct_info_iter)?;
                 let tapestry_state_pda = next_account_info(acct_info_iter)?;
                 let system_acct = next_account_info(acct_info_iter)?;
 
-                let acct_args = UpdateTapestryStateAccountArgs {
+                let acct_args = UpdatePlaceStateAccountArgs {
                     current_owner_acct,
                     tapestry_state_pda,
                     system_acct,
@@ -98,10 +98,10 @@ impl Processor {
 
 fn process_update_tapestry_state(
     program_id: &Pubkey,
-    acct_args: UpdateTapestryStateAccountArgs,
-    data_args: UpdateTapestryStateDataArgs,
+    acct_args: UpdatePlaceStateAccountArgs,
+    data_args: UpdatePlaceStateDataArgs,
 ) -> ProgramResult {
-    let UpdateTapestryStateDataArgs {
+    let UpdatePlaceStateDataArgs {
         owner,
         is_frozen,
         paintbrush_price,
@@ -109,7 +109,7 @@ fn process_update_tapestry_state(
         bomb_price,
     } = data_args;
 
-    let UpdateTapestryStateAccountArgs {
+    let UpdatePlaceStateAccountArgs {
         current_owner_acct,
         tapestry_state_pda,
         system_acct,

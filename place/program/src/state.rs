@@ -7,7 +7,7 @@ use crate::error::PlaceError;
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Clone, Copy)]
 pub enum PlaceAccountType {
     Uninitialized,
-    TapestryState,
+    PlaceState,
     Patch,
     GameplayTokenMeta,
 }
@@ -31,7 +31,7 @@ pub fn try_from_slice_checked<T: BorshDeserialize>(
 //////////////////////////////////////////////////////////////////////////////////
 /////////////////////// GAMEPLAY TOKEN METADATA //////////////////////////////////
 
-pub const TAPESTRY_STATE_PDA_PREFIX: &str = "state";
+pub const PLACE_STATE_PDA_PREFIX: &str = "place";
 
 pub const DEFAULT_IS_FROZEN: bool = false;
 pub const DEFAULT_PAINTBRUSH_PRICE: u64 = 2_000_000;    // units are lamports
@@ -46,7 +46,7 @@ pub const TAPESTRY_STATE_LEN: usize = 0 +
     8; // bomb_price
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
-pub struct TapestryState {
+pub struct PlaceState {
     pub acct_type: PlaceAccountType,
 
     // The owner of the tapestry, unsure if there is a better way to handle this
@@ -65,10 +65,10 @@ pub struct TapestryState {
     pub bomb_price: u64,
 }
 
-impl TapestryState {
-    pub fn from_account_info(a: &AccountInfo) -> Result<TapestryState, ProgramError> {
-        let state: TapestryState =
-            try_from_slice_checked(&a.data.borrow_mut(), PlaceAccountType::TapestryState, TAPESTRY_STATE_LEN)?;
+impl PlaceState {
+    pub fn from_account_info(a: &AccountInfo) -> Result<PlaceState, ProgramError> {
+        let state: PlaceState =
+            try_from_slice_checked(&a.data.borrow_mut(), PlaceAccountType::PlaceState, TAPESTRY_STATE_LEN)?;
 
         Ok(state)
     }

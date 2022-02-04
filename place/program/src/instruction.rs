@@ -9,7 +9,7 @@ use crate::state::{find_address_for_patch, GameplayTokenType};
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub enum PlaceInstruction {
-    UpdateTapestryState(UpdateTapestryStateDataArgs),
+    UpdatePlaceState(UpdatePlaceStateDataArgs),
 
     // Allocate a patch
     InitPatch(InitPatchDataArgs),
@@ -25,7 +25,7 @@ pub enum PlaceInstruction {
 ////////////////////////// UPDATE TAPESTRY STATE /////////////////////////////////
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
-pub struct UpdateTapestryStateDataArgs {
+pub struct UpdatePlaceStateDataArgs {
     // The owner the tapestry, if different from the current owner, this will be set
     pub owner: Pubkey,
 
@@ -42,7 +42,7 @@ pub struct UpdateTapestryStateDataArgs {
     pub bomb_price: Option<u64>,
 }
 
-pub struct UpdateTapestryStateAccountArgs<'a, 'b: 'a> {
+pub struct UpdatePlaceStateAccountArgs<'a, 'b: 'a> {
     pub current_owner_acct: &'a AccountInfo<'b>,
 
     pub tapestry_state_pda: &'a AccountInfo<'b>,
