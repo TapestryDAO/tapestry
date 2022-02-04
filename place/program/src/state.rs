@@ -66,11 +66,28 @@ pub struct PlaceState {
 }
 
 impl PlaceState {
+    pub const LEN: usize = 0 +
+        1 + // acct_type
+        32 + // owner
+        1 + // is_frozen
+        8 + // paintbrush_price
+        8 + // paintbrush_cooldown
+        8; // bomb_price
+
+    pub const PREFIX: &'static str = "place";
+
     pub fn from_account_info(a: &AccountInfo) -> Result<PlaceState, ProgramError> {
         let state: PlaceState =
-            try_from_slice_checked(&a.data.borrow_mut(), PlaceAccountType::PlaceState, PLACE_STATE_LEN)?;
+            try_from_slice_checked(&a.data.borrow_mut(), PlaceAccountType::PlaceState, Self::LEN)?;
 
         Ok(state)
+    }
+
+    pub fn pda() -> (Pubkey, u8) {
+        Pubkey::find_program_address(
+            &[PLACE_STATE_PDA_PREFIX.as_bytes()],
+            &crate::id(),
+        )
     }
 }
 

@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::{Account, AccountInfo},
+    account_info::AccountInfo,
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
 };
@@ -27,7 +27,7 @@ pub enum PlaceInstruction {
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct UpdatePlaceStateDataArgs {
     // The owner the tapestry, if different from the current owner, this will be set
-    pub owner: Pubkey,
+    pub new_owner: Option<Pubkey>,
 
     // is the tapestry frozen
     pub is_frozen: Option<bool>,
@@ -45,7 +45,7 @@ pub struct UpdatePlaceStateDataArgs {
 pub struct UpdatePlaceStateAccountArgs<'a, 'b: 'a> {
     pub current_owner_acct: &'a AccountInfo<'b>,
 
-    pub tapestry_state_pda: &'a AccountInfo<'b>,
+    pub place_state_pda_acct: &'a AccountInfo<'b>,
 
     pub system_acct: &'a AccountInfo<'b>,
 }

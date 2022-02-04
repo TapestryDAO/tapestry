@@ -12,18 +12,19 @@ use crate::instruction::{
     UpdatePlaceStateAccountArgs, UpdatePlaceStateDataArgs,
 };
 
+use crate::error::PlaceError;
 use crate::error::PlaceError::{
     IncorrectPatchPDA, InvalidPatchCoordinates, PatchAccountAlreadyInitialized,
 };
 
 use crate::state::{
-    find_address_for_patch, Patch, PlaceAccountType, PATCH_DATA_LEN, PATCH_PDA_PREFIX,
+    find_address_for_patch, Patch, PlaceAccountType, PlaceState, PATCH_DATA_LEN, PATCH_PDA_PREFIX,
     PATCH_SIZE_PX, PLACE_HEIGHT_PX, PLACE_WIDTH_PX,
 };
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::utils::create_or_allocate_account_raw;
+use crate::utils::{assert_signer, create_or_allocate_account_raw};
 
 pub struct Processor;
 
@@ -39,12 +40,12 @@ impl Processor {
             PlaceInstruction::UpdatePlaceState(args) => {
                 let acct_info_iter = &mut accounts.iter();
                 let current_owner_acct = next_account_info(acct_info_iter)?;
-                let tapestry_state_pda = next_account_info(acct_info_iter)?;
+                let place_state_pda_acct = next_account_info(acct_info_iter)?;
                 let system_acct = next_account_info(acct_info_iter)?;
 
                 let acct_args = UpdatePlaceStateAccountArgs {
                     current_owner_acct,
-                    tapestry_state_pda,
+                    place_state_pda_acct,
                     system_acct,
                 };
 
@@ -102,7 +103,7 @@ fn process_update_place_state(
     data_args: UpdatePlaceStateDataArgs,
 ) -> ProgramResult {
     let UpdatePlaceStateDataArgs {
-        owner,
+        new_owner,
         is_frozen,
         paintbrush_price,
         paintbrush_cooldown,
@@ -111,11 +112,74 @@ fn process_update_place_state(
 
     let UpdatePlaceStateAccountArgs {
         current_owner_acct,
-        tapestry_state_pda,
+        place_state_pda_acct,
         system_acct,
     } = acct_args;
 
-    Ok(())
+    let (place_state_pda, _) = PlaceState::pda();
+    if place_state_pda != *place_state_pda_acct.key {
+        return Err(PlaceError::IncorrectPlaceStatePDA.into());
+    }
+
+    if *system_acct.key != solana_program::system_program::id() {
+        return Err(PlaceError::InvalidAccountArgument.into());
+    }
+
+    assert_signer(&current_owner_acct)?;
+
+    if place_state_pda_acct.data_is_empty() {
+        // TODO(will): consider just putting owner pubkey as static consant
+        // rather than relying on being first to call this instruction
+
+        create_or_allocate_account_raw(
+            *program_id,
+            place_state_pda_acct,
+            system_acct,
+            current_owner_acct,
+            PlaceState::LEN,
+            &[PlaceState::PREFIX.as_bytes()],
+        )?;
+
+        let mut state: PlaceState =
+            try_from_slice_unchecked(&place_state_pda_acct.data.borrow_mut())?;
+        state.acct_type = PlaceAccountType::PlaceState;
+        state.owner = *current_owner_acct.key;
+        state.is_frozen = is_frozen.unwrap_or(crate::state::DEFAULT_IS_FROZEN);
+        state.paintbrush_price = paintbrush_price.unwrap_or(crate::state::DEFAULT_PAINTBRUSH_PRICE);
+        state.paintbrush_cooldown =
+            paintbrush_cooldown.unwrap_or(crate::state::DEFAULT_PAINTBRUSH_COOLDOWN);
+        state.bomb_price = paintbrush_cooldown.unwrap_or(crate::state::DEFAULT_BOMB_PRICE);
+
+        state.serialize(&mut *place_state_pda_acct.data.borrow_mut())?;
+
+        Ok(())
+    } else {
+        let mut state = PlaceState::from_account_info(place_state_pda_acct)?;
+
+        // Only owner can update state
+        if state.owner != *current_owner_acct.key {
+            return Err(PlaceError::InvalidOwner.into());
+        }
+
+        if let Some(new_owner) = new_owner {
+            state.owner = new_owner;
+        }
+        if let Some(is_frozen) = is_frozen {
+            state.is_frozen = is_frozen;
+        }
+        if let Some(paintbrush_price) = paintbrush_price {
+            state.paintbrush_price = paintbrush_price;
+        }
+        if let Some(paintbrush_cooldown) = paintbrush_cooldown {
+            state.paintbrush_cooldown = paintbrush_cooldown;
+        }
+        if let Some(bomb_price) = bomb_price {
+            state.bomb_price = bomb_price;
+        }
+
+        state.serialize(&mut *place_state_pda_acct.data.borrow_mut())?;
+        Ok(())
+    }
 }
 
 fn process_init_patch(

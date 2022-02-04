@@ -18,6 +18,15 @@ pub enum PlaceError {
 
     #[error("Account data did not match expected type")]
     AccountDataTypeMismatch, // 4
+
+    #[error("Incorrect Place State PDA account")]
+    IncorrectPlaceStatePDA, // 5
+
+    #[error("Invalid account argument")]
+    InvalidAccountArgument, // 6
+
+    #[error("Invalid owner")]
+    InvalidOwner, // 6
 }
 
 impl From<PlaceError> for ProgramError {
