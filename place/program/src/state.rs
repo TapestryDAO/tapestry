@@ -37,7 +37,7 @@ pub const DEFAULT_IS_FROZEN: bool = false;
 pub const DEFAULT_PAINTBRUSH_PRICE: u64 = 2_000_000;    // units are lamports
 pub const DEFAULT_PAINTBRUSH_COOLDOWN: u64 = 60 * 10;   // units are seconds
 pub const DEFAULT_BOMB_PRICE: u64 = 500_000_000;        // units are lamports
-pub const TAPESTRY_STATE_LEN: usize = 0 +
+pub const PLACE_STATE_LEN: usize = 0 +
     1 + // acct_type
     32 + // owner
     1 + // is_frozen
@@ -68,7 +68,7 @@ pub struct PlaceState {
 impl PlaceState {
     pub fn from_account_info(a: &AccountInfo) -> Result<PlaceState, ProgramError> {
         let state: PlaceState =
-            try_from_slice_checked(&a.data.borrow_mut(), PlaceAccountType::PlaceState, TAPESTRY_STATE_LEN)?;
+            try_from_slice_checked(&a.data.borrow_mut(), PlaceAccountType::PlaceState, PLACE_STATE_LEN)?;
 
         Ok(state)
     }
