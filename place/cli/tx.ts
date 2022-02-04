@@ -1,8 +1,8 @@
 import { Keypair, sendAndConfirmTransaction, Transaction, ConfirmOptions } from '@solana/web3.js'
 import { inspect } from 'util'
-import yargs, { ArgumentsCamelCase, Argv, number, string } from 'yargs'
+import yargs, { Arguments, ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import { applyKeynameOption, applyXYArgOptions, KeynameOptionArgs, XYOptionArgs } from '../../cli_utils/commandHelpers'
-import { getNewConnection, loadKey } from '../../cli_utils/utils'
+import { getNewConnection, loadKey, makeJSONRPC, SOLANA_MAINNET_ENDPOINT } from '../../cli_utils/utils'
 import { PlaceProgram, SetPixelParams, PLACE_HEIGHT_PX, PLACE_WIDTH_PX, PATCH_SIZE_PX } from '../client/src/PlaceProgram'
 
 const MAX_COLORS = 256;
@@ -217,6 +217,32 @@ const random_walker_command = {
     }
 }
 
+type RentCheckCommandArgs = { data_size: number };
+
+const rent_check_command = {
+    command: "rent_check",
+    description: "check price of rent for a given data_size (bytes)",
+    builder: (args: Argv): Argv<RentCheckCommandArgs> => {
+        return args.option("data_size", {
+            description: "data size (bytes)",
+            type: "number",
+            required: true,
+        })
+    },
+    handler: async (args: ArgumentsCamelCase<RentCheckCommandArgs>) => {
+        let result = await makeJSONRPC(
+            "getMinimumBalanceForRentExemption",
+            [args.data_size],
+            SOLANA_MAINNET_ENDPOINT
+        );
+
+        let result_lamports = result.result as number;
+        let result_sol = result_lamports / 1_000_000_000;
+        let result_USD = result_sol * 100;
+        console.log("Lamps: ", result_lamports, "\nSOL: ", result_sol, "\nUSD: ", result_USD);
+    }
+}
+
 export const command = {
     command: "tx",
     description: "Execute various transations against the tapestry program running on the solana blockchain",
@@ -225,6 +251,7 @@ export const command = {
             .command(set_pixel_command)
             .command(random_walker_command)
             .command(init_all_patches_command)
+            .command(rent_check_command)
             .demandCommand()
     }
 }
