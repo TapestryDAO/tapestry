@@ -6,10 +6,3 @@ export enum PlaceInstruction {
     PurchaseGameplayToken,
     SetPixel,
 };
-
-
-// Duplicate in state.rs
-export enum PlaceAccountType {
-    Patch,
-    GameplayTokenMeta,
-}

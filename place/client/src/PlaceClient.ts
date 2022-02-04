@@ -1,9 +1,12 @@
-import { Connection, PublicKey, KeyedAccountInfo } from "@solana/web3.js";
+import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter } from "@solana/web3.js";
 import { Signal } from 'type-signals';
 import { PlaceProgram } from ".";
 import { PatchData } from "./accounts/Patch";
 import { extendBorsh } from "./utils/borsh";
 import { pallete } from "./Pallete";
+import { PlaceAccountType } from "./accounts/types";
+import BN from 'bn.js'
+import base58 from "bs58";
 
 export const PATCH_WIDTH = 20;
 export const PATCH_HEIGHT = 20;
@@ -29,6 +32,13 @@ export class PlaceClient {
     private colorPallete: Buffer;
 
     public updatesQueue: CanvasUpdate[] = [];
+
+    private patchAccountsFilter: GetProgramAccountsFilter = {
+        memcmp: {
+            bytes: base58.encode([PlaceAccountType.Patch]),
+            offset: 0,
+        }
+    }
 
     constructor(connection: Connection) {
         this.connection = connection;
@@ -135,7 +145,7 @@ export class PlaceClient {
             } else {
                 console.log("got update for account: ", accountInfo.accountId);
             }
-        }, "processed");
+        }, "processed", [this.patchAccountsFilter]);
     }
 
     public patchAccountToPixels(acct: PatchData): Uint8ClampedArray {
@@ -165,7 +175,8 @@ export class PlaceClient {
         }
 
         this.subscription = null;
-        let allAccounts = await this.connection.getProgramAccounts(PlaceProgram.PUBKEY);
+        const config = { filters: [this.patchAccountsFilter] }
+        let allAccounts = await this.connection.getProgramAccounts(PlaceProgram.PUBKEY, config);
         let allAccountsParsed = allAccounts.flatMap((value) => {
             let data = value.account.data;
             if (data != undefined) {
