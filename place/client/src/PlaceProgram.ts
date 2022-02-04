@@ -6,6 +6,8 @@ import {
 import { Program } from '@metaplex-foundation/mpl-core'
 import { SetPixelArgsData } from './instructions/setPixel';
 import { InitPatchArgsData } from './instructions/initPatch';
+import { UpdatePlaceStateArgsData } from './instructions/updatePlaceState';
+import BN from 'bn.js';
 
 export const PLACE_HEIGHT_PX = 1000;
 export const PLACE_WIDTH_PX = 1000;
@@ -24,6 +26,15 @@ export type InitPatchParams = {
     payer: PublicKey,
 }
 
+export type UpdatePlaceStateParams = {
+    current_owner: PublicKey,
+    new_owner: PublicKey | null,
+    is_frozen: boolean | null,
+    paintbrush_price: BN | null,
+    paintbrush_cooldown: BN | null,
+    bomb_price: BN | null,
+}
+
 type PixelPatchCoords = {
     xPatch: number,
     yPatch: number,
@@ -35,6 +46,7 @@ export class PlaceProgram extends Program {
     static readonly PUBKEY: PublicKey = new PublicKey('tapestry11111111111111111111111111111111111');
 
     static readonly PATCH_PDA_PREFIX = "patch";
+    static readonly PLACE_STATE_PDA_PREFIX = "place";
 
     static async initPatch(params: InitPatchParams) {
         let data = InitPatchArgsData.serialize({
@@ -53,6 +65,27 @@ export class PlaceProgram extends Program {
             programId: this.PUBKEY,
             data: data,
         })
+    }
+
+    static async updatePlaceState(params: UpdatePlaceStateParams) {
+        let place_state_pda = await this.findPlaceStatePda();
+        let data = UpdatePlaceStateArgsData.serialize({
+            new_owner: params.new_owner,
+            is_frozen: params.is_frozen,
+            paintbrush_price: params.paintbrush_price,
+            paintbrush_cooldown: params.paintbrush_cooldown,
+            bomb_price: params.bomb_price,
+        })
+
+        return new TransactionInstruction({
+            keys: [
+                { pubkey: params.current_owner, isSigner: true, isWritable: true },
+                { pubkey: place_state_pda, isSigner: false, isWritable: true },
+                { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+            ],
+            programId: this.PUBKEY,
+            data: data,
+        });
     }
 
     static async setPixel(params: SetPixelParams) {
@@ -91,6 +124,15 @@ export class PlaceProgram extends Program {
             Buffer.from(this.PATCH_PDA_PREFIX),
             xBuf,
             yBuf,
+        ])
+
+        let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
+        return result[0];
+    }
+
+    static async findPlaceStatePda(): Promise<PublicKey> {
+        let seeds = Buffer.concat([
+            Buffer.from(this.PLACE_STATE_PDA_PREFIX),
         ])
 
         let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);

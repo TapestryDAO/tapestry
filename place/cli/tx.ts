@@ -1,9 +1,10 @@
-import { Keypair, sendAndConfirmTransaction, Transaction, ConfirmOptions } from '@solana/web3.js'
+import { Keypair, sendAndConfirmTransaction, Transaction, ConfirmOptions, PublicKey } from '@solana/web3.js'
 import { inspect } from 'util'
 import yargs, { Arguments, ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import { applyKeynameOption, applyXYArgOptions, KeynameOptionArgs, XYOptionArgs } from '../../cli_utils/commandHelpers'
 import { getNewConnection, loadKey, makeJSONRPC, SOLANA_MAINNET_ENDPOINT } from '../../cli_utils/utils'
 import { PlaceProgram, SetPixelParams, PLACE_HEIGHT_PX, PLACE_WIDTH_PX, PATCH_SIZE_PX } from '../client/src/PlaceProgram'
+import BN from 'bn.js';
 
 const MAX_COLORS = 256;
 
@@ -243,6 +244,71 @@ const rent_check_command = {
     }
 }
 
+type UpdatePlaceStateArgs =
+    { new_owner?: string } &
+    { is_frozen?: boolean } &
+    { paintbrush_price?: number } &
+    { paintbrush_cooldown?: number } &
+    { bomb_price?: number } &
+    KeynameOptionArgs
+
+const update_place_state_command = {
+    command: "update_place",
+    description: "Update the place state account data",
+    builder: (args: Argv): Argv<UpdatePlaceStateArgs> => {
+        return applyKeynameOption(args)
+            .option("new_owner", {
+                description: "(Optional) change the owner to this public key",
+                type: "string",
+                required: false,
+            })
+            .option("is_frozen", {
+                description: "(Optional) change the is_frozen state of the place",
+                type: "boolean",
+                required: false,
+            })
+            .option("paintbrush_price", {
+                description: "(Optional) update the price for a paintbrush",
+                type: "number",
+                required: false,
+            })
+            .option("paintbrush_cooldown", {
+                description: "(Optional) update the default cooldown for paintbrushes",
+                type: "number",
+                required: false,
+            })
+            .option("bomb_price", {
+                description: "(Optional) update the price for bombs",
+                type: "number",
+                required: false,
+            })
+    },
+    handler: async (args: ArgumentsCamelCase<UpdatePlaceStateArgs>) => {
+
+        let new_owner = args.new_owner ? new PublicKey(args.new_owner!) : null;
+        let is_frozen = args.is_frozen ? args.is_frozen! : null;
+        let paintbrush_price = args.paintbrush_price ? new BN(args.paintbrush_price!) : null;
+        let paintbrush_cooldown = args.paintbrush_cooldown ? new BN(args.paintbrush_cooldown!) : null;
+        let bomb_price = args.bomb_price ? new BN(args.bomb_price!) : null;
+
+        let key = loadKey(args.keyname);
+
+        let update_place_ix = await PlaceProgram.updatePlaceState({
+            current_owner: key.publicKey,
+            new_owner: new_owner,
+            is_frozen: is_frozen,
+            paintbrush_price: paintbrush_price,
+            paintbrush_cooldown: paintbrush_cooldown,
+            bomb_price: bomb_price,
+        })
+
+        let tx = new Transaction().add(update_place_ix);
+        let connection = getNewConnection();
+        let result = await sendAndConfirmTransaction(connection, tx, [key]);
+        console.log("Result: ", result);
+    }
+}
+
 export const command = {
     command: "tx",
     description: "Execute various transations against the tapestry program running on the solana blockchain",
@@ -252,6 +318,7 @@ export const command = {
             .command(random_walker_command)
             .command(init_all_patches_command)
             .command(rent_check_command)
+            .command(update_place_state_command)
             .demandCommand()
     }
 }
