@@ -1,13 +1,31 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::pubkey::Pubkey;
+use solana_program::{pubkey::Pubkey, account_info::AccountInfo, program_error::ProgramError, borsh::try_from_slice_unchecked,};
+use crate::error::PlaceError;
 
 // Identifies an Account type in the first byte of the account data
 // Useful for queries
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Clone, Copy)]
 pub enum PlaceAccountType {
+    Uninitialized,
     TapestryState,
     Patch,
     GameplayTokenMeta,
+}
+
+pub fn try_from_slice_checked<T: BorshDeserialize>(
+    data: &[u8],
+    data_type: PlaceAccountType,
+    data_size: usize,
+) -> Result<T, ProgramError> {
+    if (data[0] != data_type as u8 && data[0] != PlaceAccountType::Uninitialized as u8)
+        || data.len() != data_size
+    {
+        return Err(PlaceError::AccountDataTypeMismatch.into());
+    }
+
+    let result: T = try_from_slice_unchecked(data)?;
+
+    Ok(result)
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -19,6 +37,13 @@ pub const DEFAULT_IS_FROZEN: bool = false;
 pub const DEFAULT_PAINTBRUSH_PRICE: u64 = 2_000_000;    // units are lamports
 pub const DEFAULT_PAINTBRUSH_COOLDOWN: u64 = 60 * 10;   // units are seconds
 pub const DEFAULT_BOMB_PRICE: u64 = 500_000_000;        // units are lamports
+pub const TAPESTRY_STATE_LEN: usize = 0 +
+    1 + // acct_type
+    32 + // owner
+    1 + // is_frozen
+    8 + // paintbrush_price
+    8 + // paintbrush_cooldown
+    8; // bomb_price
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct TapestryState {
@@ -38,6 +63,15 @@ pub struct TapestryState {
 
     // current price of a gameplay token of type Bomb
     pub bomb_price: u64,
+}
+
+impl TapestryState {
+    pub fn from_account_info(a: &AccountInfo) -> Result<TapestryState, ProgramError> {
+        let state: TapestryState =
+            try_from_slice_checked(&a.data.borrow_mut(), PlaceAccountType::TapestryState, TAPESTRY_STATE_LEN)?;
+
+        Ok(state)
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////

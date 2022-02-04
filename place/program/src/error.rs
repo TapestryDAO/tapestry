@@ -14,7 +14,10 @@ pub enum PlaceError {
     InvalidPatchCoordinates, // 2
 
     #[error("Patch account already Initialized")]
-    PatchAccountAlreadyInitialized,
+    PatchAccountAlreadyInitialized, // 3
+
+    #[error("Account data did not match expected type")]
+    AccountDataTypeMismatch, // 4
 }
 
 impl From<PlaceError> for ProgramError {

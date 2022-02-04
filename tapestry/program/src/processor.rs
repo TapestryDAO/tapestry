@@ -9,14 +9,11 @@ use crate::{
         assert_featured_region_valid, assert_patch_is_valid, find_featured_state_address,
         find_mint_address_for_patch_coords, find_patch_address_for_patch_coords,
         find_tapestry_state_address, FeaturedRegion, FeaturedState, TapestryPatch, TapestryState,
-        MAX_FEATURED_REGIONS, MAX_PATCH_IMAGE_DATA_LEN, MAX_PATCH_TOTAL_LEN,
-        MAX_TAPESTRY_FEATURED_ACCOUNT_LEN, TAPESTRY_FEATURED_PDA_PREFIX, TAPESTRY_MINT_PDA_PREFIX,
-        TAPESTRY_PDA_PREFIX, TAPESTRY_STATE_MAX_LEN,
+        MAX_FEATURED_REGIONS, MAX_PATCH_TOTAL_LEN, MAX_TAPESTRY_FEATURED_ACCOUNT_LEN,
+        TAPESTRY_FEATURED_PDA_PREFIX, TAPESTRY_MINT_PDA_PREFIX, TAPESTRY_PDA_PREFIX,
+        TAPESTRY_STATE_MAX_LEN,
     },
-    utils::{
-        assert_coords_valid, assert_signer, chunk_for_coords, create_or_allocate_account_raw,
-        ChunkCoords,
-    },
+    utils::{assert_signer, chunk_for_coords, create_or_allocate_account_raw, ChunkCoords},
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
@@ -31,12 +28,12 @@ use solana_program::{
 };
 
 use mpl_token_metadata::{
-    instruction::{create_metadata_accounts_v2, verify_collection, CreateMetadataAccountArgs},
+    instruction::create_metadata_accounts_v2,
     state::{Collection, Creator},
 };
 
 use spl_token::{
-    instruction::{initialize_mint, AuthorityType},
+    instruction::initialize_mint,
     state::{Account as TokenAccount, Mint},
 };
 
@@ -223,9 +220,9 @@ fn process_init_tapestry(
     )?;
 
     let featured: Vec<FeaturedRegion> = vec![];
-    let mut featured_state: FeaturedState = FeaturedState { featured };
+    let featured_state: FeaturedState = FeaturedState { featured };
 
-    featured_state.serialize(&mut *featured_state_acct.data.borrow_mut());
+    featured_state.serialize(&mut *featured_state_acct.data.borrow_mut())?;
 
     Ok(())
 }
@@ -460,7 +457,7 @@ fn process_purchase_patch(
         image_data: None,
     };
 
-    assert_patch_is_valid(&tapestry_patch);
+    assert_patch_is_valid(&tapestry_patch)?;
 
     // Create Token metadata
 
@@ -554,8 +551,7 @@ fn process_update_patch_image(
 
     // TODO(will): The bump is only 1 byte, should probably pass in ix data
     // to reduce compute overhead
-    let (patch_addr, patch_addr_bump) =
-        find_patch_address_for_patch_coords(data_args.x, data_args.y, program_id);
+    let (patch_addr, _) = find_patch_address_for_patch_coords(data_args.x, data_args.y, program_id);
 
     // let (tapestry_state_addr, tapestry_state_bump) = find_tapestry_state_address(program_id);
     if patch_addr != *patch_acct.key {
@@ -566,8 +562,7 @@ fn process_update_patch_image(
         return Err(TapestryError::PatchAccountNotAllocated.into());
     }
 
-    let (mint_addr, mint_addr_bump) =
-        find_mint_address_for_patch_coords(data_args.x, data_args.y, program_id);
+    let (mint_addr, _) = find_mint_address_for_patch_coords(data_args.x, data_args.y, program_id);
 
     let mut patch_acct_unpacked: TapestryPatch =
         try_from_slice_unchecked(&patch_acct.data.borrow_mut())?;
@@ -614,8 +609,7 @@ fn process_update_patch_metadata(
 
     // TODO(will): this logic is duplicated with update image, factor it into it's own 'assert' fn
 
-    let (patch_addr, patch_addr_bump) =
-        find_patch_address_for_patch_coords(data_args.x, data_args.y, program_id);
+    let (patch_addr, _) = find_patch_address_for_patch_coords(data_args.x, data_args.y, program_id);
 
     // let (tapestry_state_addr, tapestry_state_bump) = find_tapestry_state_address(program_id);
     if patch_addr != *patch_acct.key {
@@ -626,8 +620,7 @@ fn process_update_patch_metadata(
         return Err(TapestryError::PatchAccountNotAllocated.into());
     }
 
-    let (mint_addr, mint_addr_bump) =
-        find_mint_address_for_patch_coords(data_args.x, data_args.y, program_id);
+    let (mint_addr, _) = find_mint_address_for_patch_coords(data_args.x, data_args.y, program_id);
 
     let mut patch_acct_unpacked: TapestryPatch =
         try_from_slice_unchecked(&patch_acct.data.borrow_mut())?;
@@ -675,7 +668,7 @@ fn process_push_featured(
     let PushFeaturedDataArgs { region } = data_args;
 
     assert_signer(owner_acct)?;
-    assert_featured_region_valid(&region);
+    assert_featured_region_valid(&region)?;
 
     let (tapestry_state_pda, _) = find_tapestry_state_address(program_id);
     let (featured_state_pda, _) = find_featured_state_address(program_id);
