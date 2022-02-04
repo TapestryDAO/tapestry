@@ -5,6 +5,7 @@ use solana_program::pubkey::Pubkey;
 // Useful for queries
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Clone, Copy)]
 pub enum PlaceAccountType {
+    TapestryState,
     Patch,
     GameplayTokenMeta,
 }
@@ -12,15 +13,58 @@ pub enum PlaceAccountType {
 //////////////////////////////////////////////////////////////////////////////////
 /////////////////////// GAMEPLAY TOKEN METADATA //////////////////////////////////
 
+pub const TAPESTRY_STATE_PDA_PREFIX: &str = "state";
+
+pub const DEFAULT_IS_FROZEN: bool = false;
+pub const DEFAULT_PAINTBRUSH_PRICE: u64 = 2_000_000;    // units are lamports
+pub const DEFAULT_PAINTBRUSH_COOLDOWN: u64 = 60 * 10;   // units are seconds
+pub const DEFAULT_BOMB_PRICE: u64 = 500_000_000;        // units are lamports
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct TapestryState {
+    pub acct_type: PlaceAccountType,
+
+    // The owner of the tapestry, unsure if there is a better way to handle this
+    pub owner: Pubkey,
+
+    // if the tapestry state has been frozen for NFT creation and auction
+    pub is_frozen: bool,
+
+    // Current price of a gameplay token of type Paintbrush
+    pub paintbrush_price: u64,
+
+    // number of seconds for the cooldown for new paintbrushes
+    pub paintbrush_cooldown: u64,
+
+    // current price of a gameplay token of type Bomb
+    pub bomb_price: u64,
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+/////////////////////// GAMEPLAY TOKEN METADATA //////////////////////////////////
+
+#[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Clone, Copy)]
+pub enum GameplayTokenType {
+    PaintBrush,
+    Bomb,
+}
+
 /// PDA prefix for user accounts
 pub const GAMEPLAY_TOKEN_META_PREFIX: &str = "game";
-
-pub const BASE_ACCOUNT_COST_LAMPORTS: u64 = 100_000_000;
 
 /// Holds the metadata and relevant state for a gameplay token
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Clone)]
 pub struct GameplayTokenMeta {
     pub acct_type: PlaceAccountType,
+
+    pub gameplay_type: GameplayTokenType,
+
+    // I think this should be the slot rounded to some reasonable number
+    // such that we can query in a time based way
+    pub created_at_slot: u64,
+
+    // 64 bit integer used as a seed for generating this pda
+    pub random_seed: u64,
     
     // the token mint associated with this metadata
     pub token_mint_pda: Pubkey,

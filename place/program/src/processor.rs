@@ -9,6 +9,7 @@ use solana_program::{
 use crate::instruction::{
     InitPatchAccountArgs, InitPatchDataArgs, PlaceInstruction, PurchaseGameplayTokenAccountArgs,
     PurchaseGameplayTokenDataArgs, SetPixelAccountArgs, SetPixelDataArgs,
+    UpdateTapestryStateAccountArgs, UpdateTapestryStateDataArgs,
 };
 
 use crate::error::PlaceError::{
@@ -35,6 +36,20 @@ impl Processor {
         let instruction = PlaceInstruction::try_from_slice(instruction_data)?;
 
         match instruction {
+            PlaceInstruction::UpdateTapestryState(args) => {
+                let acct_info_iter = &mut accounts.iter();
+                let current_owner_acct = next_account_info(acct_info_iter)?;
+                let tapestry_state_pda = next_account_info(acct_info_iter)?;
+                let system_acct = next_account_info(acct_info_iter)?;
+
+                let acct_args = UpdateTapestryStateAccountArgs {
+                    current_owner_acct,
+                    tapestry_state_pda,
+                    system_acct,
+                };
+
+                process_update_tapestry_state(program_id, acct_args, args)
+            }
             PlaceInstruction::InitPatch(args) => {
                 let acct_info_iter = &mut accounts.iter();
                 let payer_acct = next_account_info(acct_info_iter)?;
@@ -79,6 +94,28 @@ impl Processor {
             }
         }
     }
+}
+
+fn process_update_tapestry_state(
+    program_id: &Pubkey,
+    acct_args: UpdateTapestryStateAccountArgs,
+    data_args: UpdateTapestryStateDataArgs,
+) -> ProgramResult {
+    let UpdateTapestryStateDataArgs {
+        owner,
+        is_frozen,
+        paintbrush_price,
+        paintbrush_cooldown,
+        bomb_price,
+    } = data_args;
+
+    let UpdateTapestryStateAccountArgs {
+        current_owner_acct,
+        tapestry_state_pda,
+        system_acct,
+    } = acct_args;
+
+    Ok(())
 }
 
 fn process_init_patch(
@@ -140,6 +177,12 @@ fn process_init_patch(
     return Ok(());
 }
 
+// Lamports
+pub const DEFAULT_GAMEPLAY_TOKEN_PRICE: u64 = 1_000_000;
+
+// milliseconds
+pub const DEFAULT_GAMEPLAY_TOKEN_COOLROWN: u64 = 1_000 * 60;
+
 fn process_purchase_account(
     program_id: &Pubkey,
     acct_args: PurchaseGameplayTokenAccountArgs,
@@ -151,10 +194,7 @@ fn process_purchase_account(
         system_acct,
     } = acct_args;
 
-    // Make sure account hasn't already been initialized?
-    // allocate account
-    // set last_used to zero
-    // serialize account
+    // what are the PDA seeds for the gameplay token account
 
     let clock = Clock::get();
     Ok(())
@@ -180,6 +220,9 @@ fn process_set_pixel(
     } = data_args;
 
     // TODO(will): check data not empty? or just let if fail?
+
+    // TODO(will): IMPORTANT - setup utils function for parsing the different account types
+    // but checking that the first byte matches the `AccountType` enum that we are expecting.
 
     // This could be sped up by just computing the offset and setting directly.
     let mut patch: Patch = try_from_slice_unchecked(&patch_pda_acct.try_borrow_data()?)?;

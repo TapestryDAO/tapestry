@@ -1,14 +1,16 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo,
+    account_info::{Account, AccountInfo},
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
 };
 
-use crate::state::find_address_for_patch;
+use crate::state::{find_address_for_patch, GameplayTokenType};
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub enum PlaceInstruction {
+    UpdateTapestryState(UpdateTapestryStateDataArgs),
+
     // Allocate a patch
     InitPatch(InitPatchDataArgs),
 
@@ -17,6 +19,35 @@ pub enum PlaceInstruction {
 
     // Set a pixel to a particular value
     SetPixel(SetPixelDataArgs),
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+////////////////////////// UPDATE TAPESTRY STATE /////////////////////////////////
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct UpdateTapestryStateDataArgs {
+    // The owner the tapestry, if different from the current owner, this will be set
+    pub owner: Pubkey,
+
+    // is the tapestry frozen
+    pub is_frozen: Option<bool>,
+
+    // price of a token of type Paintbrush in lamports
+    pub paintbrush_price: Option<u64>,
+
+    // number of seconds for the cooldown of new paintbrushes
+    pub paintbrush_cooldown: Option<u64>,
+
+    // price of a token of type Bomb in lamports
+    pub bomb_price: Option<u64>,
+}
+
+pub struct UpdateTapestryStateAccountArgs<'a, 'b: 'a> {
+    pub current_owner_acct: &'a AccountInfo<'b>,
+
+    pub tapestry_state_pda: &'a AccountInfo<'b>,
+
+    pub system_acct: &'a AccountInfo<'b>,
 }
 
 /////////////////// InitPatch ////////////////////
@@ -64,7 +95,8 @@ pub fn get_ix_init_patch(
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct PurchaseGameplayTokenDataArgs {
-    // none for now
+    // The type of token to purchase
+    pub token_type: GameplayTokenType,
 }
 
 pub struct PurchaseGameplayTokenAccountArgs<'a, 'b: 'a> {
