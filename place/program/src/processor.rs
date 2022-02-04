@@ -48,7 +48,7 @@ impl Processor {
                     system_acct,
                 };
 
-                process_update_tapestry_state(program_id, acct_args, args)
+                process_update_place_state(program_id, acct_args, args)
             }
             PlaceInstruction::InitPatch(args) => {
                 let acct_info_iter = &mut accounts.iter();
@@ -96,7 +96,7 @@ impl Processor {
     }
 }
 
-fn process_update_tapestry_state(
+fn process_update_place_state(
     program_id: &Pubkey,
     acct_args: UpdatePlaceStateAccountArgs,
     data_args: UpdatePlaceStateDataArgs,
