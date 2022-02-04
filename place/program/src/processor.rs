@@ -116,7 +116,7 @@ fn process_update_place_state(
         system_acct,
     } = acct_args;
 
-    let (place_state_pda, _) = PlaceState::pda();
+    let (place_state_pda, place_state_pda_bump) = PlaceState::pda();
     if place_state_pda != *place_state_pda_acct.key {
         return Err(PlaceError::IncorrectPlaceStatePDA.into());
     }
@@ -137,13 +137,13 @@ fn process_update_place_state(
             system_acct,
             current_owner_acct,
             PlaceState::LEN,
-            &[PlaceState::PREFIX.as_bytes()],
+            &[PlaceState::PREFIX.as_bytes(), &[place_state_pda_bump]],
         )?;
 
         let mut state: PlaceState =
             try_from_slice_unchecked(&place_state_pda_acct.data.borrow_mut())?;
         state.acct_type = PlaceAccountType::PlaceState;
-        state.owner = *current_owner_acct.key;
+        state.owner = new_owner.unwrap_or(*current_owner_acct.key);
         state.is_frozen = is_frozen.unwrap_or(crate::state::DEFAULT_IS_FROZEN);
         state.paintbrush_price = paintbrush_price.unwrap_or(crate::state::DEFAULT_PAINTBRUSH_PRICE);
         state.paintbrush_cooldown =

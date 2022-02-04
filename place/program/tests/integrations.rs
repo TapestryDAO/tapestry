@@ -5,7 +5,8 @@ use solana_place::state::find_address_for_patch;
 use solana_program_test::{processor, tokio, ProgramTest, ProgramTestContext};
 use solana_sdk::{signature::Keypair, signature::Signer, transaction::Transaction};
 
-use solana_place::state::{Patch, PATCH_SIZE_PX};
+use solana_place::instruction;
+use solana_place::state::{Patch, PlaceAccountType, PlaceState, PATCH_SIZE_PX};
 
 #[tokio::test]
 async fn test_purchase_account() {
@@ -22,6 +23,97 @@ async fn test_purchase_account() {
     let mut banks_client = pt_ctx.banks_client;
     let payer = pt_ctx.payer;
     let recent_blockhash = pt_ctx.last_blockhash;
+
+    // Initialize the place state account
+
+    let update_place_ix = instruction::get_ix_update_place_state(
+        payer.pubkey(),
+        Some(payer.pubkey()),
+        Some(false),
+        None,
+        None,
+        None,
+    );
+
+    let update_place_tx = Transaction::new_signed_with_payer(
+        &[update_place_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    let update_place_result = banks_client.process_transaction(update_place_tx).await;
+    assert_matches!(update_place_result, Ok(()));
+
+    {
+        // Check update results
+        let (place_state_pda, _) = PlaceState::pda();
+        let place_state_acct = banks_client
+            .get_account(place_state_pda)
+            .await
+            .unwrap()
+            .unwrap();
+
+        let state = PlaceState::from_bytes(&place_state_acct.data).unwrap();
+        assert_eq!(state.acct_type, PlaceAccountType::PlaceState);
+        assert_eq!(state.owner, payer.pubkey());
+        assert_eq!(state.is_frozen, false);
+        assert_eq!(
+            state.paintbrush_price,
+            solana_place::state::DEFAULT_PAINTBRUSH_PRICE
+        );
+        assert_eq!(
+            state.paintbrush_cooldown,
+            solana_place::state::DEFAULT_PAINTBRUSH_COOLDOWN
+        );
+        assert_eq!(state.bomb_price, solana_place::state::DEFAULT_BOMB_PRICE);
+    }
+
+    // update the place state account
+
+    let new_paintbrush_price = solana_place::state::DEFAULT_PAINTBRUSH_PRICE + 1;
+    let new_paintbrush_cooldown = solana_place::state::DEFAULT_PAINTBRUSH_COOLDOWN + 1;
+    let new_bomb_price = solana_place::state::DEFAULT_BOMB_PRICE + 1;
+
+    let update_place_ix2 = instruction::get_ix_update_place_state(
+        payer.pubkey(),
+        None,
+        None,
+        Some(new_paintbrush_price),
+        Some(new_paintbrush_cooldown),
+        Some(new_bomb_price),
+    );
+
+    let update_place_tx2 = Transaction::new_signed_with_payer(
+        &[update_place_ix2],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    let update_place_result2 = banks_client.process_transaction(update_place_tx2).await;
+    assert_matches!(update_place_result2, Ok(()));
+
+    {
+        // Check update results
+        let (place_state_pda, _) = PlaceState::pda();
+        let place_state_acct = banks_client
+            .get_account(place_state_pda)
+            .await
+            .unwrap()
+            .unwrap();
+
+        let state = PlaceState::from_bytes(&place_state_acct.data).unwrap();
+        assert_eq!(state.acct_type, PlaceAccountType::PlaceState);
+        assert_eq!(state.owner, payer.pubkey());
+        assert_eq!(state.is_frozen, false);
+        assert_eq!(state.paintbrush_price, new_paintbrush_price);
+        assert_eq!(state.paintbrush_cooldown, new_paintbrush_cooldown);
+        assert_eq!(state.bomb_price, new_bomb_price);
+    }
+
+    // initialize the patch (allocate data)
+
     let x = 0u8;
     let y = 0u8;
     let x_offset = 0u8;
@@ -30,8 +122,6 @@ async fn test_purchase_account() {
     let pixel: u8 = 0b10101010;
 
     let (patch_pda, _) = find_address_for_patch(x, y, &program_id);
-
-    // initialize the patch (allocate data)
 
     let init_patch_ix =
         solana_place::instruction::get_ix_init_patch(solana_place::id(), payer.pubkey(), x, y);

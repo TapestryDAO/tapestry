@@ -83,6 +83,11 @@ impl PlaceState {
         Ok(state)
     }
 
+    pub fn from_bytes(b: &[u8]) -> Result<PlaceState, ProgramError> {
+        let state: PlaceState = try_from_slice_checked(b, PlaceAccountType::PlaceState, Self::LEN)?;
+        Ok(state)
+    }
+
     pub fn pda() -> (Pubkey, u8) {
         Pubkey::find_program_address(
             &[PLACE_STATE_PDA_PREFIX.as_bytes()],

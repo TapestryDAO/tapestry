@@ -5,7 +5,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use crate::state::{find_address_for_patch, GameplayTokenType};
+use crate::state::{find_address_for_patch, GameplayTokenType, PlaceState};
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub enum PlaceInstruction {
@@ -43,11 +43,42 @@ pub struct UpdatePlaceStateDataArgs {
 }
 
 pub struct UpdatePlaceStateAccountArgs<'a, 'b: 'a> {
+    /// `[signer]` fee payer and current owner
     pub current_owner_acct: &'a AccountInfo<'b>,
 
+    /// `[writable]` pda of the place state account
     pub place_state_pda_acct: &'a AccountInfo<'b>,
 
+    /// `[]` system program acct
     pub system_acct: &'a AccountInfo<'b>,
+}
+
+pub fn get_ix_update_place_state(
+    current_owner: Pubkey,
+    new_owner: Option<Pubkey>,
+    is_frozen: Option<bool>,
+    paintbrush_price: Option<u64>,
+    paintbrush_cooldown: Option<u64>,
+    bomb_price: Option<u64>,
+) -> Instruction {
+    let (place_state_pda, _) = PlaceState::pda();
+    Instruction {
+        program_id: crate::id(),
+        accounts: vec![
+            AccountMeta::new(current_owner, true),
+            AccountMeta::new(place_state_pda, false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+        ],
+        data: PlaceInstruction::UpdatePlaceState(UpdatePlaceStateDataArgs {
+            new_owner,
+            is_frozen,
+            paintbrush_price,
+            paintbrush_cooldown,
+            bomb_price,
+        })
+        .try_to_vec()
+        .unwrap(),
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////
