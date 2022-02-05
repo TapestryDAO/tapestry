@@ -2,15 +2,27 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     borsh::try_from_slice_unchecked,
     entrypoint::ProgramResult,
+    program::{invoke, invoke_signed},
     pubkey::Pubkey,
-    sysvar::{clock::Clock, Sysvar},
+    system_instruction,
+    sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 
-use crate::instruction::{
-    InitPatchAccountArgs, InitPatchDataArgs, PlaceInstruction, PurchaseGameplayTokenAccountArgs,
-    PurchaseGameplayTokenDataArgs, SetPixelAccountArgs, SetPixelDataArgs,
-    UpdatePlaceStateAccountArgs, UpdatePlaceStateDataArgs,
+use crate::{
+    id,
+    instruction::{
+        InitPatchAccountArgs, InitPatchDataArgs, PlaceInstruction,
+        PurchaseGameplayTokenAccountArgs, PurchaseGameplayTokenDataArgs, SetPixelAccountArgs,
+        SetPixelDataArgs, UpdatePlaceStateAccountArgs, UpdatePlaceStateDataArgs,
+    },
 };
+
+use spl_token::{
+    instruction::initialize_mint,
+    state::{Account as TokenAccount, Mint},
+};
+
+use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
 
 use crate::error::PlaceError;
 use crate::error::PlaceError::{
@@ -18,8 +30,8 @@ use crate::error::PlaceError::{
 };
 
 use crate::state::{
-    find_address_for_patch, Patch, PlaceAccountType, PlaceState, PATCH_DATA_LEN, PATCH_PDA_PREFIX,
-    PATCH_SIZE_PX, PLACE_HEIGHT_PX, PLACE_WIDTH_PX,
+    find_address_for_patch, GameplayTokenMeta, GameplayTokenType, Patch, PlaceAccountType,
+    PlaceState, PATCH_DATA_LEN, PATCH_PDA_PREFIX, PATCH_SIZE_PX, PLACE_HEIGHT_PX, PLACE_WIDTH_PX,
 };
 
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -68,16 +80,28 @@ impl Processor {
             PlaceInstruction::PurchaseGameplayToken(args) => {
                 let acct_info_iter = &mut accounts.iter();
                 let payer_acct = next_account_info(acct_info_iter)?;
+                let place_state_pda_acct = next_account_info(acct_info_iter)?;
                 let gameplay_meta_pda_acct = next_account_info(acct_info_iter)?;
-                let system_acct = next_account_info(acct_info_iter)?;
+                let gameplay_token_mint_pda_acct = next_account_info(acct_info_iter)?;
+                let gameplay_token_ata_acct = next_account_info(acct_info_iter)?;
+                let token_prog_acct = next_account_info(acct_info_iter)?;
+                let ata_prog_acct = next_account_info(acct_info_iter)?;
+                let system_prog_acct = next_account_info(acct_info_iter)?;
+                let rent_sysvar_acct = next_account_info(acct_info_iter)?;
 
                 let acct_args = PurchaseGameplayTokenAccountArgs {
                     payer_acct,
+                    place_state_pda_acct,
                     gameplay_meta_pda_acct,
-                    system_acct,
+                    gameplay_token_mint_pda_acct,
+                    gameplay_token_ata_acct,
+                    token_prog_acct,
+                    ata_prog_acct,
+                    system_prog_acct,
+                    rent_sysvar_acct,
                 };
 
-                process_purchase_gameplay_token(program_id, acct_args, &args)
+                process_purchase_gameplay_token(program_id, acct_args, args)
             }
             PlaceInstruction::SetPixel(args) => {
                 let acct_info_iter = &mut accounts.iter();
@@ -195,6 +219,12 @@ fn process_init_patch(
 
     let InitPatchDataArgs { x_patch, y_patch } = data_args;
 
+    // TODO(will): check owner, validate inputs more
+
+    if *system_acct.key != solana_program::system_program::id() {
+        return Err(PlaceError::InvalidAccountArgument.into());
+    }
+
     let max_x_patch = (PLACE_WIDTH_PX as usize) / PATCH_SIZE_PX;
     let max_y_patch = (PLACE_HEIGHT_PX as usize) / PATCH_SIZE_PX;
     let invalid_x = (*x_patch as usize) > max_x_patch;
@@ -244,17 +274,182 @@ fn process_init_patch(
 fn process_purchase_gameplay_token(
     program_id: &Pubkey,
     acct_args: PurchaseGameplayTokenAccountArgs,
-    data_args: &PurchaseGameplayTokenDataArgs,
+    data_args: PurchaseGameplayTokenDataArgs,
 ) -> ProgramResult {
     let PurchaseGameplayTokenAccountArgs {
         payer_acct,
+        place_state_pda_acct,
         gameplay_meta_pda_acct,
-        system_acct,
+        gameplay_token_mint_pda_acct,
+        gameplay_token_ata_acct,
+        token_prog_acct,
+        ata_prog_acct,
+        system_prog_acct,
+        rent_sysvar_acct,
     } = acct_args;
 
-    // what are the PDA seeds for the gameplay token account
+    let PurchaseGameplayTokenDataArgs {
+        token_type,
+        random_seed,
+        desired_price,
+    } = data_args;
 
-    let clock = Clock::get();
+    assert_signer(payer_acct)?;
+
+    let (gameplay_meta_pda, gameplay_meta_pda_bump) = GameplayTokenMeta::pda(random_seed);
+    if gameplay_meta_pda != *gameplay_meta_pda_acct.key {
+        return Err(PlaceError::IncorrectGameplayTokenMetaPDA.into());
+    }
+
+    let (place_state_pda, place_state_pda_bump) = PlaceState::pda();
+    if place_state_pda != *place_state_pda_acct.key {
+        return Err(PlaceError::IncorrectPlaceStatePDA.into());
+    }
+
+    let (gameplay_token_mint_pda, gameplay_token_mint_pda_bump) =
+        GameplayTokenMeta::token_mint_pda(random_seed);
+    if gameplay_token_mint_pda != *gameplay_token_mint_pda_acct.key {
+        return Err(PlaceError::InvalidGameplayTokenMintPDA.into());
+    }
+
+    if *system_prog_acct.key != solana_program::system_program::id() {
+        return Err(PlaceError::InvalidAccountArgument.into());
+    }
+
+    if *token_prog_acct.key != spl_token::id() {
+        return Err(PlaceError::InvalidAccountArgument.into());
+    }
+
+    if *ata_prog_acct.key != spl_associated_token_account::id() {
+        return Err(PlaceError::InvalidAccountArgument.into());
+    }
+
+    // TODO(will): how do I check the rent sysvar account is correct? do I need to?
+
+    if !gameplay_meta_pda_acct.data_is_empty() {
+        return Err(PlaceError::GameplayTokenAlreadyPurchased.into());
+    }
+
+    let state = PlaceState::from_account_info(place_state_pda_acct)?;
+    let price: u64 = match token_type {
+        GameplayTokenType::PaintBrush => state.paintbrush_price,
+        GameplayTokenType::Bomb => state.bomb_price,
+    };
+
+    if price != desired_price {
+        return Err(PlaceError::DesiredPriceDifferentFromCurrentPrice.into());
+    }
+
+    // Allocate space for the gameplay token account and initialize its state
+
+    create_or_allocate_account_raw(
+        *program_id,
+        gameplay_meta_pda_acct,
+        system_prog_acct,
+        payer_acct,
+        GameplayTokenMeta::LEN,
+        &[
+            GameplayTokenMeta::PREFIX.as_bytes(),
+            &random_seed.to_le_bytes(),
+        ],
+    )?;
+
+    let clock = Clock::get()?;
+
+    let gameplay_token_meta = GameplayTokenMeta {
+        acct_type: PlaceAccountType::GameplayTokenMeta,
+        gameplay_type: token_type,
+        created_at_slot: clock.slot,
+        random_seed: random_seed,
+        token_mint_pda: gameplay_token_mint_pda,
+        update_allowed_slot: clock.slot,
+    };
+
+    gameplay_token_meta.serialize(&mut *gameplay_meta_pda_acct.data.borrow_mut())?;
+
+    // pay for the token
+
+    invoke(
+        &system_instruction::transfer(&payer_acct.key, &place_state_pda, price),
+        &[
+            (*payer_acct).clone(),
+            (*place_state_pda_acct).clone(),
+            (*system_prog_acct).clone(),
+        ],
+    )?;
+
+    // Create token mint
+
+    let init_mint_ix = initialize_mint(
+        &spl_token::id(),
+        &gameplay_token_mint_pda,
+        &place_state_pda,
+        None,
+        0,
+    )?;
+
+    invoke_signed(
+        &init_mint_ix,
+        &[
+            (*token_prog_acct).clone(),
+            (*place_state_pda_acct).clone(),
+            (*gameplay_token_mint_pda_acct).clone(),
+            (*rent_sysvar_acct).clone(),
+        ],
+        // TODO(will): Do these need to be in one array?
+        &[&[PlaceState::PREFIX.as_bytes(), &[place_state_pda_bump]]],
+    )?;
+
+    // Create associated token account
+    // TODO(will): figure out what hapens if this account already exists
+
+    let create_ata_ix =
+        create_associated_token_account(payer_acct.key, payer_acct.key, &gameplay_token_mint_pda);
+
+    invoke_signed(
+        &create_ata_ix,
+        &[
+            (*gameplay_token_ata_acct).clone(),
+            (*payer_acct).clone(),
+            (*gameplay_token_mint_pda_acct).clone(),
+            (*ata_prog_acct).clone(),
+            (*rent_sysvar_acct).clone(),
+            (*system_prog_acct).clone(),
+        ],
+        &[],
+    )?;
+
+    // Mint NFT into ATA
+
+    let mint_token_ix = spl_token::instruction::mint_to(
+        token_prog_acct.key,
+        gameplay_token_mint_pda_acct.key,
+        gameplay_token_ata_acct.key,
+        place_state_pda_acct.key,
+        &[place_state_pda_acct.key],
+        1,
+    )?;
+
+    invoke_signed(
+        &mint_token_ix,
+        &[
+            (*token_prog_acct).clone(),
+            (*gameplay_token_mint_pda_acct).clone(),
+            (*place_state_pda_acct).clone(),
+            (*gameplay_token_mint_pda_acct).clone(),
+            // Do I need to add this? we will find out (*payer_acct).clone(),
+        ],
+        // TODO(will): Do these need to be in one array?
+        &[&[PlaceState::PREFIX.as_bytes(), &[place_state_pda_bump]]],
+    )?;
+
+    // TODO(will): create token metadata
+
+    // let meta_program_id = mpl_token_metadata::id();
+    // create_metadata_accounts_v2
+
+    // TODO(will): maybe remove authority to hard limit supply to one
+
     Ok(())
 }
 
@@ -276,6 +471,10 @@ fn process_set_pixel(
         y_offset,
         pixel,
     } = data_args;
+
+    if *system_acct.key != solana_program::system_program::id() {
+        return Err(PlaceError::InvalidAccountArgument.into());
+    }
 
     // TODO(will): check data not empty? or just let if fail?
 

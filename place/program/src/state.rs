@@ -1,5 +1,5 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::{pubkey::Pubkey, account_info::AccountInfo, program_error::ProgramError, borsh::try_from_slice_unchecked,};
+use solana_program::{pubkey::Pubkey, account_info::AccountInfo, program_error::ProgramError, borsh::try_from_slice_unchecked, clock::Slot,};
 use crate::error::PlaceError;
 
 // Identifies an Account type in the first byte of the account data
@@ -96,9 +96,6 @@ pub enum GameplayTokenType {
     Bomb,
 }
 
-/// PDA prefix for user accounts
-pub const GAMEPLAY_TOKEN_META_PREFIX: &str = "game";
-
 /// Holds the metadata and relevant state for a gameplay token
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Clone)]
 pub struct GameplayTokenMeta {
@@ -108,7 +105,7 @@ pub struct GameplayTokenMeta {
 
     // I think this should be the slot rounded to some reasonable number
     // such that we can query in a time based way
-    pub created_at_slot: u64,
+    pub created_at_slot: Slot,
 
     // 64 bit integer used as a seed for generating this pda
     pub random_seed: u64,
@@ -116,11 +113,54 @@ pub struct GameplayTokenMeta {
     // the token mint associated with this metadata
     pub token_mint_pda: Pubkey,
 
-    // amount of time after an update which this token needs to cooldown
-    pub cooldown_ms: u32,
+    // update allowed slot 
+    pub update_allowed_slot: Slot,
+}
 
-    // wall clock time after which this gameplay token can be used for an update (ms since epoch)
-    pub update_allowed_after_ms: u64,
+impl GameplayTokenMeta {
+    pub const PREFIX: &'static str = "game";
+    pub const MINT_PREFIX: &'static str = "mint";
+
+    pub const LEN: usize = 0 + 
+        1 + // acct_type
+        1 + // gameplay_type
+        8 + // created_at_slot
+        8 + // random_seed
+        32 + // token_mint_pda
+        8;  // update_allowed_after
+
+    pub fn from_account_info(a: &AccountInfo) -> Result<GameplayTokenMeta, ProgramError> {
+        let state: GameplayTokenMeta =
+            try_from_slice_checked(&a.data.borrow_mut(), PlaceAccountType::GameplayTokenMeta, Self::LEN)?;
+
+        Ok(state)
+    }
+
+    pub fn from_bytes(b: &[u8]) -> Result<GameplayTokenMeta, ProgramError> {
+        let state: GameplayTokenMeta = try_from_slice_checked(b, PlaceAccountType::GameplayTokenMeta, Self::LEN)?;
+        Ok(state)
+    }
+
+    pub fn pda(random_seed: u64) -> (Pubkey, u8) {
+        Pubkey::find_program_address(
+            &[
+                Self::PREFIX.as_bytes(),
+                &random_seed.to_le_bytes(),
+            ],
+            &crate::id(),
+        )
+    }
+    
+    pub fn token_mint_pda(random_seed: u64) -> (Pubkey, u8) {
+        return Pubkey::find_program_address(
+            &[
+                Self::PREFIX.as_bytes(),
+                &random_seed.to_le_bytes(),
+                Self::MINT_PREFIX.as_bytes(),
+            ],
+            &crate::id(),
+        )
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////

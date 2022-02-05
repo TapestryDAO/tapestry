@@ -144,11 +144,29 @@ pub struct PurchaseGameplayTokenAccountArgs<'a, 'b: 'a> {
     /// `[signer]` Account that will own this... account... fuck
     pub payer_acct: &'a AccountInfo<'b>,
 
+    /// `[]` PlaceState account
+    pub place_state_pda_acct: &'a AccountInfo<'b>,
+
     // `[writable]` PDA for the GameplayTokenMeta account
     pub gameplay_meta_pda_acct: &'a AccountInfo<'b>,
 
+    // `[writable]` PDA for token mint of NFT controlling the gameplay token
+    pub gameplay_token_mint_pda_acct: &'a AccountInfo<'b>,
+
+    // `[writable]` ATA to mint NFT into for the payer
+    pub gameplay_token_ata_acct: &'a AccountInfo<'b>,
+
+    // `[?]` token program account
+    pub token_prog_acct: &'a AccountInfo<'b>,
+
+    // `[?]` associated token program account
+    pub ata_prog_acct: &'a AccountInfo<'b>,
+
     // `[]` the system program
-    pub system_acct: &'a AccountInfo<'b>,
+    pub system_prog_acct: &'a AccountInfo<'b>,
+
+    // `[]` the rent sysvar account (needed by token program)
+    pub rent_sysvar_acct: &'a AccountInfo<'b>,
 }
 
 //////////////////////////////////////////////////////////////////////////////////
