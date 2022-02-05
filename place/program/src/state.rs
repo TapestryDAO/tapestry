@@ -31,19 +31,10 @@ pub fn try_from_slice_checked<T: BorshDeserialize>(
 //////////////////////////////////////////////////////////////////////////////////
 /////////////////////// GAMEPLAY TOKEN METADATA //////////////////////////////////
 
-pub const PLACE_STATE_PDA_PREFIX: &str = "place";
-
 pub const DEFAULT_IS_FROZEN: bool = false;
 pub const DEFAULT_PAINTBRUSH_PRICE: u64 = 2_000_000;    // units are lamports
 pub const DEFAULT_PAINTBRUSH_COOLDOWN: u64 = 60 * 10;   // units are seconds
 pub const DEFAULT_BOMB_PRICE: u64 = 500_000_000;        // units are lamports
-pub const PLACE_STATE_LEN: usize = 0 +
-    1 + // acct_type
-    32 + // owner
-    1 + // is_frozen
-    8 + // paintbrush_price
-    8 + // paintbrush_cooldown
-    8; // bomb_price
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct PlaceState {
@@ -90,7 +81,7 @@ impl PlaceState {
 
     pub fn pda() -> (Pubkey, u8) {
         Pubkey::find_program_address(
-            &[PLACE_STATE_PDA_PREFIX.as_bytes()],
+            &[Self::PREFIX.as_bytes()],
             &crate::id(),
         )
     }

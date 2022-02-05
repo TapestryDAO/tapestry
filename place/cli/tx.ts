@@ -1,9 +1,10 @@
-import { Keypair, sendAndConfirmTransaction, Transaction, ConfirmOptions, PublicKey } from '@solana/web3.js'
-import { inspect } from 'util'
-import yargs, { Arguments, ArgumentsCamelCase, Argv, number, string } from 'yargs'
-import { applyKeynameOption, applyXYArgOptions, KeynameOptionArgs, XYOptionArgs } from '../../cli_utils/commandHelpers'
-import { getNewConnection, loadKey, makeJSONRPC, SOLANA_MAINNET_ENDPOINT } from '../../cli_utils/utils'
-import { PlaceProgram, SetPixelParams, PLACE_HEIGHT_PX, PLACE_WIDTH_PX, PATCH_SIZE_PX } from '../client/src/PlaceProgram'
+import { sendAndConfirmTransaction, Transaction, ConfirmOptions, PublicKey } from '@solana/web3.js';
+import { inspect } from 'util';
+import { ArgumentsCamelCase, Argv } from 'yargs';
+import { applyKeynameOption, applyXYArgOptions, KeynameOptionArgs, XYOptionArgs } from '../../cli_utils/commandHelpers';
+import { getNewConnection, loadKey, makeJSONRPC, SOLANA_MAINNET_ENDPOINT } from '../../cli_utils/utils';
+import { PlaceProgram, SetPixelParams, PLACE_HEIGHT_PX, PLACE_WIDTH_PX, PATCH_SIZE_PX } from '../client/src/PlaceProgram';
+import { PlaceClient } from '../client/src/PlaceClient';
 import BN from 'bn.js';
 
 const MAX_COLORS = 256;
@@ -309,6 +310,23 @@ const update_place_state_command = {
     }
 }
 
+const get_state_command = {
+    command: "get_state",
+    description: "Get the current Place State account and print contents",
+    handler: async (args: ArgumentsCamelCase) => {
+        let state = await PlaceClient.getInstance().fetchPlaceStateAccount();
+        console.log("Place State:")
+        console.log("AcctType     :", state.acct_type);
+        console.log("Owner        :", state.owner.toBase58());
+        console.log("Frozen?      :", state.is_frozen);
+        console.log("Pbrush price :", state.paintbrush_price.toNumber());
+        console.log("Pbrush cool  :", state.paintbrush_cooldown.toNumber());
+        console.log("Bomb price   :", state.bomb_price.toNumber());
+        // console.log("Raw: ")
+        // console.log(inspect(state, true, null, true))
+    }
+}
+
 export const command = {
     command: "tx",
     description: "Execute various transations against the tapestry program running on the solana blockchain",
@@ -319,6 +337,7 @@ export const command = {
             .command(init_all_patches_command)
             .command(rent_check_command)
             .command(update_place_state_command)
+            .command(get_state_command)
             .demandCommand()
     }
 }

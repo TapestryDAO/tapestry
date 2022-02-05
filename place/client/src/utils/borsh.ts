@@ -6,12 +6,14 @@ type BinaryReaderExtended = BinaryReader & {
     readI8(): number;
     readI16(): number;
     readVecU8(): Buffer;
+    readBoolean(): boolean;
 }
 
 type BinaryWriterExtended = BinaryWriter & {
     writeI8(value: number): void;
     writeI16(value: number): void;
     writeVecU8(value: Buffer): void;
+    writeBoolean(value: boolean): void;
 }
 
 let once = false;
@@ -54,6 +56,19 @@ export const extendBorsh = () => {
         let buf = Buffer.alloc(2);
         buf.writeInt16LE(value, 0);
         this.writeFixedArray(buf);
+    };
+
+    (BinaryReader.prototype as BinaryReaderExtended).readBoolean = function (
+        this: BinaryReaderExtended,
+    ) {
+        return this.readU8() ? true : false;
+    };
+
+    (BinaryWriter.prototype as BinaryWriterExtended).writeBoolean = function (
+        this: BinaryWriterExtended,
+        value: boolean,
+    ) {
+        this.writeU8(value ? 1 : 0);
     };
 
     (BinaryReader.prototype as BinaryReaderExtended).readVecU8 = function (

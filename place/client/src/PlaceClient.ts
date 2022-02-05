@@ -1,12 +1,10 @@
 import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter } from "@solana/web3.js";
-import { Signal } from 'type-signals';
 import { PlaceProgram } from ".";
-import { PatchData } from "./accounts/Patch";
 import { extendBorsh } from "./utils/borsh";
 import { pallete } from "./Pallete";
-import { PlaceAccountType } from "./accounts/types";
-import BN from 'bn.js'
+import { PlaceAccountType, PatchData, PlaceStateData } from "./accounts";
 import base58 from "bs58";
+import { inspect } from "util";
 
 export const PATCH_WIDTH = 20;
 export const PATCH_HEIGHT = 20;
@@ -36,6 +34,13 @@ export class PlaceClient {
     private patchAccountsFilter: GetProgramAccountsFilter = {
         memcmp: {
             bytes: base58.encode([PlaceAccountType.Patch]),
+            offset: 0,
+        }
+    }
+
+    private placeStateAccountsFilter: GetProgramAccountsFilter = {
+        memcmp: {
+            bytes: base58.encode([PlaceAccountType.PlaceState]),
             offset: 0,
         }
     }
@@ -168,6 +173,18 @@ export class PlaceClient {
         return array;
     }
 
+    public async fetchPlaceStateAccount(): Promise<PlaceStateData> {
+        extendBorsh();
+        const config = { filters: [this.placeStateAccountsFilter] };
+        let results = await this.connection.getProgramAccounts(PlaceProgram.PUBKEY, config)
+        if (results.length !== 1) {
+            console.log("WARNING: Unexpected number of state accounts: ", results.length);
+        }
+
+        let result = results[0];
+        return PlaceStateData.deserialize(result.account.data);
+    }
+
     public async fetchAllPatches() {
         extendBorsh();
         if (this.subscription !== null) {
@@ -187,6 +204,10 @@ export class PlaceClient {
         });
 
         for (const acct of allAccountsParsed) {
+            if (acct == null) {
+                continue;
+            }
+
             this.updatesQueue.push({
                 x: acct.x * PATCH_WIDTH,
                 y: acct.y * PATCH_HEIGHT,
