@@ -161,6 +161,19 @@ impl GameplayTokenMeta {
             &crate::id(),
         )
     }
+
+    pub fn token_metadata_pda(random_seed: u64) -> (Pubkey, u8) {
+        let (mint_pda, _) = Self::token_mint_pda(random_seed);
+        let mpl_token_meta_prog_id = mpl_token_metadata::id();
+        return Pubkey::find_program_address(
+            &[
+                mpl_token_metadata::state::PREFIX.as_bytes(),
+                mpl_token_meta_prog_id.as_ref(),
+                mint_pda.as_ref(),
+            ],
+            &mpl_token_meta_prog_id,
+        );
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////

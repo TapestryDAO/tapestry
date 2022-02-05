@@ -1,11 +1,12 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo,
+    account_info::{Account, AccountInfo},
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
+    sysvar,
 };
 
-use crate::state::{find_address_for_patch, GameplayTokenType, PlaceState};
+use crate::state::{find_address_for_patch, GameplayTokenMeta, GameplayTokenType, PlaceState};
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub enum PlaceInstruction {
@@ -156,6 +157,12 @@ pub struct PurchaseGameplayTokenAccountArgs<'a, 'b: 'a> {
     // `[writable]` ATA to mint NFT into for the payer
     pub gameplay_token_ata_acct: &'a AccountInfo<'b>,
 
+    // `[writable]` the token metadata account for the NFT
+    pub gameplay_token_mpl_meta_acct: &'a AccountInfo<'b>,
+
+    // `[]` The MPL token metadata program account
+    pub mpl_metadata_prog_acct: &'a AccountInfo<'b>,
+
     // `[?]` token program account
     pub token_prog_acct: &'a AccountInfo<'b>,
 
@@ -169,6 +176,45 @@ pub struct PurchaseGameplayTokenAccountArgs<'a, 'b: 'a> {
     pub rent_sysvar_acct: &'a AccountInfo<'b>,
 }
 
+pub fn get_ix_purchase_gameplay_token(
+    payer: Pubkey,
+    random_seed: u64,
+    token_type: GameplayTokenType,
+    desired_price: u64,
+) -> Instruction {
+    let (place_state_pda, _) = PlaceState::pda();
+    let (gameplay_meta_pda, _) = GameplayTokenMeta::pda(random_seed);
+    let (gameplay_token_mint_pda, _) = GameplayTokenMeta::token_mint_pda(random_seed);
+    let gameplay_token_ata = spl_associated_token_account::get_associated_token_address(
+        &payer,
+        &gameplay_token_mint_pda,
+    );
+    let (gameplay_token_mpl_pda, _) = GameplayTokenMeta::token_metadata_pda(random_seed);
+
+    Instruction {
+        program_id: crate::id(),
+        accounts: vec![
+            AccountMeta::new(payer, true),
+            AccountMeta::new_readonly(place_state_pda, false),
+            AccountMeta::new(gameplay_meta_pda, false),
+            AccountMeta::new(gameplay_token_mint_pda, false),
+            AccountMeta::new(gameplay_token_ata, false),
+            AccountMeta::new(gameplay_token_mpl_pda, false),
+            AccountMeta::new_readonly(mpl_token_metadata::id(), false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(spl_associated_token_account::id(), false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+        ],
+        data: PlaceInstruction::PurchaseGameplayToken(PurchaseGameplayTokenDataArgs {
+            token_type,
+            random_seed,
+            desired_price,
+        })
+        .try_to_vec()
+        .unwrap(),
+    }
+}
 //////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// SET PIXEL //////////////////////////////////////
 

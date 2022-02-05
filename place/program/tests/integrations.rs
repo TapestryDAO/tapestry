@@ -1,4 +1,6 @@
-use solana_program::{borsh::try_from_slice_unchecked, program_error::ProgramError};
+use solana_program::{
+    borsh::try_from_slice_unchecked, program_error::ProgramError, system_instruction,
+};
 
 use assert_matches::assert_matches;
 use solana_place::state::find_address_for_patch;
@@ -6,7 +8,7 @@ use solana_program_test::{processor, tokio, ProgramTest, ProgramTestContext};
 use solana_sdk::{signature::Keypair, signature::Signer, transaction::Transaction};
 
 use solana_place::instruction;
-use solana_place::state::{Patch, PlaceAccountType, PlaceState, PATCH_SIZE_PX};
+use solana_place::state::{GameplayTokenType, Patch, PlaceAccountType, PlaceState, PATCH_SIZE_PX};
 
 #[tokio::test]
 async fn test_purchase_account() {
@@ -18,11 +20,29 @@ async fn test_purchase_account() {
         processor!(solana_place::entrypoint::process_instruction),
     );
 
+    pt.add_program("mpl_token_metadata", mpl_token_metadata::id(), None);
+
     let mut pt_ctx = pt.start_with_context().await;
 
     let mut banks_client = pt_ctx.banks_client;
     let payer = pt_ctx.payer;
     let recent_blockhash = pt_ctx.last_blockhash;
+
+    let game_player = Keypair::new();
+    let fund_game_player_ix =
+        system_instruction::transfer(&payer.pubkey(), &game_player.pubkey(), 10_000_000_000);
+
+    let fund_game_player_tx = Transaction::new_signed_with_payer(
+        &[fund_game_player_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    assert_matches!(
+        banks_client.process_transaction(fund_game_player_tx).await,
+        Ok(())
+    );
 
     // Initialize the place state account
 
@@ -111,6 +131,30 @@ async fn test_purchase_account() {
         assert_eq!(state.paintbrush_cooldown, new_paintbrush_cooldown);
         assert_eq!(state.bomb_price, new_bomb_price);
     }
+
+    // purchase a gameplay token
+
+    let random_seed: u64 = 10101;
+
+    let purchase_gameplay_token_ix = instruction::get_ix_purchase_gameplay_token(
+        game_player.pubkey(),
+        random_seed,
+        GameplayTokenType::PaintBrush,
+        new_paintbrush_price,
+    );
+
+    let purchase_gameplay_token_tx = Transaction::new_signed_with_payer(
+        &[purchase_gameplay_token_ix],
+        Some(&game_player.pubkey()),
+        &[&game_player],
+        recent_blockhash,
+    );
+
+    let purchase_gameplay_token_result = banks_client
+        .process_transaction(purchase_gameplay_token_tx)
+        .await;
+
+    assert_matches!(purchase_gameplay_token_result, Ok(()));
 
     // initialize the patch (allocate data)
 

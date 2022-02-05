@@ -2,9 +2,11 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     borsh::try_from_slice_unchecked,
     entrypoint::ProgramResult,
+    msg,
     program::{invoke, invoke_signed},
+    program_pack::Pack,
     pubkey::Pubkey,
-    system_instruction,
+    system_instruction, sysvar,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 
@@ -28,6 +30,8 @@ use crate::error::PlaceError;
 use crate::error::PlaceError::{
     IncorrectPatchPDA, InvalidPatchCoordinates, PatchAccountAlreadyInitialized,
 };
+
+use mpl_token_metadata::{instruction::create_metadata_accounts_v2, state::Collection};
 
 use crate::state::{
     find_address_for_patch, GameplayTokenMeta, GameplayTokenType, Patch, PlaceAccountType,
@@ -79,26 +83,19 @@ impl Processor {
             }
             PlaceInstruction::PurchaseGameplayToken(args) => {
                 let acct_info_iter = &mut accounts.iter();
-                let payer_acct = next_account_info(acct_info_iter)?;
-                let place_state_pda_acct = next_account_info(acct_info_iter)?;
-                let gameplay_meta_pda_acct = next_account_info(acct_info_iter)?;
-                let gameplay_token_mint_pda_acct = next_account_info(acct_info_iter)?;
-                let gameplay_token_ata_acct = next_account_info(acct_info_iter)?;
-                let token_prog_acct = next_account_info(acct_info_iter)?;
-                let ata_prog_acct = next_account_info(acct_info_iter)?;
-                let system_prog_acct = next_account_info(acct_info_iter)?;
-                let rent_sysvar_acct = next_account_info(acct_info_iter)?;
 
                 let acct_args = PurchaseGameplayTokenAccountArgs {
-                    payer_acct,
-                    place_state_pda_acct,
-                    gameplay_meta_pda_acct,
-                    gameplay_token_mint_pda_acct,
-                    gameplay_token_ata_acct,
-                    token_prog_acct,
-                    ata_prog_acct,
-                    system_prog_acct,
-                    rent_sysvar_acct,
+                    payer_acct: next_account_info(acct_info_iter)?,
+                    place_state_pda_acct: next_account_info(acct_info_iter)?,
+                    gameplay_meta_pda_acct: next_account_info(acct_info_iter)?,
+                    gameplay_token_mint_pda_acct: next_account_info(acct_info_iter)?,
+                    gameplay_token_ata_acct: next_account_info(acct_info_iter)?,
+                    gameplay_token_mpl_meta_acct: next_account_info(acct_info_iter)?,
+                    mpl_metadata_prog_acct: next_account_info(acct_info_iter)?,
+                    token_prog_acct: next_account_info(acct_info_iter)?,
+                    ata_prog_acct: next_account_info(acct_info_iter)?,
+                    system_prog_acct: next_account_info(acct_info_iter)?,
+                    rent_sysvar_acct: next_account_info(acct_info_iter)?,
                 };
 
                 process_purchase_gameplay_token(program_id, acct_args, args)
@@ -282,6 +279,8 @@ fn process_purchase_gameplay_token(
         gameplay_meta_pda_acct,
         gameplay_token_mint_pda_acct,
         gameplay_token_ata_acct,
+        gameplay_token_mpl_meta_acct,
+        mpl_metadata_prog_acct,
         token_prog_acct,
         ata_prog_acct,
         system_prog_acct,
@@ -312,6 +311,11 @@ fn process_purchase_gameplay_token(
         return Err(PlaceError::InvalidGameplayTokenMintPDA.into());
     }
 
+    let (gameplay_token_mpl_meta_pda, _) = GameplayTokenMeta::token_metadata_pda(random_seed);
+    if *gameplay_token_mpl_meta_acct.key != gameplay_token_mpl_meta_pda {
+        return Err(PlaceError::InvalidAccountArgument.into());
+    }
+
     if *system_prog_acct.key != solana_program::system_program::id() {
         return Err(PlaceError::InvalidAccountArgument.into());
     }
@@ -324,7 +328,13 @@ fn process_purchase_gameplay_token(
         return Err(PlaceError::InvalidAccountArgument.into());
     }
 
-    // TODO(will): how do I check the rent sysvar account is correct? do I need to?
+    if *mpl_metadata_prog_acct.key != mpl_token_metadata::id() {
+        return Err(PlaceError::InvalidAccountArgument.into());
+    }
+
+    if *rent_sysvar_acct.key != sysvar::rent::id() {
+        return Err(PlaceError::InvalidAccountArgument.into());
+    }
 
     if !gameplay_meta_pda_acct.data_is_empty() {
         return Err(PlaceError::GameplayTokenAlreadyPurchased.into());
@@ -340,7 +350,14 @@ fn process_purchase_gameplay_token(
         return Err(PlaceError::DesiredPriceDifferentFromCurrentPrice.into());
     }
 
-    // Allocate space for the gameplay token account and initialize its state
+    // -- Allocate space for the gameplay token account and initialize its state
+    msg!("Allocating gameplay token");
+
+    let gameplay_meta_pda_seeds = &[
+        GameplayTokenMeta::PREFIX.as_bytes(),
+        &random_seed.to_le_bytes(),
+        &[gameplay_meta_pda_bump],
+    ];
 
     create_or_allocate_account_raw(
         *program_id,
@@ -348,10 +365,7 @@ fn process_purchase_gameplay_token(
         system_prog_acct,
         payer_acct,
         GameplayTokenMeta::LEN,
-        &[
-            GameplayTokenMeta::PREFIX.as_bytes(),
-            &random_seed.to_le_bytes(),
-        ],
+        gameplay_meta_pda_seeds,
     )?;
 
     let clock = Clock::get()?;
@@ -367,7 +381,7 @@ fn process_purchase_gameplay_token(
 
     gameplay_token_meta.serialize(&mut *gameplay_meta_pda_acct.data.borrow_mut())?;
 
-    // pay for the token
+    // -- pay for the token
 
     invoke(
         &system_instruction::transfer(&payer_acct.key, &place_state_pda, price),
@@ -378,7 +392,26 @@ fn process_purchase_gameplay_token(
         ],
     )?;
 
-    // Create token mint
+    // -- Allocate space for the token mint and initialize it
+    msg!("Allocating token mint");
+
+    let gameplay_token_mint_pda_seeds = &[
+        GameplayTokenMeta::PREFIX.as_bytes(),
+        &random_seed.to_le_bytes(),
+        GameplayTokenMeta::MINT_PREFIX.as_bytes(),
+        &[gameplay_token_mint_pda_bump],
+    ];
+
+    let place_state_acct_pda_seeds = &[PlaceState::PREFIX.as_bytes(), &[place_state_pda_bump]];
+
+    create_or_allocate_account_raw(
+        *token_prog_acct.key,
+        gameplay_token_mint_pda_acct,
+        system_prog_acct,
+        payer_acct,
+        Mint::LEN,
+        gameplay_token_mint_pda_seeds,
+    )?;
 
     let init_mint_ix = initialize_mint(
         &spl_token::id(),
@@ -396,13 +429,13 @@ fn process_purchase_gameplay_token(
             (*gameplay_token_mint_pda_acct).clone(),
             (*rent_sysvar_acct).clone(),
         ],
-        // TODO(will): Do these need to be in one array?
-        &[&[PlaceState::PREFIX.as_bytes(), &[place_state_pda_bump]]],
+        &[place_state_acct_pda_seeds],
     )?;
 
-    // Create associated token account
-    // TODO(will): figure out what hapens if this account already exists
+    // -- Create associated token account
+    msg!("Creating ATA");
 
+    // TODO(will): figure out what hapens if this account already exists
     let create_ata_ix =
         create_associated_token_account(payer_acct.key, payer_acct.key, &gameplay_token_mint_pda);
 
@@ -419,7 +452,8 @@ fn process_purchase_gameplay_token(
         &[],
     )?;
 
-    // Mint NFT into ATA
+    // -- Mint NFT into ATA
+    msg!("Minting NFT into ATA");
 
     let mint_token_ix = spl_token::instruction::mint_to(
         token_prog_acct.key,
@@ -435,18 +469,62 @@ fn process_purchase_gameplay_token(
         &[
             (*token_prog_acct).clone(),
             (*gameplay_token_mint_pda_acct).clone(),
+            (*gameplay_token_ata_acct).clone(),
             (*place_state_pda_acct).clone(),
-            (*gameplay_token_mint_pda_acct).clone(),
             // Do I need to add this? we will find out (*payer_acct).clone(),
         ],
-        // TODO(will): Do these need to be in one array?
-        &[&[PlaceState::PREFIX.as_bytes(), &[place_state_pda_bump]]],
+        &[place_state_acct_pda_seeds],
     )?;
 
-    // TODO(will): create token metadata
+    // -- Create the metaplex token metadata
+    msg!("Creating mpl metadata");
 
-    // let meta_program_id = mpl_token_metadata::id();
-    // create_metadata_accounts_v2
+    let token_name = match token_type {
+        GameplayTokenType::Bomb => String::from("Tapestry Bomb"),
+        GameplayTokenType::PaintBrush => String::from("Tapestry Paintbrush"),
+    };
+
+    let token_uri = match token_type {
+        GameplayTokenType::Bomb => String::from("http://localhost:8080/bomb.json"),
+        GameplayTokenType::PaintBrush => String::from("http://localhost:8080/paintbrush.json"),
+    };
+
+    let create_mpl_meta_ix = create_metadata_accounts_v2(
+        mpl_token_metadata::id(),
+        gameplay_token_mpl_meta_pda,
+        gameplay_token_mint_pda.clone(),
+        place_state_pda.clone(),
+        payer_acct.key.clone(),
+        place_state_pda.clone(),
+        token_name,
+        String::from("Tapestry"),
+        token_uri,
+        None,
+        0,
+        true,
+        false,
+        Some(Collection {
+            verified: false, // have to do this via a separate instruction
+            key: place_state_pda.clone(),
+        }),
+        None, // this is "uses", can this be leveraged for bombs?
+    );
+
+    invoke_signed(
+        &create_mpl_meta_ix,
+        &[
+            (*mpl_metadata_prog_acct).clone(),
+            (*gameplay_token_mint_pda_acct).clone(),
+            (*payer_acct).clone(),
+            (*place_state_pda_acct).clone(),
+            (*rent_sysvar_acct).clone(),
+            (*system_prog_acct).clone(),
+            (*gameplay_token_mpl_meta_acct).clone(),
+        ],
+        &[gameplay_token_mint_pda_seeds, place_state_acct_pda_seeds],
+    )?;
+
+    // TODO(will): maybe verify the colleciton using verify_collection ix?
 
     // TODO(will): maybe remove authority to hard limit supply to one
 
