@@ -1,7 +1,7 @@
 import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter } from "@solana/web3.js";
 import { PlaceProgram } from ".";
 import { extendBorsh } from "./utils/borsh";
-import { pallete } from "./Pallete";
+import { nintendo } from "./palletes/nintendo";
 import { PlaceAccountType, PatchData, PlaceStateData } from "./accounts";
 import base58 from "bs58";
 import { inspect } from "util";
@@ -29,6 +29,8 @@ export class PlaceClient {
     // for that value
     private colorPallete: Buffer;
 
+    private pallete = nintendo;
+
     public updatesQueue: CanvasUpdate[] = [];
 
     private patchAccountsFilter: GetProgramAccountsFilter = {
@@ -48,11 +50,11 @@ export class PlaceClient {
     constructor(connection: Connection) {
         this.connection = connection;
 
-        let bufSize = pallete.length * 4;
+        let bufSize = this.pallete.length * 4;
         let buf = Buffer.alloc(bufSize);
 
         var bufOffset = 0;
-        for (const color of pallete) {
+        for (const color of this.pallete) {
             let rString = color.substring(0, 2);
             let gString = color.substring(2, 4);
             let bString = color.substring(4, 6);
@@ -126,7 +128,7 @@ export class PlaceClient {
 
         console.log("COLOR NOT FOUND");
 
-        return 123;
+        return 0;
     }
 
     public subscribeToPatchUpdates() {
@@ -162,9 +164,17 @@ export class PlaceClient {
         for (let i = 0; i < acct.pixels.length; i++) {
             const pixel8Bit = acct.pixels.readUInt8(i);
             let colorOffset = pixel8Bit * 4
-            let pixelValueArr = this.colorPallete.slice(colorOffset, colorOffset + 4)
-            // console.log(pixelValueArr);
-            array.set(pixelValueArr, offset);
+            if (this.colorPallete.length >= colorOffset + 4) {
+                let pixelValueArr = this.colorPallete.slice(colorOffset, colorOffset + 4)
+                // console.log(pixelValueArr);
+                array.set(pixelValueArr, offset);
+            } else {
+                console.log("Invalid color for pallete: ", pixel8Bit);
+                // fallback to the "zero" color
+                let pixelValueArr = this.colorPallete.slice(0, 4)
+                array.set(pixelValueArr, offset);
+            }
+
             offset = offset + 4;
         }
 

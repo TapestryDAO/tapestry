@@ -9,6 +9,7 @@ from utils import KEYS_DIR, run_command,TAPESTRY_ROOT
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--walkers", type=int, help="Number of walkers to run")
+    parser.add_argument("--colors", type=int, default=255)
 
     args = parser.parse_args()
 
@@ -24,7 +25,13 @@ def main():
 
         random_x = math.floor(random() * 1000)
         random_y = math.floor(random() * 1000)
-        command = ["pla", "tx", "walker", "-x", random_x, "-y", random_y, "--keyname", keyname]
+        command = [
+            "pla", "tx", "walker", 
+            "-x", random_x, 
+            "-y", random_y, 
+            "--keyname", keyname,
+            "--colors", args.colors
+        ]
         command = map(lambda v: str(v), command)
         proc = subprocess.Popen(command, cwd=TAPESTRY_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         procs.append(proc)

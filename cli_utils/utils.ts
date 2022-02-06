@@ -7,7 +7,7 @@ import { exit } from 'process';
 import { inspect } from 'util';
 import { processImage } from '../tapestry/timp/src';
 
-const TAPESTRY_ROOT = process.env.TAPESTRY_ROOT as string;
+export const TAPESTRY_ROOT = process.env.TAPESTRY_ROOT as string;
 
 const KEYS_DIR = path.resolve(TAPESTRY_ROOT, "keys")
 

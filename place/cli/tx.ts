@@ -135,13 +135,19 @@ const set_pixel_command = {
 
 type RandomWalkerCommandArgs =
     XYOptionArgs &
-    KeynameOptionArgs
+    KeynameOptionArgs &
+    { colors: number }
 
 const random_walker_command = {
     command: "walker",
     description: "start an infinite random walker",
     builder: (args: Argv): Argv<RandomWalkerCommandArgs> => {
         return applyKeynameOption(applyXYArgOptions(args))
+            .option("colors", {
+                description: "number of colors",
+                type: "number",
+                default: 255,
+            })
     },
     handler: async (args: ArgumentsCamelCase<RandomWalkerCommandArgs>) => {
 
@@ -176,7 +182,7 @@ const random_walker_command = {
             commitment: 'confirmed',
         };
 
-        let color = Math.floor(Math.random() * 256)
+        let color = Math.floor(Math.random() * args.colors)
 
         let currentSetPixelParams = {
             x: args.x,
