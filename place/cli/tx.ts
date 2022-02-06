@@ -146,7 +146,7 @@ const random_walker_command = {
             .option("colors", {
                 description: "number of colors",
                 type: "number",
-                default: 255,
+                default: 256,
             })
     },
     handler: async (args: ArgumentsCamelCase<RandomWalkerCommandArgs>) => {

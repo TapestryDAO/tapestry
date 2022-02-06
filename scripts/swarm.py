@@ -9,7 +9,7 @@ from utils import KEYS_DIR, run_command,TAPESTRY_ROOT
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--walkers", type=int, help="Number of walkers to run")
-    parser.add_argument("--colors", type=int, default=255)
+    parser.add_argument("--colors", type=int, default=256)
 
     args = parser.parse_args()
 
