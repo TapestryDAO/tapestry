@@ -1,0 +1,6 @@
+{
+    "name": "Bomb",
+    "symbol": "TAPESTRY",
+    "description": "A Bomb",
+    "image": "http://localhost:8080/Bomb.png"
+}
