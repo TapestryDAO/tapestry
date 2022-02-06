@@ -350,8 +350,22 @@ fn process_purchase_gameplay_token(
         return Err(PlaceError::DesiredPriceDifferentFromCurrentPrice.into());
     }
 
+    // -- pay for the token
+    msg!("TAP: Paying for token");
+
+    // NOTE(will): we do this before the gameplay account allocation so save an invoke
+    // this has the effect of reducing our fee by the rent overhead of the gameplay token account
+    invoke(
+        &system_instruction::transfer(&payer_acct.key, &gameplay_meta_pda, price),
+        &[
+            (*payer_acct).clone(),
+            (*gameplay_meta_pda_acct).clone(),
+            (*system_prog_acct).clone(),
+        ],
+    )?;
+
     // -- Allocate space for the gameplay token account and initialize its state
-    msg!("Allocating gameplay token");
+    msg!("TAP: Allocating gameplay token");
 
     let gameplay_meta_pda_seeds = &[
         GameplayTokenMeta::PREFIX.as_bytes(),
@@ -379,21 +393,8 @@ fn process_purchase_gameplay_token(
         update_allowed_slot: clock.slot,
     };
 
-    gameplay_token_meta.serialize(&mut *gameplay_meta_pda_acct.data.borrow_mut())?;
-
-    // -- pay for the token
-
-    invoke(
-        &system_instruction::transfer(&payer_acct.key, &place_state_pda, price),
-        &[
-            (*payer_acct).clone(),
-            (*place_state_pda_acct).clone(),
-            (*system_prog_acct).clone(),
-        ],
-    )?;
-
     // -- Allocate space for the token mint and initialize it
-    msg!("Allocating token mint");
+    msg!("TAP: Allocating token mint");
 
     let gameplay_token_mint_pda_seeds = &[
         GameplayTokenMeta::PREFIX.as_bytes(),
@@ -433,7 +434,7 @@ fn process_purchase_gameplay_token(
     )?;
 
     // -- Create associated token account
-    msg!("Creating ATA");
+    msg!("TAP: Creating ATA");
 
     // TODO(will): figure out what hapens if this account already exists
     let create_ata_ix =
@@ -453,7 +454,7 @@ fn process_purchase_gameplay_token(
     )?;
 
     // -- Mint NFT into ATA
-    msg!("Minting NFT into ATA");
+    msg!("TAP: Minting NFT into ATA");
 
     let mint_token_ix = spl_token::instruction::mint_to(
         token_prog_acct.key,
@@ -477,7 +478,7 @@ fn process_purchase_gameplay_token(
     )?;
 
     // -- Create the metaplex token metadata
-    msg!("Creating mpl metadata");
+    msg!("TAP: Creating mpl metadata");
 
     let token_name = match token_type {
         GameplayTokenType::Bomb => String::from("Tapestry Bomb"),
@@ -527,6 +528,10 @@ fn process_purchase_gameplay_token(
     // TODO(will): maybe verify the colleciton using verify_collection ix?
 
     // TODO(will): maybe remove authority to hard limit supply to one
+
+    // IMPORTANT - save the game state, for some reason if i do this earlier the transfer
+    // of SOL to this account fails
+    gameplay_token_meta.serialize(&mut *gameplay_meta_pda_acct.data.borrow_mut())?;
 
     Ok(())
 }

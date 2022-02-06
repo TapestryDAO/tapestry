@@ -6,6 +6,7 @@ import { getNewConnection, loadKey, makeJSONRPC, SOLANA_MAINNET_ENDPOINT } from 
 import { PlaceProgram, SetPixelParams, PLACE_HEIGHT_PX, PLACE_WIDTH_PX, PATCH_SIZE_PX } from '../client/src/PlaceProgram';
 import { PlaceClient } from '../client/src/PlaceClient';
 import BN from 'bn.js';
+import { GameplayTokenType } from '../client/src/accounts/GameplayTokenMeta';
 
 const MAX_COLORS = 256;
 
@@ -310,6 +311,52 @@ const update_place_state_command = {
     }
 }
 
+type PurchaseGameplayTokenCommandArgs =
+    KeynameOptionArgs &
+    { type: string }
+
+const purchase_gameplay_token_command = {
+    command: "purchase_token",
+    description: "Purchase a gameplay token",
+    builder: (args: Argv): Argv<PurchaseGameplayTokenCommandArgs> => {
+        return applyKeynameOption(args)
+            .option("type", {
+                description: "Token type to purchase",
+                type: "string",
+                required: true,
+                choices: ["paintbrush", "bomb"],
+            })
+    },
+    handler: async (args: ArgumentsCamelCase<PurchaseGameplayTokenCommandArgs>) => {
+        let keypair = loadKey(args.keyname);
+        let type: GameplayTokenType = GameplayTokenType.PaintBrush;
+        let currentState = await PlaceClient.getInstance().fetchPlaceStateAccount();
+        let desired_price = currentState.paintbrush_price;
+        switch (args.type) {
+            case "paintbrush":
+                type = GameplayTokenType.PaintBrush;
+                desired_price = currentState.paintbrush_price;
+                break;
+            case "bomb":
+                type = GameplayTokenType.Bomb;
+                desired_price = currentState.bomb_price;
+                break;
+        }
+
+        let ix = await PlaceProgram.purchaseGameplayToken({
+            token_type: type,
+            desired_price: desired_price,
+            payer: keypair.publicKey,
+        })
+
+        let tx = new Transaction().add(ix);
+
+        let connection = getNewConnection();
+        let result = await sendAndConfirmTransaction(connection, tx, [keypair]);
+        console.log(result);
+    }
+}
+
 const get_state_command = {
     command: "get_state",
     description: "Get the current Place State account and print contents",
@@ -338,6 +385,7 @@ export const command = {
             .command(rent_check_command)
             .command(update_place_state_command)
             .command(get_state_command)
+            .command(purchase_gameplay_token_command)
             .demandCommand()
     }
 }

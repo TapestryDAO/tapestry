@@ -5,7 +5,11 @@ use solana_program::{
 use assert_matches::assert_matches;
 use solana_place::state::find_address_for_patch;
 use solana_program_test::{processor, tokio, ProgramTest, ProgramTestContext};
-use solana_sdk::{signature::Keypair, signature::Signer, transaction::Transaction};
+use solana_sdk::account::ReadableAccount;
+use solana_sdk::{
+    commitment_config::CommitmentLevel, signature::Keypair, signature::Signer,
+    transaction::Transaction,
+};
 
 use solana_place::instruction;
 use solana_place::state::{GameplayTokenType, Patch, PlaceAccountType, PlaceState, PATCH_SIZE_PX};
@@ -150,11 +154,35 @@ async fn test_purchase_account() {
         recent_blockhash,
     );
 
+    let game_player_balance_before = banks_client
+        .get_balance(game_player.pubkey())
+        .await
+        .unwrap();
+
     let purchase_gameplay_token_result = banks_client
-        .process_transaction(purchase_gameplay_token_tx)
+        .process_transaction_with_commitment(purchase_gameplay_token_tx, CommitmentLevel::Confirmed)
         .await;
 
     assert_matches!(purchase_gameplay_token_result, Ok(()));
+
+    let game_player_balance_after = banks_client
+        .get_balance(game_player.pubkey())
+        .await
+        .unwrap();
+
+    let total_balance_change = game_player_balance_before
+        .checked_sub(game_player_balance_after)
+        .unwrap();
+
+    println!("Balance Change: {}", total_balance_change);
+
+    let total_rent = total_balance_change - new_paintbrush_price;
+
+    println!("Total rent was: {}", total_rent);
+    assert_eq!(total_rent, 1);
+
+    // TODO(will): check GameplayTokenMeta has correct stuff
+    // and check mint, ata, and mpl account are correctly setup
 
     // initialize the patch (allocate data)
 

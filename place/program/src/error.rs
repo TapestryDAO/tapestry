@@ -26,19 +26,19 @@ pub enum PlaceError {
     InvalidAccountArgument, // 6
 
     #[error("Invalid owner")]
-    InvalidOwner, // 6
+    InvalidOwner, // 7
 
     #[error("Invalid gameplay token meta pda")]
-    IncorrectGameplayTokenMetaPDA, // 7
+    IncorrectGameplayTokenMetaPDA, // 8
 
     #[error("Gameplay Token already purchased")]
-    GameplayTokenAlreadyPurchased, // 8
+    GameplayTokenAlreadyPurchased, // 9
 
     #[error("Incorrect gameplay token mint pda")]
-    InvalidGameplayTokenMintPDA, // 9
+    InvalidGameplayTokenMintPDA, // 10
 
     #[error("Desired price different from current price")]
-    DesiredPriceDifferentFromCurrentPrice, // 10
+    DesiredPriceDifferentFromCurrentPrice, // 11
 }
 
 impl From<PlaceError> for ProgramError {

@@ -32,7 +32,7 @@ pub fn try_from_slice_checked<T: BorshDeserialize>(
 /////////////////////// GAMEPLAY TOKEN METADATA //////////////////////////////////
 
 pub const DEFAULT_IS_FROZEN: bool = false;
-pub const DEFAULT_PAINTBRUSH_PRICE: u64 = 2_000_000;    // units are lamports
+pub const DEFAULT_PAINTBRUSH_PRICE: u64 = 20_000_000;    // units are lamports
 pub const DEFAULT_PAINTBRUSH_COOLDOWN: u64 = 60 * 10;   // units are seconds
 pub const DEFAULT_BOMB_PRICE: u64 = 500_000_000;        // units are lamports
 
@@ -165,6 +165,7 @@ impl GameplayTokenMeta {
     pub fn token_metadata_pda(random_seed: u64) -> (Pubkey, u8) {
         let (mint_pda, _) = Self::token_mint_pda(random_seed);
         let mpl_token_meta_prog_id = mpl_token_metadata::id();
+        // mpl_token_metadata::pda::find_metadata_account(mint)
         return Pubkey::find_program_address(
             &[
                 mpl_token_metadata::state::PREFIX.as_bytes(),

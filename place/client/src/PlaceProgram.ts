@@ -1,13 +1,21 @@
 import {
     PublicKey,
     SystemProgram,
+    SYSVAR_RENT_PUBKEY,
     TransactionInstruction,
 } from '@solana/web3.js'
-import { Program } from '@metaplex-foundation/mpl-core'
+import { Program, TokenAccount } from '@metaplex-foundation/mpl-core'
 import { SetPixelArgsData } from './instructions/setPixel';
 import { InitPatchArgsData } from './instructions/initPatch';
 import { UpdatePlaceStateArgsData } from './instructions/updatePlaceState';
+import { GameplayTokenType } from './accounts/GameplayTokenMeta';
+
 import BN from 'bn.js';
+import { randomBytes } from 'crypto';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { Metadata, MetadataProgram } from '@metaplex-foundation/mpl-token-metadata';
+import { PurchaseGameplayTokenArgsData } from './instructions/purchaseGameplayToken';
 
 export const PLACE_HEIGHT_PX = 1000;
 export const PLACE_WIDTH_PX = 1000;
@@ -35,6 +43,12 @@ export type UpdatePlaceStateParams = {
     bomb_price: BN | null,
 }
 
+export type PurchaseGameplayTokenParams = {
+    payer: PublicKey,
+    token_type: GameplayTokenType,
+    desired_price: BN,
+}
+
 type PixelPatchCoords = {
     xPatch: number,
     yPatch: number,
@@ -47,6 +61,8 @@ export class PlaceProgram extends Program {
 
     static readonly PATCH_PDA_PREFIX = "patch";
     static readonly PLACE_STATE_PDA_PREFIX = "place";
+    static readonly GAMEPLAY_TOKEN_META_PREFIX = "game";
+    static readonly GAMEPLAY_TOKEN_MINT_PREFIX = "mint";
 
     static async initPatch(params: InitPatchParams) {
         let data = InitPatchArgsData.serialize({
@@ -64,6 +80,44 @@ export class PlaceProgram extends Program {
             ],
             programId: this.PUBKEY,
             data: data,
+        })
+    }
+
+    static async purchaseGameplayToken(params: PurchaseGameplayTokenParams) {
+        let place_state_pda = await this.findPlaceStatePda();
+        let randomSeed = new BN(randomBytes(8));
+        let gameplay_meta_pda = await this.findGameplayMetaPda(randomSeed);
+        let gameplay_token_mint_pda = await this.findGameplayTokenMintPda(randomSeed);
+        let gameplay_token_ata = await Token.getAssociatedTokenAddress(
+            ASSOCIATED_TOKEN_PROGRAM_ID,
+            TOKEN_PROGRAM_ID,
+            gameplay_token_mint_pda,
+            params.payer,
+            false);
+        let gameplay_token_mpl_pda = await Metadata.getPDA(gameplay_token_mint_pda);
+
+        let data = PurchaseGameplayTokenArgsData.serialize({
+            token_type: params.token_type,
+            random_seed: randomSeed,
+            desired_price: params.desired_price,
+        })
+
+        return new TransactionInstruction({
+            keys: [
+                { pubkey: params.payer, isSigner: true, isWritable: true },
+                { pubkey: place_state_pda, isSigner: false, isWritable: false },
+                { pubkey: gameplay_meta_pda, isSigner: false, isWritable: true },
+                { pubkey: gameplay_token_mint_pda, isSigner: false, isWritable: true },
+                { pubkey: gameplay_token_ata, isSigner: false, isWritable: true },
+                { pubkey: gameplay_token_mpl_pda, isSigner: false, isWritable: true },
+                { pubkey: MetadataProgram.PUBKEY, isSigner: false, isWritable: false },
+                { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+                { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+            ],
+            programId: this.PUBKEY,
+            data: data
         })
     }
 
@@ -135,6 +189,25 @@ export class PlaceProgram extends Program {
             Buffer.from(this.PLACE_STATE_PDA_PREFIX),
         ])
 
+        let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
+        return result[0];
+    }
+
+    static async findGameplayMetaPda(randomSeed: BN): Promise<PublicKey> {
+        let seeds = Buffer.concat([
+            Buffer.from(this.GAMEPLAY_TOKEN_META_PREFIX),
+            randomSeed.toBuffer("le"),
+        ]);
+        let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
+        return result[0];
+    }
+
+    static async findGameplayTokenMintPda(randomSeed: BN): Promise<PublicKey> {
+        let seeds = Buffer.concat([
+            Buffer.from(this.GAMEPLAY_TOKEN_META_PREFIX),
+            randomSeed.toBuffer("le"),
+            Buffer.from(this.GAMEPLAY_TOKEN_MINT_PREFIX),
+        ]);
         let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
         return result[0];
     }
