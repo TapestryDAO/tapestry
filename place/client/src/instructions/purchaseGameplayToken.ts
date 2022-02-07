@@ -1,6 +1,6 @@
 import { Borsh } from '@metaplex-foundation/mpl-core';
 import { Schema } from 'borsh';
-import { GameplayTokenType } from '../accounts/GameplayTokenMeta';
+import { GameplayTokenType } from '../accounts';
 import { PlaceInstruction } from './types';
 import BN from 'bn.js';
 

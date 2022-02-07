@@ -1,7 +1,9 @@
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { PlaceClient } from '@tapestrydao/place-client';
-import { DragEventHandler, FC } from 'react';
+import { PlaceClient, PlaceProgram, GameplayTokenType } from '@tapestrydao/place-client';
+import { DragEventHandler, FC, useState } from 'react';
+import BN from 'bn.js';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 
 require('./toolbox.css');
 
@@ -36,6 +38,33 @@ export const Pallete: FC = () => {
     </div>;
 }
 
+export const PaintbrushTool: FC = () => {
+    const { connection } = useConnection();
+    const { sendTransaction, publicKey } = useWallet();
+    const [processingPurchase, setProcessingPurchase] = useState<boolean>(false);
+
+    const onBuyButtonClicked = async () => {
+        console.log("Buy Paintbrush Clicked");
+        let state = await PlaceClient.getInstance().fetchPlaceStateAccount();
+        setProcessingPurchase(true);
+        let ix = await PlaceProgram.purchaseGameplayToken({
+            payer: publicKey,
+            token_type: GameplayTokenType.PaintBrush,
+            desired_price: state.paintbrush_price,
+        })
+
+        let tx = new Transaction().add(ix);
+        let result = await sendTransaction(tx, connection);
+        console.log(result);
+        setProcessingPurchase(false);
+    }
+
+    return <div className='toolbox__paintbrush-container'>
+        <img className='toolbox__paintbrush-image' src="paintbrush_pixel.png"></img>
+        <button onClick={onBuyButtonClicked} className='toolbox__buy_button'>{processingPurchase ? "Processing..." : "Buy"}</button>
+    </div>
+}
+
 export const Toolbox: FC = () => {
     const { wallet } = useWallet();
 
@@ -48,6 +77,7 @@ export const Toolbox: FC = () => {
                 {!wallet && <WalletMultiButton>Connect Wallet</WalletMultiButton>}
                 {wallet && <WalletDisconnectButton />}
             </div>
+            <PaintbrushTool></PaintbrushTool>
             <Pallete />
         </div>
     );

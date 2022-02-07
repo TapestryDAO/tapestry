@@ -4,3 +4,8 @@ export enum PlaceAccountType {
     Patch,
     GameplayTokenMeta,
 }
+
+export enum GameplayTokenType {
+    PaintBrush,
+    Bomb,
+}

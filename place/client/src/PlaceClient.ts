@@ -171,7 +171,7 @@ export class PlaceClient {
                 // console.log(pixelValueArr);
                 array.set(pixelValueArr, offset);
             } else {
-                console.log("Invalid color for pallete: ", pixel8Bit);
+                // console.log("Invalid color for pallete: ", pixel8Bit);
                 // fallback to the "zero" color
                 let pixelValueArr = this.colorPallete.slice(0, 4)
                 array.set(pixelValueArr, offset);

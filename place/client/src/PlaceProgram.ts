@@ -8,7 +8,7 @@ import { Program, TokenAccount } from '@metaplex-foundation/mpl-core'
 import { SetPixelArgsData } from './instructions/setPixel';
 import { InitPatchArgsData } from './instructions/initPatch';
 import { UpdatePlaceStateArgsData } from './instructions/updatePlaceState';
-import { GameplayTokenType } from './accounts/GameplayTokenMeta';
+import { GameplayTokenType } from './accounts';
 
 import BN from 'bn.js';
 import { randomBytes } from 'crypto';
@@ -196,7 +196,9 @@ export class PlaceProgram extends Program {
     static async findGameplayMetaPda(randomSeed: BN): Promise<PublicKey> {
         let seeds = Buffer.concat([
             Buffer.from(this.GAMEPLAY_TOKEN_META_PREFIX),
-            randomSeed.toBuffer("le"),
+            // NOTE(will): can't use .toBuffer("le") here
+            // https://github.com/indutny/bn.js/issues/227
+            randomSeed.toArrayLike(Buffer, "le", 8),
         ]);
         let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
         return result[0];
@@ -205,7 +207,9 @@ export class PlaceProgram extends Program {
     static async findGameplayTokenMintPda(randomSeed: BN): Promise<PublicKey> {
         let seeds = Buffer.concat([
             Buffer.from(this.GAMEPLAY_TOKEN_META_PREFIX),
-            randomSeed.toBuffer("le"),
+            // NOTE(will): can't use .toBuffer("le") here
+            // https://github.com/indutny/bn.js/issues/227
+            randomSeed.toArrayLike(Buffer, "le", 8),
             Buffer.from(this.GAMEPLAY_TOKEN_MINT_PREFIX),
         ]);
         let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);

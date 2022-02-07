@@ -5,7 +5,7 @@
 .toolbox__container {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    /* justify-content: space-between; */
     padding: 0;
     margin: 0;
     min-width: calc(48px * 5);
@@ -30,8 +30,38 @@
 }
 
 .toolbox__actions {
-    justify-content: center;
+    display: flex;
+    justify-content: top;
+    align-self: top;
     margin: 1rem;
+}
+
+.toolbox__paintbrush-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.toolbox__paintbrush-image {
+    max-width: 150px;
+    max-height: 150px;
+    width: auto;
+    height: auto;
+    margin: 10px;
+    border-radius: 0.25rem;
+}
+
+.toolbox__buy_button {
+    border-radius: 0.25rem;
+    background-color: #5497D5;
+    min-width: 100px;
+    min-height: 48px;
+    font-family: 'PublicPixel';
+    font-weight: normal;
+    border: 0;
+    text-transform: capitalize;
+    color: white;
+    margin: 10px;
 }
 
 .toolbox__header-container {
