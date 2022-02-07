@@ -54,7 +54,12 @@ export const PaintbrushTool: FC = () => {
         })
 
         let tx = new Transaction().add(ix);
-        let result = await sendTransaction(tx, connection);
+        let signature = await sendTransaction(tx, connection);
+        // NOTE(will): it seems like using "processed" should work here, but
+        // then when I refresh the token accounts for the user, the newly minted NFT isn't returned
+        // immediately, finalized takes a while on local host, so probably takes even longer on mainnet
+        // so need to find another solution
+        let result = await connection.confirmTransaction(signature, "finalized")
         console.log(result);
         setProcessingPurchase(false);
         await PlaceClient.getInstance().fetchGameplayTokensForOwner(publicKey);

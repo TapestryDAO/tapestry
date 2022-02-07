@@ -10,6 +10,7 @@ import { inspect } from "util";
 import { Account, TokenAccount } from "@metaplex-foundation/mpl-core";
 import BN from 'bn.js';
 import { GameplayTokenMetaAccount } from "./accounts/GameplayTokenMetaAccount";
+import { runInThisContext } from "vm";
 
 export const PATCH_WIDTH = 20;
 export const PATCH_HEIGHT = 20;
@@ -21,6 +22,18 @@ export type CanvasUpdate = {
     height: number,
     image: Uint8ClampedArray,
 };
+
+type PublicKeyB58 = string;
+
+enum GameplayTokenFetchStatus {
+    Found,
+    NotFound,
+}
+
+type GameplayTokenFetchResult = {
+    status: GameplayTokenFetchStatus,
+    gameplayTokenAccount: GameplayTokenMetaAccount | null
+}
 
 export class PlaceClient {
     private static instance: PlaceClient;
@@ -37,6 +50,9 @@ export class PlaceClient {
     private pallete = blend32;
 
     public updatesQueue: CanvasUpdate[] = [];
+
+    // ownerPubkey -> (mintPubkey -> GameplayTokenFetchResult)
+    private tokenAccountsCache: Map<PublicKeyB58, Map<PublicKeyB58, GameplayTokenFetchResult>> = new Map();
 
     private patchAccountsFilter: GetProgramAccountsFilter = {
         memcmp: {
@@ -242,12 +258,37 @@ export class PlaceClient {
         let nftTokenAccounts = allTokenAccounts
             .filter((acct) => acct.data.amount != new BN(1));
         let nftMintPubkeys = nftTokenAccounts.map((acct) => acct.data.mint);
-        console.log("nft mint len: ", nftMintPubkeys.length);
 
-        let allGameplayAccounts = []
+        let currentOwnerCache = this.tokenAccountsCache.get(owner.toBase58())
 
-        for (const pubkey of nftMintPubkeys) {
+        let nftsToFetch: PublicKey[] = []
+
+        if (currentOwnerCache != undefined) {
+            // any NFT owned by `owner` that we do not have a cache record for, prepare to fetch it
+            for (let nftMintKey of nftMintPubkeys) {
+                let found = currentOwnerCache.get(nftMintKey.toBase58()) != undefined
+                if (!found) {
+                    nftsToFetch.push(nftMintKey)
+                }
+            }
+        } else {
+            nftsToFetch = nftMintPubkeys;
+            this.tokenAccountsCache.set(owner.toBase58(), new Map());
+            currentOwnerCache = this.tokenAccountsCache.get(owner.toBase58());
+        }
+
+        console.log("found ", nftMintPubkeys.length, " NFT mints, fetching: ", nftsToFetch.length);
+
+        // NOTE(will): theres a lot of potential for cache corruption here
+        // i.e. user buys a gameplay token, fetch happens, but RPC nodes don't find newly minted
+        // gameplay token for whatever reason, cache record exists but as NotFound
+
+        // TODO(will): there some edge cases here to think about, like if account fails to parse
+        // for some reason and cache corruption
+
+        for (const pubkey of nftsToFetch) {
             let gameplayTokenAccount = await PlaceProgram.getProgramAccounts(this.connection, {
+                commitment: "recent",
                 filters: [
                     {
                         memcmp: {
@@ -258,13 +299,26 @@ export class PlaceClient {
                 ]
             });
 
-            if (gameplayTokenAccount.length == 0) continue;
+            if (gameplayTokenAccount.length == 0) {
+                currentOwnerCache.set(pubkey.toBase58(), {
+                    status: GameplayTokenFetchStatus.NotFound,
+                    gameplayTokenAccount: null,
+                })
+            } else {
+                let accountInfo = gameplayTokenAccount[0];
+                let account = new GameplayTokenMetaAccount(accountInfo.pubkey, accountInfo.info)
 
-            let accountInfo = gameplayTokenAccount[0];
-            let account = new GameplayTokenMetaAccount(accountInfo.pubkey, accountInfo.info)
-            allGameplayAccounts.push(account);
+                currentOwnerCache.set(pubkey.toBase58(), {
+                    status: GameplayTokenFetchStatus.Found,
+                    gameplayTokenAccount: account,
+                })
+            }
         }
 
-        console.log("owner: ", ownerB58, "might have: ", allGameplayAccounts.length);
+        // [check] 1. cache results of this function
+        // [     ] 2. show how many paintbrushes user has in the UI
+        // [     ] 3. implement set pixel, checking cooldown
+        // [     ] 4. distribute tapestry tokens from set pixel instruction
+        // [     ] 5. show in UI how long until next paintbrush has finished cooldown
     }
 }
