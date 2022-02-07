@@ -57,6 +57,7 @@ export const PaintbrushTool: FC = () => {
         let result = await sendTransaction(tx, connection);
         console.log(result);
         setProcessingPurchase(false);
+        await PlaceClient.getInstance().fetchGameplayTokensForOwner(publicKey);
     }
 
     return <div className='toolbox__paintbrush-container'>

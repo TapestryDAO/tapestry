@@ -7,6 +7,9 @@ import { blend32 } from "./palletes/blend32";
 import { PlaceAccountType, PatchData, PlaceStateData } from "./accounts";
 import base58 from "bs58";
 import { inspect } from "util";
+import { Account, TokenAccount } from "@metaplex-foundation/mpl-core";
+import BN from 'bn.js';
+import { GameplayTokenMetaAccount } from "./accounts/GameplayTokenMetaAccount";
 
 export const PATCH_WIDTH = 20;
 export const PATCH_HEIGHT = 20;
@@ -230,5 +233,38 @@ export class PlaceClient {
         }
 
         this.subscribeToPatchUpdates();
+    }
+
+    public async fetchGameplayTokensForOwner(owner: PublicKey) {
+        let ownerB58 = owner.toBase58()
+
+        let allTokenAccounts = await TokenAccount.getTokenAccountsByOwner(this.connection, owner);
+        let nftTokenAccounts = allTokenAccounts
+            .filter((acct) => acct.data.amount != new BN(1));
+        let nftMintPubkeys = nftTokenAccounts.map((acct) => acct.data.mint);
+        console.log("nft mint len: ", nftMintPubkeys.length);
+
+        let allGameplayAccounts = []
+
+        for (const pubkey of nftMintPubkeys) {
+            let gameplayTokenAccount = await PlaceProgram.getProgramAccounts(this.connection, {
+                filters: [
+                    {
+                        memcmp: {
+                            bytes: pubkey.toBase58(),
+                            offset: 1 + 1 + 8 + 8,
+                        }
+                    }
+                ]
+            });
+
+            if (gameplayTokenAccount.length == 0) continue;
+
+            let accountInfo = gameplayTokenAccount[0];
+            let account = new GameplayTokenMetaAccount(accountInfo.pubkey, accountInfo.info)
+            allGameplayAccounts.push(account);
+        }
+
+        console.log("owner: ", ownerB58, "might have: ", allGameplayAccounts.length);
     }
 }

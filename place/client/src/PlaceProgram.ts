@@ -64,7 +64,7 @@ export class PlaceProgram extends Program {
     static readonly GAMEPLAY_TOKEN_META_PREFIX = "game";
     static readonly GAMEPLAY_TOKEN_MINT_PREFIX = "mint";
 
-    static async initPatch(params: InitPatchParams) {
+    public static async initPatch(params: InitPatchParams) {
         let data = InitPatchArgsData.serialize({
             xPatch: params.xPatch,
             yPatch: params.yPatch,
@@ -83,7 +83,7 @@ export class PlaceProgram extends Program {
         })
     }
 
-    static async purchaseGameplayToken(params: PurchaseGameplayTokenParams) {
+    public static async purchaseGameplayToken(params: PurchaseGameplayTokenParams) {
         let place_state_pda = await this.findPlaceStatePda();
         let randomSeed = new BN(randomBytes(8));
         let gameplay_meta_pda = await this.findGameplayMetaPda(randomSeed);
@@ -121,7 +121,7 @@ export class PlaceProgram extends Program {
         })
     }
 
-    static async updatePlaceState(params: UpdatePlaceStateParams) {
+    public static async updatePlaceState(params: UpdatePlaceStateParams) {
         let place_state_pda = await this.findPlaceStatePda();
         let data = UpdatePlaceStateArgsData.serialize({
             new_owner: params.new_owner,
@@ -142,7 +142,7 @@ export class PlaceProgram extends Program {
         });
     }
 
-    static async setPixel(params: SetPixelParams) {
+    public static async setPixel(params: SetPixelParams) {
         let patchCoords = this.computePatchCoords(params.x, params.y);
 
         console.log("Setting Patch Coords: ", patchCoords, "to color: ", params.pixel);
