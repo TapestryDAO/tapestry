@@ -3,7 +3,7 @@ use solana_program::{
 };
 
 use assert_matches::assert_matches;
-use solana_place::state::find_address_for_patch;
+use solana_place::state::{find_address_for_patch, GameplayTokenMeta};
 use solana_program_test::{processor, tokio, ProgramTest, ProgramTestContext};
 use solana_sdk::account::ReadableAccount;
 use solana_sdk::{
@@ -179,10 +179,32 @@ async fn test_purchase_account() {
     let total_rent = total_balance_change - new_paintbrush_price;
 
     println!("Total rent was: {}", total_rent);
-    assert_eq!(total_rent, 1);
+    // assert_eq!(total_rent, 1);
 
-    // TODO(will): check GameplayTokenMeta has correct stuff
-    // and check mint, ata, and mpl account are correctly setup
+    let (gameplay_token_pda, _) = GameplayTokenMeta::pda(random_seed);
+    let gameplay_token_acct: GameplayTokenMeta = banks_client
+        .get_account_data_with_borsh(gameplay_token_pda)
+        .await
+        .unwrap();
+
+    let current_slot = banks_client.get_root_slot().await.unwrap();
+
+    // TODO(will): check token mint and ata were correctly set up
+    assert_eq!(
+        gameplay_token_acct.acct_type,
+        PlaceAccountType::GameplayTokenMeta
+    );
+    assert_eq!(gameplay_token_acct.created_at_slot, current_slot);
+    assert_eq!(gameplay_token_acct.random_seed, random_seed);
+    assert_eq!(gameplay_token_acct.update_allowed_slot, current_slot);
+    assert_eq!(
+        gameplay_token_acct.cooldown_duration,
+        new_paintbrush_cooldown
+    );
+    println!("cooldown: {}", new_paintbrush_cooldown);
+    assert_eq!(gameplay_token_acct.update_allowed_slot, current_slot);
+
+    // assert_eq(gameplay_token_acct.update_allowed_slot,)
 
     // initialize the patch (allocate data)
 
@@ -208,9 +230,14 @@ async fn test_purchase_account() {
     let init_patch_result = banks_client.process_transaction(init_patch_tx).await;
     assert_matches!(init_patch_result, Ok(()));
 
+    // Attempt to set a pixel
+
+    println!("Setting Pixel");
+
     let set_pixel_ix = solana_place::instruction::get_ix_set_pixel(
         solana_place::id(),
-        payer.pubkey(),
+        game_player.pubkey(),
+        gameplay_token_pda,
         x,
         y,
         x_offset,
@@ -220,8 +247,8 @@ async fn test_purchase_account() {
 
     let set_pixel_tx = Transaction::new_signed_with_payer(
         &[set_pixel_ix],
-        Some(&payer.pubkey()),
-        &[&payer],
+        Some(&game_player.pubkey()),
+        &[&game_player],
         recent_blockhash,
     );
 
