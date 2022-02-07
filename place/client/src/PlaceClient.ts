@@ -1,7 +1,9 @@
 import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter } from "@solana/web3.js";
 import { PlaceProgram } from ".";
 import { extendBorsh } from "./utils/borsh";
-import { nintendo } from "./palletes/nintendo";
+// import { nintendo } from "./palletes/nintendo";
+// import { hept32 } from "./palletes/hept32";
+import { blend32 } from "./palletes/blend32";
 import { PlaceAccountType, PatchData, PlaceStateData } from "./accounts";
 import base58 from "bs58";
 import { inspect } from "util";
@@ -29,7 +31,7 @@ export class PlaceClient {
     // for that value
     private colorPallete: Buffer;
 
-    private pallete = nintendo;
+    private pallete = blend32;
 
     public updatesQueue: CanvasUpdate[] = [];
 
