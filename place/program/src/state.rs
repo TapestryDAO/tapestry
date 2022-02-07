@@ -1,3 +1,5 @@
+use std::thread::AccessError;
+
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{pubkey::Pubkey, account_info::AccountInfo, program_error::ProgramError, borsh::try_from_slice_unchecked, clock::Slot,};
 use crate::error::PlaceError;
@@ -115,6 +117,9 @@ pub struct GameplayTokenMeta {
 
     // update allowed slot 
     pub update_allowed_slot: Slot,
+
+    // number of slots for the cooldown of this token
+    pub cooldown_duration: Slot,
 }
 
 impl GameplayTokenMeta {
@@ -127,7 +132,8 @@ impl GameplayTokenMeta {
         8 + // created_at_slot
         8 + // random_seed
         32 + // token_mint_pda
-        8;  // update_allowed_after
+        8 +  // update_allowed_after
+        8; // cooldown_duration
 
     pub fn from_account_info(a: &AccountInfo) -> Result<GameplayTokenMeta, ProgramError> {
         let state: GameplayTokenMeta =
@@ -149,6 +155,10 @@ impl GameplayTokenMeta {
             ],
             &crate::id(),
         )
+    }
+
+    pub fn pda_for_instance(&self) -> (Pubkey, u8) {
+        return Self::pda(self.random_seed);
     }
     
     pub fn token_mint_pda(random_seed: u64) -> (Pubkey, u8) {
@@ -214,8 +224,38 @@ pub struct Patch {
     // y coordinate of the patch ULO
     pub y: u8,
 
-    // NOTE(will): might be easier to store lines here
-
     // Pixels in row major order
     pub pixels: Vec<u8>,
+}
+
+impl Patch {
+    pub const PREFIX: &'static str = "patch";
+
+    pub const LEN: usize = 0 
+        + 1 // acct_type
+        + 1 // x
+        + 1 // y
+        + 4 // length of pixels
+        + (PATCH_SIZE_PX * PATCH_SIZE_PX); // Pixels
+
+    pub fn from_account_info(a: &AccountInfo) -> Result<Patch, ProgramError> {
+        let patch: Patch =
+            try_from_slice_checked(&a.data.borrow_mut(), PlaceAccountType::Patch, Self::LEN)?;
+        return Ok(patch);
+    }
+
+    pub fn pda(x: u8, y: u8) -> (Pubkey, u8) {
+        return Pubkey::find_program_address(
+            &[
+                Self::PREFIX.as_bytes(),
+                &x.to_le_bytes(),
+                &y.to_le_bytes(),
+            ],
+            &crate::id(),
+        );
+    }
+
+    pub fn pda_for_instance(&self) -> (Pubkey, u8) {
+        return Self::pda(self.x, self.y);
+    }
 }

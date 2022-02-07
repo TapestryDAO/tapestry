@@ -102,14 +102,12 @@ impl Processor {
             }
             PlaceInstruction::SetPixel(args) => {
                 let acct_info_iter = &mut accounts.iter();
-                let payer_acct = next_account_info(acct_info_iter)?;
-                let patch_pda_acct = next_account_info(acct_info_iter)?;
-                let system_acct = next_account_info(acct_info_iter)?;
 
                 let acct_args = SetPixelAccountArgs {
-                    payer_acct,
-                    patch_pda_acct,
-                    system_acct,
+                    payer_acct: next_account_info(acct_info_iter)?,
+                    patch_pda_acct: next_account_info(acct_info_iter)?,
+                    gameplay_token_acct: next_account_info(acct_info_iter)?,
+                    system_acct: next_account_info(acct_info_iter)?,
                 };
 
                 process_set_pixel(program_id, acct_args, &args)
@@ -391,6 +389,7 @@ fn process_purchase_gameplay_token(
         random_seed: random_seed,
         token_mint_pda: gameplay_token_mint_pda,
         update_allowed_slot: clock.slot,
+        cooldown_duration: state.paintbrush_cooldown,
     };
 
     // -- Allocate space for the token mint and initialize it
@@ -536,6 +535,19 @@ fn process_purchase_gameplay_token(
     Ok(())
 }
 
+// Thought process on question of storing the "cooldown" time in the global state account
+// versus storing on each gameplay token.
+// Store on token meta accounts:
+//   PRO: fewer account args to set pixel
+//   CON: duplicate a u64 across all tokens (more space)
+//   PRO: save compute on set pixel by not parsing an additional account
+//   PRO or CON: gameplay tokens are locked in to their cooldown rate
+// Store on global state account:
+//   CON: less bytes for each token purchase
+//   PRO or CON: could slow down or speed up the game by changing one variable in global state
+//
+// Based on this, seems better to store in the token account than use global state
+
 fn process_set_pixel(
     program_id: &Pubkey,
     acct_args: SetPixelAccountArgs,
@@ -544,6 +556,7 @@ fn process_set_pixel(
     let SetPixelAccountArgs {
         payer_acct,
         patch_pda_acct,
+        gameplay_token_acct,
         system_acct,
     } = acct_args;
 
@@ -559,13 +572,36 @@ fn process_set_pixel(
         return Err(PlaceError::InvalidAccountArgument.into());
     }
 
-    // TODO(will): check data not empty? or just let if fail?
+    // Parse and validate account arguments
 
-    // TODO(will): IMPORTANT - setup utils function for parsing the different account types
-    // but checking that the first byte matches the `AccountType` enum that we are expecting.
+    let mut patch: Patch = Patch::from_account_info(patch_pda_acct)?;
+    let (patch_pda, patch_pda_bump) = patch.pda_for_instance();
+    if patch_pda != *patch_pda_acct.key {
+        return Err(PlaceError::IncorrectPatchPDA.into());
+    }
 
-    // This could be sped up by just computing the offset and setting directly.
-    let mut patch: Patch = try_from_slice_unchecked(&patch_pda_acct.try_borrow_data()?)?;
+    if *x != patch.x || *y != patch.y {
+        return Err(PlaceError::IncorrectPatchPDA.into());
+    }
+
+    let mut gameplay_token: GameplayTokenMeta =
+        GameplayTokenMeta::from_account_info(gameplay_token_acct)?;
+    let (gameplay_token_pda, gameplay_token_pda_bump) = gameplay_token.pda_for_instance();
+    if gameplay_token_pda != *gameplay_token_acct.key {
+        return Err(PlaceError::IncorrectGameplayTokenMetaPDA.into());
+    }
+
+    let clock = Clock::get()?;
+    let currentSlot = clock.slot;
+    if gameplay_token.update_allowed_slot > currentSlot {
+        return Err(PlaceError::GameplayTokenNotReady.into());
+    }
+
+    // update the cooldown for the token
+    gameplay_token.update_allowed_slot = currentSlot + gameplay_token.cooldown_duration;
+    gameplay_token.serialize(&mut *gameplay_token_acct.data.borrow_mut())?;
+
+    // Change the pixel
 
     let y_offset_usize = *y_offset as usize;
     let x_offset_usize = *x_offset as usize;

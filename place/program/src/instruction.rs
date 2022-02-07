@@ -236,6 +236,9 @@ pub struct SetPixelAccountArgs<'a, 'b: 'a> {
     // `[writable]` the pda of the patch being set
     pub patch_pda_acct: &'a AccountInfo<'b>,
 
+    // `[writable]` gameplay token being used to set the pixel
+    pub gameplay_token_acct: &'a AccountInfo<'b>,
+
     // `[]` the system program
     pub system_acct: &'a AccountInfo<'b>,
 }

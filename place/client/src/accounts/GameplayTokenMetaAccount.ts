@@ -12,6 +12,7 @@ type GameplayTokenMetaArgs = {
     random_seed: BN,
     token_mint_pda: PublicKey,
     update_allowed_slot: BN,
+    cooldown_duration: BN,
 }
 
 export class GameplayTokenMetaData extends Borsh.Data<GameplayTokenMetaArgs> {
@@ -23,6 +24,7 @@ export class GameplayTokenMetaData extends Borsh.Data<GameplayTokenMetaArgs> {
             ['random_seed', 'u64'],
             ['token_mint_pda', 'pubkey'],
             ['update_allowed_slot', 'u64'],
+            ['cooldown_duration', 'u64'],
         ])
     ]);
 
@@ -32,6 +34,7 @@ export class GameplayTokenMetaData extends Borsh.Data<GameplayTokenMetaArgs> {
     random_seed: BN;
     token_mint_pda: PublicKey;
     update_allowed_slot: BN;
+    cooldown_duration: BN;
 
     constructor(args: GameplayTokenMetaArgs) {
         super(args);
@@ -42,6 +45,7 @@ export class GameplayTokenMetaData extends Borsh.Data<GameplayTokenMetaArgs> {
         this.random_seed = args.random_seed;
         this.token_mint_pda = args.token_mint_pda;
         this.update_allowed_slot = args.update_allowed_slot;
+        this.cooldown_duration = args.cooldown_duration;
     }
 }
 

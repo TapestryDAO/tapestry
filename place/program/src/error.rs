@@ -39,6 +39,9 @@ pub enum PlaceError {
 
     #[error("Desired price different from current price")]
     DesiredPriceDifferentFromCurrentPrice, // 11
+
+    #[error("Gameplay token not cooled down")]
+    GameplayTokenNotReady, // 12
 }
 
 impl From<PlaceError> for ProgramError {
