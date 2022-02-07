@@ -1,3 +1,4 @@
+use solana_program::instruction::InstructionError;
 use solana_program::{
     borsh::try_from_slice_unchecked, program_error::ProgramError, system_instruction,
 };
@@ -6,9 +7,10 @@ use assert_matches::assert_matches;
 use solana_place::state::{find_address_for_patch, GameplayTokenMeta};
 use solana_program_test::{processor, tokio, ProgramTest, ProgramTestContext};
 use solana_sdk::account::ReadableAccount;
+use solana_sdk::transaction::TransactionError;
 use solana_sdk::{
     commitment_config::CommitmentLevel, signature::Keypair, signature::Signer,
-    transaction::Transaction,
+    transaction::Transaction, transport::TransportError,
 };
 
 use solana_place::instruction;
@@ -283,4 +285,42 @@ async fn test_purchase_account() {
             }
         }
     }
+
+    let (recent_blockhash2, _) = banks_client
+        .get_latest_blockhash_with_commitment(CommitmentLevel::Confirmed)
+        .await
+        .unwrap()
+        .unwrap();
+
+    // Attempt to set another pixel, but should fail because of cooldown
+    let set_pixel_ix2 = solana_place::instruction::get_ix_set_pixel(
+        solana_place::id(),
+        game_player.pubkey(),
+        gameplay_token_pda,
+        game_player_ata,
+        x,
+        y,
+        x_offset,
+        y_offset,
+        pixel,
+    );
+
+    let set_pixel_tx2 = Transaction::new_signed_with_payer(
+        &[set_pixel_ix2],
+        Some(&game_player.pubkey()),
+        &[&game_player],
+        recent_blockhash2,
+    );
+
+    // let set_pixel_result2 = banks_client.process_transaction(set_pixel_tx2).await;
+    let set_pixel_result2 = banks_client
+        .process_transaction_with_commitment(set_pixel_tx2, CommitmentLevel::Confirmed)
+        .await;
+    // let expected_result = TransactionError(solana_place::error::PlaceError::GameplayTokenNotReady.into());
+    let expected_result = TransportError::TransactionError(TransactionError::InstructionError(
+        0,
+        InstructionError::Custom(12),
+    ));
+
+    assert_matches!(set_pixel_result2, Err(expected_result));
 }

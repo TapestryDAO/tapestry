@@ -619,6 +619,11 @@ fn process_set_pixel(
     if gameplay_token.update_allowed_slot > current_slot {
         return Err(PlaceError::GameplayTokenNotReady.into());
     }
+    msg!(
+        "TAP: current_slot: {}, allowed_after: {}",
+        current_slot,
+        gameplay_token.update_allowed_slot
+    );
 
     // update the cooldown for the token
     gameplay_token.update_allowed_slot = current_slot + gameplay_token.cooldown_duration;
