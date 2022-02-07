@@ -204,6 +204,11 @@ async fn test_purchase_account() {
     println!("cooldown: {}", new_paintbrush_cooldown);
     assert_eq!(gameplay_token_acct.update_allowed_slot, current_slot);
 
+    let game_player_ata = spl_associated_token_account::get_associated_token_address(
+        &game_player.pubkey(),
+        &gameplay_token_acct.token_mint_pda,
+    );
+
     // assert_eq(gameplay_token_acct.update_allowed_slot,)
 
     // initialize the patch (allocate data)
@@ -238,6 +243,7 @@ async fn test_purchase_account() {
         solana_place::id(),
         game_player.pubkey(),
         gameplay_token_pda,
+        game_player_ata,
         x,
         y,
         x_offset,

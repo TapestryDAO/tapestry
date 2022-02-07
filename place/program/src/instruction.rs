@@ -237,7 +237,11 @@ pub struct SetPixelAccountArgs<'a, 'b: 'a> {
     pub patch_pda_acct: &'a AccountInfo<'b>,
 
     // `[writable]` gameplay token being used to set the pixel
-    pub gameplay_token_acct: &'a AccountInfo<'b>,
+    pub gameplay_token_meta_acct: &'a AccountInfo<'b>,
+
+    // `[]` the associated token account owned by the payer that holds the
+    // NFT associated with this gameplay token
+    pub payer_gameplay_token_acct: &'a AccountInfo<'b>,
 
     // `[]` the system program
     pub system_acct: &'a AccountInfo<'b>,
@@ -246,7 +250,8 @@ pub struct SetPixelAccountArgs<'a, 'b: 'a> {
 pub fn get_ix_set_pixel(
     program_id: Pubkey,
     payer: Pubkey,
-    gameplay_token_pda: Pubkey,
+    gameplay_token_meta_pda: Pubkey,
+    payer_gameplay_token_acct: Pubkey,
     x: u8,
     y: u8,
     x_offset: u8,
@@ -261,7 +266,8 @@ pub fn get_ix_set_pixel(
             // TODO(will): this doesn't need to be writable after removing lazy alloc
             AccountMeta::new(payer, true),
             AccountMeta::new(patch_pda, false),
-            AccountMeta::new(gameplay_token_pda, false),
+            AccountMeta::new(gameplay_token_meta_pda, false),
+            AccountMeta::new(payer_gameplay_token_acct, false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
         ],
         data: PlaceInstruction::SetPixel(SetPixelDataArgs {

@@ -42,6 +42,18 @@ pub enum PlaceError {
 
     #[error("Gameplay token not cooled down")]
     GameplayTokenNotReady, // 12
+
+    #[error("Invalid Gameplay token ATA")]
+    InvalidGameplayTokenATA, // 13
+
+    #[error("Invalid Gameplay token owner")]
+    InvalidGameplayTokenAccountOwner, // 14
+
+    #[error("Invalid Gameplay token balance")]
+    InvalidGameplayTokenAccountBalance, // 15
+
+    #[error("Invalid Gameplay token balance")]
+    InvalidGameplayTokenAccountMint, // 15
 }
 
 impl From<PlaceError> for ProgramError {

@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     borsh::try_from_slice_unchecked,
@@ -106,7 +108,8 @@ impl Processor {
                 let acct_args = SetPixelAccountArgs {
                     payer_acct: next_account_info(acct_info_iter)?,
                     patch_pda_acct: next_account_info(acct_info_iter)?,
-                    gameplay_token_acct: next_account_info(acct_info_iter)?,
+                    gameplay_token_meta_acct: next_account_info(acct_info_iter)?,
+                    payer_gameplay_token_acct: next_account_info(acct_info_iter)?,
                     system_acct: next_account_info(acct_info_iter)?,
                 };
 
@@ -556,7 +559,8 @@ fn process_set_pixel(
     let SetPixelAccountArgs {
         payer_acct,
         patch_pda_acct,
-        gameplay_token_acct,
+        gameplay_token_meta_acct,
+        payer_gameplay_token_acct,
         system_acct,
     } = acct_args;
 
@@ -568,6 +572,11 @@ fn process_set_pixel(
         pixel,
     } = data_args;
 
+    // everything is based on the signer owning a token account with a balance of 1,
+    // and with a mint that matches the mint in the gameplay token meta
+    // so payer had better be signer.
+    assert_signer(payer_acct)?;
+
     if *system_acct.key != solana_program::system_program::id() {
         return Err(PlaceError::InvalidAccountArgument.into());
     }
@@ -575,7 +584,7 @@ fn process_set_pixel(
     // Parse and validate account arguments
 
     let mut patch: Patch = Patch::from_account_info(patch_pda_acct)?;
-    let (patch_pda, patch_pda_bump) = patch.pda_for_instance();
+    let (patch_pda, _) = patch.pda_for_instance();
     if patch_pda != *patch_pda_acct.key {
         return Err(PlaceError::IncorrectPatchPDA.into());
     }
@@ -585,21 +594,35 @@ fn process_set_pixel(
     }
 
     let mut gameplay_token: GameplayTokenMeta =
-        GameplayTokenMeta::from_account_info(gameplay_token_acct)?;
-    let (gameplay_token_pda, gameplay_token_pda_bump) = gameplay_token.pda_for_instance();
-    if gameplay_token_pda != *gameplay_token_acct.key {
+        GameplayTokenMeta::from_account_info(gameplay_token_meta_acct)?;
+    let (gameplay_token_pda, _) = gameplay_token.pda_for_instance();
+    if gameplay_token_pda != *gameplay_token_meta_acct.key {
         return Err(PlaceError::IncorrectGameplayTokenMetaPDA.into());
     }
 
+    // check the token account looks good
+    let gameplay_ata = TokenAccount::unpack_from_slice(&payer_gameplay_token_acct.data.borrow())?;
+    if gameplay_ata.owner != *payer_acct.key {
+        return Err(PlaceError::InvalidGameplayTokenAccountOwner.into());
+    }
+    if gameplay_ata.amount != 1 {
+        return Err(PlaceError::InvalidGameplayTokenAccountBalance.into());
+    }
+    if gameplay_ata.mint != gameplay_token.token_mint_pda {
+        return Err(PlaceError::InvalidGameplayTokenAccountMint.into());
+    }
+
+    // check the gameplay token meta to make sure it is "ready"
+
     let clock = Clock::get()?;
-    let currentSlot = clock.slot;
-    if gameplay_token.update_allowed_slot > currentSlot {
+    let current_slot = clock.slot;
+    if gameplay_token.update_allowed_slot > current_slot {
         return Err(PlaceError::GameplayTokenNotReady.into());
     }
 
     // update the cooldown for the token
-    gameplay_token.update_allowed_slot = currentSlot + gameplay_token.cooldown_duration;
-    gameplay_token.serialize(&mut *gameplay_token_acct.data.borrow_mut())?;
+    gameplay_token.update_allowed_slot = current_slot + gameplay_token.cooldown_duration;
+    gameplay_token.serialize(&mut *gameplay_token_meta_acct.data.borrow_mut())?;
 
     // Change the pixel
 
