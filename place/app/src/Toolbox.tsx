@@ -93,6 +93,7 @@ export const PaintbrushTool: FC = () => {
     }, [publicKey]);
 
     let client = PlaceClient.getInstance();
+    // TODO(will): currentSlot is annoyingly null here, so need to fix this in useEffect or something or add a pubsub
     let tokensReady = gameplayTokens.filter((acct) => { acct.data.update_allowed_slot <= client.currentSlot });
     let tokensWaiting = gameplayTokens.filter((acct) => { acct.data.update_allowed_slot > client.currentSlot });
 
