@@ -181,8 +181,6 @@ export const TapestryCanvas: FC = (props) => {
             gameplay_token_acct: tokenResult.tokenAccount.pubkey,
         }
 
-        // set the gameplay token account and shit
-
         let ix = await PlaceProgram.setPixel(pixelParams);
         let tx = new Transaction().add(ix);
         let sig = await sendTransaction(tx, connection);

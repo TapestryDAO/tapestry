@@ -61,7 +61,7 @@ export class PlaceClient {
 
     public currentSlotSubscription: number;
 
-    // Updated via connection's subscrtion to slot changes
+    // Updated via connection's subscription to slot changes
     public currentSlot: number | null = null;
 
     // ownerPubkey -> (mintPubkey -> GameplayTokenFetchResult)
