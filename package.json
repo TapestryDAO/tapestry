@@ -33,21 +33,24 @@
     "localnet:up": "python -u scripts/start_test_validator.py",
     "localnet:logs": "solana logs -u localhost",
     "meta:install": "python -u scripts/custom_deps.py",
-    "swarm": "python -u scripts/swarm.py --walkers"
+    "swarm": "python -u scripts/swarm.py --walkers",
+    "initpatches": "pla tx initpatches --keyname owner"
   },
-  "dependencies": {},
+  "dependencies": {
+    "tiny-async-pool": "^1.2.0"
+  },
   "devDependencies": {
-    "bs58": "^4.0.1",
-    "jimp": "^0.16.1",
-    "yarn": "^1.22.17",
     "@solana/web3.js": "^1.31.0",
     "@types/bs58": "^4.0.1",
     "@types/jimp": "^0.2.28",
     "@types/node": "^17.0.8",
     "@types/yargs": "^17.0.8",
     "axios": "^0.24.0",
+    "bs58": "^4.0.1",
+    "jimp": "^0.16.1",
     "ts-node": "^10.4.0",
     "typescript": "^4.5.4",
-    "yargs": "^17.3.1"
+    "yargs": "^17.3.1",
+    "yarn": "^1.22.17"
   }
 }

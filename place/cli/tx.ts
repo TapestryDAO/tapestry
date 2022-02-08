@@ -4,6 +4,8 @@ import yargs, { Arguments, ArgumentsCamelCase, Argv, number, string } from 'yarg
 import { applyKeynameOption, applyXYArgOptions, KeynameOptionArgs, XYOptionArgs } from '../../cli_utils/commandHelpers'
 import { getNewConnection, loadKey, makeJSONRPC, SOLANA_MAINNET_ENDPOINT } from '../../cli_utils/utils'
 import { PlaceProgram, SetPixelParams, PLACE_HEIGHT_PX, PLACE_WIDTH_PX, PATCH_SIZE_PX } from '../client/src/PlaceProgram'
+// @ts-ignore
+import asyncPool from "tiny-async-pool"
 
 const MAX_COLORS = 256;
 
@@ -43,51 +45,34 @@ const init_all_patches_command = {
             }
         }
 
-        let done = false;
-        let allTxSent = false;
+        console.time('xy')
+        const AllXY: Vec2d[][] = [[{ x: 0, y: 0 }]]
+        let index = 0
+        getNext(AllXY[index][AllXY.length - 1])
+        let next = getNext(AllXY[index][AllXY.length - 1])
+        while (next) {
+            if (!AllXY[index]) AllXY[index] = []
+            AllXY[index].push(next)
+            if (AllXY[index].length > 6) index = index + 1
+            next = getNext(next)
+        }
 
-        let allPromises: Promise<string>[] = [];
-        let currentXY: Vec2d = { x: 0, y: 0 };
-        while (!done) {
-            while (allPromises.length < 100 && !allTxSent) {
-                console.log("Init: ", currentXY);
-                let tx = new Transaction().add(await PlaceProgram.initPatch({
+        const results = await asyncPool(20, AllXY, (async (currentXYs: Vec2d[]) => {
+
+            console.log("Init: ", currentXYs);
+            let tx = new Transaction()
+            await Promise.all(currentXYs.map(async currentXY => {
+                tx.add(await PlaceProgram.initPatch({
                     xPatch: currentXY.x,
                     yPatch: currentXY.y,
                     payer: keypair.publicKey,
                 }))
+            }))
 
-                allPromises.push(sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig))
-                let next = getNext(currentXY);
+            await sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig)
 
-                if (next == null) {
-                    allTxSent = true;
-                } else {
-                    currentXY = next;
-                }
-            }
-
-            if (allPromises.length >= 100 || allTxSent) {
-                console.log("Filtering")
-                allPromises = allPromises.filter(p => {
-                    return inspect(p).includes("pending")
-                });
-
-                while (allPromises.length > 50 || (allTxSent && allPromises.length > 0)) {
-                    console.log("Waiting on promises")
-                    await allPromises.pop()
-
-                    allPromises = allPromises.filter(p => {
-                        return inspect(p).includes("pending")
-                    });
-                };
-            }
-
-            if (allPromises.length == 0 && allTxSent) {
-                done = true;
-            }
-        }
-
+        }));
+        console.timeEnd('xy')
         console.log("All done, hopefully nothing failed");
     }
 }
