@@ -53,7 +53,7 @@ pub enum PlaceError {
     InvalidGameplayTokenAccountBalance, // 15
 
     #[error("Invalid Gameplay token balance")]
-    InvalidGameplayTokenAccountMint, // 15
+    InvalidGameplayTokenAccountMint, // 16
 }
 
 impl From<PlaceError> for ProgramError {

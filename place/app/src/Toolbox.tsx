@@ -1,7 +1,7 @@
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { PlaceClient, PlaceProgram, GameplayTokenType } from '@tapestrydao/place-client';
-import { DragEventHandler, FC, useState } from 'react';
+import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenMetaAccount } from '@tapestrydao/place-client';
+import { DragEventHandler, FC, useEffect, useState } from 'react';
 import BN from 'bn.js';
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 
@@ -42,11 +42,17 @@ export const PaintbrushTool: FC = () => {
     const { connection } = useConnection();
     const { sendTransaction, publicKey } = useWallet();
     const [processingPurchase, setProcessingPurchase] = useState<boolean>(false);
+    const [gameplayTokens, setGameplayTokens] = useState<Array<GameplayTokenMetaAccount>>([]);
 
     const onBuyButtonClicked = async () => {
         console.log("Buy Paintbrush Clicked");
-        let state = await PlaceClient.getInstance().fetchPlaceStateAccount();
+        let placeClient = PlaceClient.getInstance()
+        let state = await placeClient.fetchPlaceStateAccount();
         setProcessingPurchase(true);
+
+        console.log("payer: ", publicKey);
+        console.log("token_type: ", GameplayTokenType.PaintBrush);
+        console.log("desired_price: ", state.paintbrush_price);
         let ix = await PlaceProgram.purchaseGameplayToken({
             payer: publicKey,
             token_type: GameplayTokenType.PaintBrush,
@@ -62,8 +68,19 @@ export const PaintbrushTool: FC = () => {
         let result = await connection.confirmTransaction(signature, "finalized")
         console.log(result);
         setProcessingPurchase(false);
-        await PlaceClient.getInstance().fetchGameplayTokensForOwner(publicKey);
+        await placeClient.fetchGameplayTokensForOwner(publicKey);
+        let accounts = placeClient.getSortedGameplayTokensForOwner(publicKey);
+        setGameplayTokens(accounts);
     }
+
+    useEffect(() => {
+        // TODO(will): probably want to set up a signal here for when accounts change
+        if (publicKey === null || publicKey === undefined) return;
+
+        PlaceClient.getInstance().fetchGameplayTokensForOwner(publicKey)
+            .then((accts) => setGameplayTokens(accts));
+
+    }, [publicKey]);
 
     return <div className='toolbox__paintbrush-container'>
         <img className='toolbox__paintbrush-image' src="paintbrush_pixel.png"></img>

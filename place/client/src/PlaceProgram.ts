@@ -26,6 +26,10 @@ export type SetPixelParams = {
     y: number,
     pixel: number,
     payer: PublicKey,
+    // gamplay account holding token metadata
+    gameplay_token_meta_acct: PublicKey,
+    // SPL Token account holding actual token
+    gameplay_token_acct: PublicKey,
 }
 
 export type InitPatchParams = {
@@ -161,6 +165,8 @@ export class PlaceProgram extends Program {
                 // TODO(will): this doesn't need to be writable after removing lazy alloc
                 { pubkey: params.payer, isSigner: true, isWritable: true },
                 { pubkey: patchPda, isSigner: false, isWritable: true },
+                { pubkey: params.gameplay_token_meta_acct, isSigner: false, isWritable: false },
+                { pubkey: params.gameplay_token_acct, isSigner: false, isWritable: false },
                 { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
             ],
             programId: this.PUBKEY,

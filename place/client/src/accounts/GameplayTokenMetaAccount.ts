@@ -54,5 +54,6 @@ export class GameplayTokenMetaAccount extends Account<GameplayTokenMetaData> {
     constructor(pubkey: AnyPublicKey, info: AccountInfo<Buffer>) {
         extendBorsh();
         super(pubkey, info);
+        this.data = GameplayTokenMetaData.deserialize(this.info.data);
     }
 }

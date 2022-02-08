@@ -6,7 +6,7 @@ import { getNewConnection, loadKey, makeJSONRPC, SOLANA_MAINNET_ENDPOINT } from 
 import { PlaceProgram, SetPixelParams, PLACE_HEIGHT_PX, PLACE_WIDTH_PX, PATCH_SIZE_PX } from '../client/src/PlaceProgram';
 import { PlaceClient } from '../client/src/PlaceClient';
 import BN from 'bn.js';
-import { GameplayTokenType } from '../client/src/accounts/GameplayTokenMeta';
+import { GameplayTokenType } from '../client/src/accounts';
 
 const MAX_COLORS = 256;
 
@@ -95,136 +95,136 @@ const init_all_patches_command = {
     }
 }
 
-type SetPixelCommandArgs =
-    XYOptionArgs &
-    KeynameOptionArgs &
-    { c: number }
+// type SetPixelCommandArgs =
+//     XYOptionArgs &
+//     KeynameOptionArgs &
+//     { c: number }
 
-const set_pixel_command = {
-    command: "set_pixel",
-    description: "set a pixel to an rgb value",
-    builder: (args: Argv): Argv<SetPixelCommandArgs> => {
-        return applyXYArgOptions(applyKeynameOption(args))
-            .option("c", {
-                description: "8 bit color value, 0-255",
-                type: "number",
-                required: true,
-            })
-    },
-    handler: async (args: ArgumentsCamelCase<SetPixelCommandArgs>) => {
-        let payer = loadKey(args.keyname);
-        let connection = getNewConnection();
-        let pixelValue = [0, 0, 0];
+// const set_pixel_command = {
+//     command: "set_pixel",
+//     description: "set a pixel to an rgb value",
+//     builder: (args: Argv): Argv<SetPixelCommandArgs> => {
+//         return applyXYArgOptions(applyKeynameOption(args))
+//             .option("c", {
+//                 description: "8 bit color value, 0-255",
+//                 type: "number",
+//                 required: true,
+//             })
+//     },
+//     handler: async (args: ArgumentsCamelCase<SetPixelCommandArgs>) => {
+//         let payer = loadKey(args.keyname);
+//         let connection = getNewConnection();
+//         let pixelValue = [0, 0, 0];
 
-        let params: SetPixelParams = {
-            x: args.x,
-            y: args.y,
-            pixel: args.c,
-            payer: payer.publicKey,
-        }
+//         let params: SetPixelParams = {
+//             x: args.x,
+//             y: args.y,
+//             pixel: args.c,
+//             payer: payer.publicKey,
+//         }
 
-        let ix = await PlaceProgram.setPixel(params);
-        let tx = new Transaction().add(ix);
-        let sig = await sendAndConfirmTransaction(connection, tx, [payer]);
-        let result = await connection.confirmTransaction(sig, "confirmed");
+//         let ix = await PlaceProgram.setPixel(params);
+//         let tx = new Transaction().add(ix);
+//         let sig = await sendAndConfirmTransaction(connection, tx, [payer]);
+//         let result = await connection.confirmTransaction(sig, "confirmed");
 
-        console.log("Sig: ", sig);
-        console.log("Err: ", result.value.err);
-    }
-}
+//         console.log("Sig: ", sig);
+//         console.log("Err: ", result.value.err);
+//     }
+// }
 
-type RandomWalkerCommandArgs =
-    XYOptionArgs &
-    KeynameOptionArgs &
-    { colors: number }
+// type RandomWalkerCommandArgs =
+//     XYOptionArgs &
+//     KeynameOptionArgs &
+//     { colors: number }
 
-const random_walker_command = {
-    command: "walker",
-    description: "start an infinite random walker",
-    builder: (args: Argv): Argv<RandomWalkerCommandArgs> => {
-        return applyKeynameOption(applyXYArgOptions(args))
-            .option("colors", {
-                description: "number of colors",
-                type: "number",
-                default: 256,
-            })
-    },
-    handler: async (args: ArgumentsCamelCase<RandomWalkerCommandArgs>) => {
+// const random_walker_command = {
+//     command: "walker",
+//     description: "start an infinite random walker",
+//     builder: (args: Argv): Argv<RandomWalkerCommandArgs> => {
+//         return applyKeynameOption(applyXYArgOptions(args))
+//             .option("colors", {
+//                 description: "number of colors",
+//                 type: "number",
+//                 default: 256,
+//             })
+//     },
+//     handler: async (args: ArgumentsCamelCase<RandomWalkerCommandArgs>) => {
 
-        const plusOrMinusOne = (): number => {
-            let value = Math.floor(Math.random() * 3)
-            if (value < 1) {
-                return -1;
-            } else if (value < 2) {
-                return 0;
-            } else if (value < 3) {
-                return 1;
-            } else {
-                console.log("strange thing happened");
-                return 0;
-            }
-        }
+//         const plusOrMinusOne = (): number => {
+//             let value = Math.floor(Math.random() * 3)
+//             if (value < 1) {
+//                 return -1;
+//             } else if (value < 2) {
+//                 return 0;
+//             } else if (value < 3) {
+//                 return 1;
+//             } else {
+//                 console.log("strange thing happened");
+//                 return 0;
+//             }
+//         }
 
-        const getNext = (current: SetPixelParams): SetPixelParams => {
-            return {
-                x: (current.x + plusOrMinusOne() + PLACE_WIDTH_PX) % PLACE_WIDTH_PX,
-                y: (current.y + plusOrMinusOne() + PLACE_HEIGHT_PX) % PLACE_HEIGHT_PX,
-                pixel: ((current.pixel + plusOrMinusOne()) + MAX_COLORS) % MAX_COLORS,
-                // pixel: color,
-                payer: current.payer,
-            }
-        }
+//         const getNext = (current: SetPixelParams): SetPixelParams => {
+//             return {
+//                 x: (current.x + plusOrMinusOne() + PLACE_WIDTH_PX) % PLACE_WIDTH_PX,
+//                 y: (current.y + plusOrMinusOne() + PLACE_HEIGHT_PX) % PLACE_HEIGHT_PX,
+//                 pixel: ((current.pixel + plusOrMinusOne()) + MAX_COLORS) % MAX_COLORS,
+//                 // pixel: color,
+//                 payer: current.payer,
+//             }
+//         }
 
-        let keypair = loadKey(args.keyname);
-        let connection = getNewConnection();
-        let connectionConfig: ConfirmOptions = {
-            skipPreflight: true,
-            commitment: 'confirmed',
-        };
+//         let keypair = loadKey(args.keyname);
+//         let connection = getNewConnection();
+//         let connectionConfig: ConfirmOptions = {
+//             skipPreflight: true,
+//             commitment: 'confirmed',
+//         };
 
-        let color = Math.floor(Math.random() * args.colors)
+//         let color = Math.floor(Math.random() * args.colors)
 
-        let currentSetPixelParams = {
-            x: args.x,
-            y: args.y,
-            pixel: color,
-            payer: keypair.publicKey,
-        }
+//         let currentSetPixelParams = {
+//             x: args.x,
+//             y: args.y,
+//             pixel: color,
+//             payer: keypair.publicKey,
+//         }
 
-        let allPromises: Promise<string>[] = []
+//         let allPromises: Promise<string>[] = []
 
-        let tx = new Transaction().add(await PlaceProgram.setPixel(currentSetPixelParams))
+//         let tx = new Transaction().add(await PlaceProgram.setPixel(currentSetPixelParams))
 
-        allPromises.push(sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig))
+//         allPromises.push(sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig))
 
-        while (true) {
-            while (allPromises.length < 100) {
-                let sleep = new Promise((resolve) => setTimeout(resolve, 500));
-                await sleep;
-                currentSetPixelParams = getNext(currentSetPixelParams);
-                console.log(currentSetPixelParams);
-                let tx = new Transaction().add(await PlaceProgram.setPixel(currentSetPixelParams))
-                allPromises.push(sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig))
-            }
+//         while (true) {
+//             while (allPromises.length < 100) {
+//                 let sleep = new Promise((resolve) => setTimeout(resolve, 500));
+//                 await sleep;
+//                 currentSetPixelParams = getNext(currentSetPixelParams);
+//                 console.log(currentSetPixelParams);
+//                 let tx = new Transaction().add(await PlaceProgram.setPixel(currentSetPixelParams))
+//                 allPromises.push(sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig))
+//             }
 
-            if (allPromises.length >= 100) {
-                console.log("Filtering")
-                allPromises = allPromises.filter(p => {
-                    return inspect(p).includes("pending")
-                });
+//             if (allPromises.length >= 100) {
+//                 console.log("Filtering")
+//                 allPromises = allPromises.filter(p => {
+//                     return inspect(p).includes("pending")
+//                 });
 
-                while (allPromises.length > 50) {
-                    console.log("Waiting on promises")
-                    await allPromises.pop()
+//                 while (allPromises.length > 50) {
+//                     console.log("Waiting on promises")
+//                     await allPromises.pop()
 
-                    allPromises = allPromises.filter(p => {
-                        return inspect(p).includes("pending")
-                    });
-                }
-            }
-        }
-    }
-}
+//                     allPromises = allPromises.filter(p => {
+//                         return inspect(p).includes("pending")
+//                     });
+//                 }
+//             }
+//         }
+//     }
+// }
 
 type RentCheckCommandArgs = { data_size: number };
 
@@ -385,8 +385,8 @@ export const command = {
     description: "Execute various transations against the tapestry program running on the solana blockchain",
     builder: (argv: Argv) => {
         return argv
-            .command(set_pixel_command)
-            .command(random_walker_command)
+            // .command(set_pixel_command)
+            // .command(random_walker_command)
             .command(init_all_patches_command)
             .command(rent_check_command)
             .command(update_place_state_command)

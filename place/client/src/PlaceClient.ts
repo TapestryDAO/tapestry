@@ -11,6 +11,7 @@ import { Account, TokenAccount } from "@metaplex-foundation/mpl-core";
 import BN from 'bn.js';
 import { GameplayTokenMetaAccount } from "./accounts/GameplayTokenMetaAccount";
 import { runInThisContext } from "vm";
+import { kill } from "process";
 
 export const PATCH_WIDTH = 20;
 export const PATCH_HEIGHT = 20;
@@ -251,9 +252,26 @@ export class PlaceClient {
         this.subscribeToPatchUpdates();
     }
 
-    public async fetchGameplayTokensForOwner(owner: PublicKey) {
-        let ownerB58 = owner.toBase58()
+    public getSortedGameplayTokensForOwner(owner: PublicKey): GameplayTokenMetaAccount[] {
+        if (owner === null || owner === undefined) return [];
+        let ownerCache = this.tokenAccountsCache.get(owner.toBase58());
+        if (ownerCache === undefined) return [];
 
+        let metaAccounts: GameplayTokenMetaAccount[] = []
+        for (let [k, v] of ownerCache) {
+            // console.log(v);
+            if (v.gameplayTokenAccount !== null) {
+                // console.log()
+                metaAccounts.push(v.gameplayTokenAccount);
+                console.log(v.gameplayTokenAccount.data)
+            }
+        }
+
+        metaAccounts.sort((a, b) => a.data.update_allowed_slot.cmp(b.data.update_allowed_slot))
+        return metaAccounts;
+    }
+
+    public async fetchGameplayTokensForOwner(owner: PublicKey): Promise<GameplayTokenMetaAccount[]> {
         let allTokenAccounts = await TokenAccount.getTokenAccountsByOwner(this.connection, owner);
         let nftTokenAccounts = allTokenAccounts
             .filter((acct) => acct.data.amount != new BN(1));
@@ -263,7 +281,7 @@ export class PlaceClient {
 
         let nftsToFetch: PublicKey[] = []
 
-        if (currentOwnerCache != undefined) {
+        if (currentOwnerCache !== undefined) {
             // any NFT owned by `owner` that we do not have a cache record for, prepare to fetch it
             for (let nftMintKey of nftMintPubkeys) {
                 let found = currentOwnerCache.get(nftMintKey.toBase58()) != undefined
@@ -273,8 +291,8 @@ export class PlaceClient {
             }
         } else {
             nftsToFetch = nftMintPubkeys;
-            this.tokenAccountsCache.set(owner.toBase58(), new Map());
-            currentOwnerCache = this.tokenAccountsCache.get(owner.toBase58());
+            currentOwnerCache = new Map()
+            this.tokenAccountsCache.set(owner.toBase58(), currentOwnerCache);
         }
 
         console.log("found ", nftMintPubkeys.length, " NFT mints, fetching: ", nftsToFetch.length);
@@ -314,6 +332,8 @@ export class PlaceClient {
                 })
             }
         }
+
+        return this.getSortedGameplayTokensForOwner(owner);
 
         // [check] 1. cache results of this function
         // [     ] 2. show how many paintbrushes user has in the UI
