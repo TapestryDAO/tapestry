@@ -46,21 +46,27 @@ const init_all_patches_command = {
         }
 
         console.time('xy')
-        const AllXY: Vec2d[] = [{ x: 0, y: 0 }]
-        getNext(AllXY[AllXY.length - 1])
-        let next = getNext(AllXY[AllXY.length - 1])
+        const AllXY: Vec2d[][] = [[{ x: 0, y: 0 }]]
+        let index = 0
+        getNext(AllXY[index][AllXY.length - 1])
+        let next = getNext(AllXY[index][AllXY.length - 1])
         while (next) {
-            AllXY.push(next)
+            if (!AllXY[index]) AllXY[index] = []
+            AllXY[index].push(next)
+            if (AllXY[index].length > 6) index = index + 1
             next = getNext(next)
         }
 
-        const results = await asyncPool(50, AllXY, (async (currentXY: Vec2d) => {
+        const results = await asyncPool(20, AllXY, (async (currentXYs: Vec2d[]) => {
 
-            console.log("Init: ", currentXY);
-            let tx = new Transaction().add(await PlaceProgram.initPatch({
-                xPatch: currentXY.x,
-                yPatch: currentXY.y,
-                payer: keypair.publicKey,
+            console.log("Init: ", currentXYs);
+            let tx = new Transaction()
+            await Promise.all(currentXYs.map(async currentXY => {
+                tx.add(await PlaceProgram.initPatch({
+                    xPatch: currentXY.x,
+                    yPatch: currentXY.y,
+                    payer: keypair.publicKey,
+                }))
             }))
 
             await sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig)
