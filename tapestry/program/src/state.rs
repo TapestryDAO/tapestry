@@ -158,8 +158,8 @@ pub fn assert_patch_is_valid(
 }
 
 pub fn assert_featured_region_valid(region: &FeaturedRegion) -> ProgramResult {
-    assert_coords_valid(region.x, region.y);
-    assert_coords_valid(region.x + region.width, region.y + region.y);
+    assert_coords_valid(region.x, region.y)?;
+    assert_coords_valid(region.x + region.width, region.y + region.y)?;
 
     if region.callout.len() > MAX_FEATURED_CALLOUT_LEN {
         return Err(TapestryError::FeaturedCalloutTooLong.into());

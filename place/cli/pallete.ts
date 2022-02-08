@@ -1,10 +1,14 @@
 import yargs, { ArgumentsCamelCase, Argv, number, string } from 'yargs'
 import * as fs from 'fs'
 import { argv } from 'process'
+import path from 'path'
+import { TAPESTRY_ROOT } from '../../cli_utils/utils'
 
 type ConvertHexToJsonCommandArgs =
     { inFile: string } &
-    { outFile: string }
+    { name: string }
+
+const PALLETE_OUT = path.resolve(TAPESTRY_ROOT, "place", "client", "src", "palletes")
 
 const convert_pallete_command = {
     command: "convert",
@@ -16,8 +20,8 @@ const convert_pallete_command = {
                 type: "string",
                 required: true,
             })
-            .option("outFile", {
-                description: "Output file, will be a json array",
+            .option("name", {
+                description: "pallete name",
                 type: "string",
                 required: true,
             })
@@ -35,7 +39,9 @@ const convert_pallete_command = {
         console.log("Hex file had ", hexValues.length, " colors")
         console.log(hexValues);
         console.log("Writing output json array to ", args.outFile);
-        fs.writeFileSync(args.outFile, JSON.stringify(hexValues), 'utf8');
+        let typescriptFileContents = "export const " + args.name + " = " + JSON.stringify(hexValues)
+        let outfile = path.resolve(PALLETE_OUT, args.name + ".ts")
+        fs.writeFileSync(outfile, typescriptFileContents, 'utf8');
     }
 }
 

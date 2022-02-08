@@ -89,6 +89,14 @@ def main():
     patch_size = 20
     if args.place:
         print("Setting Initial pixels")
+
+        # Initialize the place state and set to defaults
+        run_command([
+            "pla", "tx", "update_place",
+            "--keyname", "owner",
+        ])
+
+        # Initialize all patch data
         run_command([
             "pla", "tx", "initpatches", 
             "--keyname", "owner", 

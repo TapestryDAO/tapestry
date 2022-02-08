@@ -3,6 +3,7 @@ import { PlaceClient, PlaceProgram } from '@tapestrydao/place-client'
 import { renderToStaticMarkup } from "react-dom/server"
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { Transaction } from '@solana/web3.js'
+import BN from 'bn.js';
 
 const DRAW_RATE_MS = 1000 / 10;
 const MAX_SCALE = 40;
@@ -146,17 +147,48 @@ export const TapestryCanvas: FC = (props) => {
 
         if (publicKey === null) return;
 
+        let client = PlaceClient.getInstance();
+
+        let sortedTokenResults = client.getSortedGameplayTokenResultsForOwner(publicKey);
+
+        console.log("got sorted results: ", sortedTokenResults.length);
+
+        if (sortedTokenResults === undefined || sortedTokenResults.length == 0) return;
+
+        let tokenResult = sortedTokenResults[0];
+
+        if (client.currentSlot === null) {
+            console.log("we don't know what slot it is!");
+            return;
+        }
+
+        if (tokenResult.gameplayTokenAccount === null || tokenResult.tokenAccount === null) {
+            console.log("bad result, something was null");
+            return;
+        }
+
+        if (tokenResult.gameplayTokenAccount.data.update_allowed_slot.gt(new BN(client.currentSlot))) {
+            console.log("Token not ready for update");
+            return;
+        }
+
         let pixelParams = {
             x: eventX,
             y: eventY,
             pixel: PlaceClient.getInstance().pixelColorToPalletColor(droppedColor),
             payer: publicKey,
+            gameplay_token_meta_acct: tokenResult.gameplayTokenAccount.pubkey,
+            gameplay_token_acct: tokenResult.tokenAccount.pubkey,
         }
 
         let ix = await PlaceProgram.setPixel(pixelParams);
         let tx = new Transaction().add(ix);
-        let result = await sendTransaction(tx, connection);
+        let sig = await sendTransaction(tx, connection);
+        let result = await connection.confirmTransaction(sig, "confirmed");
         console.log(result)
+
+        // Refresh the token cache (not convinced this is 100% reliable)
+        client.refreshGameplayToken(publicKey, tokenResult.gameplayTokenAccount);
     }
 
     return (

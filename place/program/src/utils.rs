@@ -58,3 +58,11 @@ pub fn create_or_allocate_account_raw<'a>(
 
     Ok(())
 }
+
+pub fn assert_signer(account_info: &AccountInfo) -> ProgramResult {
+    if !account_info.is_signer {
+        Err(ProgramError::MissingRequiredSignature)
+    } else {
+        Ok(())
+    }
+}

@@ -1,5 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;700&display=swap');
 
+@font-face {
+    font-family: 'PublicPixel';
+    src: url('./PublicPixel.ttf') format('truetype');
+}
+
 html {
     height: 100%;
     width: 100%;

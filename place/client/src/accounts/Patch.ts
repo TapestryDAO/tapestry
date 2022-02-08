@@ -1,8 +1,7 @@
 import { Borsh } from '@metaplex-foundation/mpl-core';
 import { Schema } from 'borsh';
-import { PlaceAccountType } from '../instructions/types';
 import { extendBorsh } from '../utils/borsh';
-
+import { PlaceAccountType } from './types';
 
 export type PatchArgs = {
     x: number,

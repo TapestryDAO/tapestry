@@ -4336,10 +4336,13 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "borsh",
+ "mpl-token-metadata",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
  "solana-validator",
+ "spl-associated-token-account",
+ "spl-token",
  "thiserror",
 ]
 

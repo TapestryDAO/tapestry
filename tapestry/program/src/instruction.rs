@@ -4,7 +4,7 @@ use crate::state::{
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::{Account, AccountInfo},
+    account_info::AccountInfo,
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
     sysvar,

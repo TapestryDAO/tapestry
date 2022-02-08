@@ -8,7 +8,10 @@ module.exports = {
     resolve: {
         extensions: ['.tsx', '.ts', '.js'],
         // this was needed by one of the wallet adapters in @solana/wallet-adapter
-        fallback: { "stream": require.resolve("stream-browserify") },
+        fallback: {
+            "stream": require.resolve("stream-browserify"),
+            "crypto": require.resolve("crypto-browserify")
+        },
     },
     module: {
         rules: [

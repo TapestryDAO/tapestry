@@ -7,15 +7,13 @@ import argparse
 
 TAPESTRY_ROOT = Path(os.environ.get("TAPESTRY_ROOT"))
 MPL_URL = "https://github.com/metaplex-foundation/metaplex-program-library.git"
-# MPL_TAG = "@metaplex-foundation/mpl-metaplex@0.0.2"
-# MPL_TAG = "master" # bad
 MPL_TAG = "@metaplex-foundation/mpl-token-vault@0.1.0"
 
-# 5d5cb81fcd4e23e3e51c252a2e2f1ab5c8dc8de9 - 0.0.2
-
 BUILD_DIR = TAPESTRY_ROOT / "build" / "custom_deps"
+
 MPL_ROOT = BUILD_DIR / "mpl-program-library"
-MPL_OUT_DIR = MPL_ROOT / "target" / "deploy"
+MPL_TARGET_DIR = MPL_ROOT / "target"
+MPL_OUT_DIR = MPL_TARGET_DIR / "deploy"
 MPL_PROGRAMS = [
     "mpl_token_metadata"
 ]
@@ -33,8 +31,6 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--clean", action="store_true")
-    parser.add_argument("--build", action="store_true")
-    parser.add_argument("--deploy", action="store_true")
 
     args = parser.parse_args()
     
@@ -48,18 +44,21 @@ def main():
     repo.git.checkout(MPL_TAG)
 
     if args.clean:
-        subprocess.check_call("cargo clean", cwd=MPL_ROOT, shell=True)
+        MPL_TARGET_DIR.rmdir()
 
-    if args.build:
+    stamp_path = MPL_TARGET_DIR / f"{repo.head.commit}.stamp"
+    
+    if not stamp_path.exists():
         command = ["cargo", "build-bpf"]
         subprocess.check_call(" ".join(command), cwd=MPL_ROOT, shell=True)
 
-    if args.deploy:
         for program in MPL_PROGRAMS:
             src_so = program + ".so"
             src_key = program + "-keypair.json"
             shutil.copy(MPL_OUT_DIR / src_so, CARGO_DEPLOY_DIR)
             shutil.copy(MPL_OUT_DIR / src_key, CARGO_DEPLOY_DIR)
+
+        stamp_path.touch()
 
 
 if __name__ == "__main__":
