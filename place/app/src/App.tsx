@@ -153,6 +153,8 @@ export const TapestryCanvas: FC = (props) => {
             payer: publicKey,
         }
 
+        // set the gameplay token account and shit
+
         let ix = await PlaceProgram.setPixel(pixelParams);
         let tx = new Transaction().add(ix);
         let result = await sendTransaction(tx, connection);

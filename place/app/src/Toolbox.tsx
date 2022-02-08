@@ -46,6 +46,8 @@ export const PaintbrushTool: FC = () => {
 
     const onBuyButtonClicked = async () => {
         console.log("Buy Paintbrush Clicked");
+        if (publicKey === null) return;
+
         let placeClient = PlaceClient.getInstance()
         let state = await placeClient.fetchPlaceStateAccount();
         setProcessingPurchase(true);
@@ -69,21 +71,36 @@ export const PaintbrushTool: FC = () => {
         console.log(result);
         setProcessingPurchase(false);
         await placeClient.fetchGameplayTokensForOwner(publicKey);
-        let accounts = placeClient.getSortedGameplayTokensForOwner(publicKey);
-        setGameplayTokens(accounts);
     }
 
     useEffect(() => {
-        // TODO(will): probably want to set up a signal here for when accounts change
         if (publicKey === null || publicKey === undefined) return;
 
-        PlaceClient.getInstance().fetchGameplayTokensForOwner(publicKey)
-            .then((accts) => setGameplayTokens(accts));
+        let placeClient = PlaceClient.getInstance();
 
+        let subscription = placeClient.OnGameplayTokenAcctsDidUpdate.add((owner, accounts) => {
+            setGameplayTokens(accounts);
+        })
+
+        // Trigger a fetch
+        PlaceClient.getInstance().fetchGameplayTokensForOwner(publicKey);
+
+
+
+        return () => {
+            PlaceClient.getInstance().OnGameplayTokenAcctsDidUpdate.detach(subscription)
+        }
     }, [publicKey]);
+
+    let client = PlaceClient.getInstance();
+    let tokensReady = gameplayTokens.filter((acct) => { acct.data.update_allowed_slot <= client.currentSlot });
+    let tokensWaiting = gameplayTokens.filter((acct) => { acct.data.update_allowed_slot > client.currentSlot });
 
     return <div className='toolbox__paintbrush-container'>
         <img className='toolbox__paintbrush-image' src="paintbrush_pixel.png"></img>
+        {tokensReady.length > 0 ? <h4>Ready: {tokensReady.length}</h4> : <h4> No Tokens Ready</h4>}
+        <h4>Total: {gameplayTokens.length}</h4>
+
         <button onClick={onBuyButtonClicked} className='toolbox__buy_button'>{processingPurchase ? "Processing..." : "Buy"}</button>
     </div>
 }

@@ -6,12 +6,11 @@ import { extendBorsh } from "./utils/borsh";
 import { blend32 } from "./palletes/blend32";
 import { PlaceAccountType, PatchData, PlaceStateData } from "./accounts";
 import base58 from "bs58";
-import { inspect } from "util";
 import { Account, TokenAccount } from "@metaplex-foundation/mpl-core";
 import BN from 'bn.js';
 import { GameplayTokenMetaAccount } from "./accounts/GameplayTokenMetaAccount";
-import { runInThisContext } from "vm";
-import { kill } from "process";
+import { Signal } from 'type-signals';
+
 
 export const PATCH_WIDTH = 20;
 export const PATCH_HEIGHT = 20;
@@ -36,6 +35,9 @@ type GameplayTokenFetchResult = {
     gameplayTokenAccount: GameplayTokenMetaAccount | null
 }
 
+type GameplayTokenAcctUpdateHandler =
+    (owner: PublicKey, gameplayAccounts: GameplayTokenMetaAccount[]) => void;
+
 export class PlaceClient {
     private static instance: PlaceClient;
 
@@ -51,6 +53,13 @@ export class PlaceClient {
     private pallete = blend32;
 
     public updatesQueue: CanvasUpdate[] = [];
+
+    public OnGameplayTokenAcctsDidUpdate = new Signal<GameplayTokenAcctUpdateHandler>();
+
+    public currentSlotSubscription: number;
+
+    // Updated via connection's subscrtion to slot changes
+    public currentSlot: number | null;
 
     // ownerPubkey -> (mintPubkey -> GameplayTokenFetchResult)
     private tokenAccountsCache: Map<PublicKeyB58, Map<PublicKeyB58, GameplayTokenFetchResult>> = new Map();
@@ -96,6 +105,10 @@ export class PlaceClient {
         }
 
         this.colorPallete = buf
+
+        // I think these will stack 
+        this.currentSlotSubscription =
+            this.connection.onSlotChange((slotChange) => this.currentSlot = slotChange.slot);
     }
 
     public static getInstance(): PlaceClient {
@@ -252,7 +265,7 @@ export class PlaceClient {
         this.subscribeToPatchUpdates();
     }
 
-    public getSortedGameplayTokensForOwner(owner: PublicKey): GameplayTokenMetaAccount[] {
+    public getSortedGameplayTokensForOwner(owner: PublicKey) {
         if (owner === null || owner === undefined) return [];
         let ownerCache = this.tokenAccountsCache.get(owner.toBase58());
         if (ownerCache === undefined) return [];
@@ -269,7 +282,7 @@ export class PlaceClient {
         return metaAccounts;
     }
 
-    public async fetchGameplayTokensForOwner(owner: PublicKey): Promise<GameplayTokenMetaAccount[]> {
+    public async fetchGameplayTokensForOwner(owner: PublicKey) {
         let allTokenAccounts = await TokenAccount.getTokenAccountsByOwner(this.connection, owner);
         let nftTokenAccounts = allTokenAccounts
             .filter((acct) => acct.data.amount != new BN(1));
@@ -331,7 +344,9 @@ export class PlaceClient {
             }
         }
 
-        return this.getSortedGameplayTokensForOwner(owner);
+        let sorted = this.getSortedGameplayTokensForOwner(owner);
+        console.log(sorted);
+        this.OnGameplayTokenAcctsDidUpdate.dispatch(owner, sorted);
 
         // [check] 1. cache results of this function
         // [     ] 2. show how many paintbrushes user has in the UI
