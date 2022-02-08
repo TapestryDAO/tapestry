@@ -190,6 +190,7 @@ impl GameplayTokenMeta {
 //////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// PATCH ACCOUNT //////////////////////////////////
 
+// TODO(will): move these into impl to make this more classy
 pub const PLACE_HEIGHT_PX: u16 = 1000;
 pub const PLACE_WIDTH_PX: u16 = 1000;
 pub const PATCH_SIZE_PX: usize = 20;
