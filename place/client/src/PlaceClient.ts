@@ -109,7 +109,7 @@ export class PlaceClient {
 
         this.colorPallete = buf
 
-        // I think these will stack 
+        // NOTE(will): unsubscribe not handled if we ever destroy this object
         this.currentSlotSubscription =
             this.connection.onSlotChange((slotChange) => {
                 this.currentSlot = slotChange.slot
