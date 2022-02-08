@@ -377,11 +377,5 @@ export class PlaceClient {
         let sorted = this.getSortedGameplayTokenResultsForOwner(owner);
         console.log(sorted);
         this.OnGameplayTokenAcctsDidUpdate.dispatch(owner, sorted);
-
-        // [check] 1. cache results of this function
-        // [     ] 2. show how many paintbrushes user has in the UI
-        // [     ] 3. implement set pixel, checking cooldown
-        // [     ] 4. distribute tapestry tokens from set pixel instruction
-        // [     ] 5. show in UI how long until next paintbrush has finished cooldown
     }
 }
