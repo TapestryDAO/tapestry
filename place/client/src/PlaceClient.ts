@@ -259,11 +259,9 @@ export class PlaceClient {
 
         let metaAccounts: GameplayTokenMetaAccount[] = []
         for (let [k, v] of ownerCache) {
-            // console.log(v);
             if (v.gameplayTokenAccount !== null) {
-                // console.log()
+                // TODO(will): could need to handle case where data failed to parse for some reason?
                 metaAccounts.push(v.gameplayTokenAccount);
-                console.log(v.gameplayTokenAccount.data)
             }
         }
 
