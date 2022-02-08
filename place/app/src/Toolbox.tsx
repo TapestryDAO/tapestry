@@ -1,6 +1,6 @@
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenMetaAccount } from '@tapestrydao/place-client';
+import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenFetchResult } from '@tapestrydao/place-client';
 import { DragEventHandler, FC, useEffect, useState } from 'react';
 import BN from 'bn.js';
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
@@ -42,7 +42,7 @@ export const PaintbrushTool: FC = () => {
     const { connection } = useConnection();
     const { sendTransaction, publicKey } = useWallet();
     const [processingPurchase, setProcessingPurchase] = useState<boolean>(false);
-    const [gameplayTokens, setGameplayTokens] = useState<Array<GameplayTokenMetaAccount>>([]);
+    const [gameplayTokens, setGameplayTokens] = useState<Array<GameplayTokenFetchResult>>([]);
 
     const onBuyButtonClicked = async () => {
         console.log("Buy Paintbrush Clicked");
@@ -79,13 +79,13 @@ export const PaintbrushTool: FC = () => {
         let placeClient = PlaceClient.getInstance();
 
         let subscription = placeClient.OnGameplayTokenAcctsDidUpdate.add((owner, accounts) => {
-            setGameplayTokens(accounts);
+            if (owner === publicKey) {
+                setGameplayTokens(accounts);
+            }
         })
 
         // Trigger a fetch
         PlaceClient.getInstance().fetchGameplayTokensForOwner(publicKey);
-
-
 
         return () => {
             PlaceClient.getInstance().OnGameplayTokenAcctsDidUpdate.detach(subscription)
@@ -93,15 +93,26 @@ export const PaintbrushTool: FC = () => {
     }, [publicKey]);
 
     let client = PlaceClient.getInstance();
-    // TODO(will): currentSlot is annoyingly null here, so need to fix this in useEffect or something or add a pubsub
-    let tokensReady = gameplayTokens.filter((acct) => { acct.data.update_allowed_slot <= client.currentSlot });
-    let tokensWaiting = gameplayTokens.filter((acct) => { acct.data.update_allowed_slot > client.currentSlot });
+
+    let totalTokenResults = gameplayTokens.filter((result) => result.gameplayTokenAccount !== null);
+
+    // TODO(will): currentSlot is annoyingly null here sometimes
+    let tokensReady = totalTokenResults.filter((result) => {
+        let gameplayToken = result.gameplayTokenAccount
+        if (gameplayToken === null) {
+            return false;
+        }
+
+        if (client.currentSlot == null) {
+            return false;
+        }
+
+        return gameplayToken.data.update_allowed_slot.lte(new BN(client.currentSlot));
+    });
 
     return <div className='toolbox__paintbrush-container'>
         <img className='toolbox__paintbrush-image' src="paintbrush_pixel.png"></img>
-        {tokensReady.length > 0 ? <h4>Ready: {tokensReady.length}</h4> : <h4> No Tokens Ready</h4>}
-        <h4>Total: {gameplayTokens.length}</h4>
-
+        <h4>Ready: {tokensReady.length}/{totalTokenResults.length}</h4>
         <button onClick={onBuyButtonClicked} className='toolbox__buy_button'>{processingPurchase ? "Processing..." : "Buy"}</button>
     </div>
 }

@@ -577,6 +577,9 @@ fn process_set_pixel(
     // so payer had better be signer.
     assert_signer(payer_acct)?;
 
+    // TODO(will): check token acct is owned by token program or whatever
+    // also maybe check ownership on other accounts
+
     if *system_acct.key != solana_program::system_program::id() {
         return Err(PlaceError::InvalidAccountArgument.into());
     }

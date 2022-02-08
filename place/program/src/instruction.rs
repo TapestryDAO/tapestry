@@ -267,7 +267,7 @@ pub fn get_ix_set_pixel(
             AccountMeta::new(payer, true),
             AccountMeta::new(patch_pda, false),
             AccountMeta::new(gameplay_token_meta_pda, false),
-            AccountMeta::new(payer_gameplay_token_acct, false),
+            AccountMeta::new_readonly(payer_gameplay_token_acct, false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
         ],
         data: PlaceInstruction::SetPixel(SetPixelDataArgs {

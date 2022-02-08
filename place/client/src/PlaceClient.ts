@@ -25,18 +25,21 @@ export type CanvasUpdate = {
 
 type PublicKeyB58 = string;
 
-enum GameplayTokenFetchStatus {
+export enum GameplayTokenFetchStatus {
     Found,
     NotFound,
 }
 
-type GameplayTokenFetchResult = {
+export type GameplayTokenFetchResult = {
     status: GameplayTokenFetchStatus,
-    gameplayTokenAccount: GameplayTokenMetaAccount | null
+    // the account holding our metadata related to the NFT
+    gameplayTokenAccount: GameplayTokenMetaAccount | null,
+    // account that holds the NFT (i.e. has balance of 1)
+    tokenAccount: TokenAccount | null,
 }
 
-type GameplayTokenAcctUpdateHandler =
-    (owner: PublicKey, gameplayAccounts: GameplayTokenMetaAccount[]) => void;
+export type GameplayTokenAcctUpdateHandler =
+    (owner: PublicKey, gameplayAccounts: GameplayTokenFetchResult[]) => void;
 
 export class PlaceClient {
     private static instance: PlaceClient;
@@ -108,7 +111,9 @@ export class PlaceClient {
 
         // I think these will stack 
         this.currentSlotSubscription =
-            this.connection.onSlotChange((slotChange) => this.currentSlot = slotChange.slot);
+            this.connection.onSlotChange((slotChange) => {
+                this.currentSlot = slotChange.slot
+            });
     }
 
     public static getInstance(): PlaceClient {
@@ -265,48 +270,69 @@ export class PlaceClient {
         this.subscribeToPatchUpdates();
     }
 
-    public getSortedGameplayTokensForOwner(owner: PublicKey) {
+    public getSortedGameplayTokenResultsForOwner(owner: PublicKey) {
         if (owner === null || owner === undefined) return [];
         let ownerCache = this.tokenAccountsCache.get(owner.toBase58());
         if (ownerCache === undefined) return [];
 
-        let metaAccounts: GameplayTokenMetaAccount[] = []
+        let results: GameplayTokenFetchResult[] = [];
         for (let [k, v] of ownerCache) {
             if (v.gameplayTokenAccount !== null) {
                 // TODO(will): could need to handle case where data failed to parse for some reason?
-                metaAccounts.push(v.gameplayTokenAccount);
+                results.push(v);
             }
         }
 
-        metaAccounts.sort((a, b) => a.data.update_allowed_slot.cmp(b.data.update_allowed_slot))
-        return metaAccounts;
+        results.sort((a, b) => {
+            return a.gameplayTokenAccount.data.update_allowed_slot
+                .cmp(b.gameplayTokenAccount.data.update_allowed_slot)
+        })
+
+        return results;
+    }
+
+    // attempts to refresh a gameplay token from rpc by deleting it from the cache and re-fetching
+    public async refreshGameplayToken(owner: PublicKey, token: GameplayTokenMetaAccount) {
+
+        let currentOwnerCache = this.tokenAccountsCache.get(owner.toBase58());
+        if (currentOwnerCache !== undefined) {
+            let tokenMintPubkey = token.data.token_mint_pda;
+            if (tokenMintPubkey === undefined) {
+                console.log("Tried to refresh bad token mint");
+            } else {
+                currentOwnerCache.delete(tokenMintPubkey.toBase58())
+            }
+        } else {
+            console.log("tried to refresh non-existant owner", owner.toBase58());
+        }
+        this.fetchGameplayTokensForOwner(owner);
     }
 
     public async fetchGameplayTokensForOwner(owner: PublicKey) {
         let allTokenAccounts = await TokenAccount.getTokenAccountsByOwner(this.connection, owner);
         let nftTokenAccounts = allTokenAccounts
             .filter((acct) => acct.data.amount != new BN(1));
-        let nftMintPubkeys = nftTokenAccounts.map((acct) => acct.data.mint);
+        // let nftMintPubkeys = nftTokenAccounts.map((acct) => acct.data.mint);
 
         let currentOwnerCache = this.tokenAccountsCache.get(owner.toBase58())
 
-        let nftsToFetch: PublicKey[] = []
+        let nftAccountsToFetch: TokenAccount[] = []
 
         if (currentOwnerCache !== undefined) {
             // any NFT owned by `owner` that we do not have a cache record for, prepare to fetch it
-            for (let nftMintKey of nftMintPubkeys) {
-                let found = currentOwnerCache.get(nftMintKey.toBase58()) != undefined
+            for (let nftAcct of nftTokenAccounts) {
+                let found = currentOwnerCache.get(nftAcct.data.mint.toBase58()) != undefined
                 if (!found) {
-                    nftsToFetch.push(nftMintKey)
+                    nftAccountsToFetch.push(nftAcct)
                 }
             }
         } else {
-            nftsToFetch = nftMintPubkeys;
+            nftAccountsToFetch = nftTokenAccounts;
             currentOwnerCache = new Map()
             this.tokenAccountsCache.set(owner.toBase58(), currentOwnerCache);
         }
 
-        console.log("found ", nftMintPubkeys.length, " NFT mints, fetching: ", nftsToFetch.length);
+        console.log("found ", nftTokenAccounts.length, " NFT mints, fetching: ", nftAccountsToFetch.length);
 
         // NOTE(will): theres a lot of potential for cache corruption here
         // i.e. user buys a gameplay token, fetch happens, but RPC nodes don't find newly minted
@@ -315,13 +341,13 @@ export class PlaceClient {
         // TODO(will): there some edge cases here to think about, like if account fails to parse
         // for some reason and cache corruption
 
-        for (const pubkey of nftsToFetch) {
+        for (const nftAcct of nftAccountsToFetch) {
             let gameplayTokenAccount = await PlaceProgram.getProgramAccounts(this.connection, {
                 commitment: "recent",
                 filters: [
                     {
                         memcmp: {
-                            bytes: pubkey.toBase58(),
+                            bytes: nftAcct.data.mint.toBase58(),
                             offset: 1 + 1 + 8 + 8,
                         }
                     }
@@ -329,22 +355,24 @@ export class PlaceClient {
             });
 
             if (gameplayTokenAccount.length == 0) {
-                currentOwnerCache.set(pubkey.toBase58(), {
+                currentOwnerCache.set(nftAcct.data.mint.toBase58(), {
                     status: GameplayTokenFetchStatus.NotFound,
                     gameplayTokenAccount: null,
+                    tokenAccount: null,
                 })
             } else {
                 let accountInfo = gameplayTokenAccount[0];
                 let account = new GameplayTokenMetaAccount(accountInfo.pubkey, accountInfo.info)
 
-                currentOwnerCache.set(pubkey.toBase58(), {
+                currentOwnerCache.set(nftAcct.data.mint.toBase58(), {
                     status: GameplayTokenFetchStatus.Found,
                     gameplayTokenAccount: account,
+                    tokenAccount: nftAcct,
                 })
             }
         }
 
-        let sorted = this.getSortedGameplayTokensForOwner(owner);
+        let sorted = this.getSortedGameplayTokenResultsForOwner(owner);
         console.log(sorted);
         this.OnGameplayTokenAcctsDidUpdate.dispatch(owner, sorted);
 
