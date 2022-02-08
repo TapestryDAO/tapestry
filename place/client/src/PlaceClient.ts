@@ -62,7 +62,7 @@ export class PlaceClient {
     public currentSlotSubscription: number;
 
     // Updated via connection's subscrtion to slot changes
-    public currentSlot: number | null;
+    public currentSlot: number | null = null;
 
     // ownerPubkey -> (mintPubkey -> GameplayTokenFetchResult)
     private tokenAccountsCache: Map<PublicKeyB58, Map<PublicKeyB58, GameplayTokenFetchResult>> = new Map();
@@ -283,9 +283,11 @@ export class PlaceClient {
             }
         }
 
+        results = results.filter((a) => a.gameplayTokenAccount !== null)
+
         results.sort((a, b) => {
-            return a.gameplayTokenAccount.data.update_allowed_slot
-                .cmp(b.gameplayTokenAccount.data.update_allowed_slot)
+            return a.gameplayTokenAccount!.data.update_allowed_slot
+                .cmp(b.gameplayTokenAccount!.data.update_allowed_slot)
         })
 
         return results;
