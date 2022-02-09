@@ -176,13 +176,6 @@ async fn test_all_the_things() {
 
     assert_matches!(init_mint_result2, expected_mint_failure);
 
-    // let expected_result = TransportError::TransactionError(TransactionError::InstructionError(
-    //     0,
-    //     InstructionError::Custom(12),
-    // ));
-
-    // assert_matches!(set_pixel_result2, Err(expected_result));
-
     // purchase a gameplay token
 
     let random_seed: u64 = 10101;
