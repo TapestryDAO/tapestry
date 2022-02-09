@@ -155,6 +155,7 @@ export class PlaceProgram extends Program {
     public static async initTokenMint(params: InitTokenMintParams) {
         let place_state_pda = await this.findPlaceStatePda();
         let place_token_mint_pda = await this.findPlaceTokenMintPda();
+        let place_token_mpl_meta_pda = await Metadata.getPDA(place_token_mint_pda);
 
         let data = InitMintArgsData.serialize({});
 
@@ -163,6 +164,8 @@ export class PlaceProgram extends Program {
                 { pubkey: params.owner, isSigner: true, isWritable: true },
                 { pubkey: place_state_pda, isSigner: false, isWritable: false },
                 { pubkey: place_token_mint_pda, isSigner: false, isWritable: true },
+                { pubkey: place_token_mpl_meta_pda, isSigner: false, isWritable: true },
+                { pubkey: MetadataProgram.PUBKEY, isSigner: false, isWritable: false },
                 { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
                 { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
                 { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
