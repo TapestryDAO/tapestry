@@ -84,3 +84,11 @@ pub fn assert_token_prog(account_info: &AccountInfo) -> ProgramResult {
         Err(PlaceError::InvalidTokenProgramAccount.into())
     }
 }
+
+pub fn assert_mpl_metadata_prog(account_info: &AccountInfo) -> ProgramResult {
+    if mpl_token_metadata::check_id(account_info.key) {
+        Ok(())
+    } else {
+        Err(PlaceError::InvalidMplMetadataProgramAccount.into())
+    }
+}

@@ -303,6 +303,12 @@ pub struct InitMintAccountArgs<'a, 'b: 'a> {
     // `[writable]` the mint that will be created by this instruction
     pub place_token_mint_pda_acct: &'a AccountInfo<'b>,
 
+    // `[writable]` the token metadata account for the place token mint
+    pub place_token_mint_mpl_pda_acct: &'a AccountInfo<'b>,
+
+    // `[]` The MPL token metadata program account
+    pub mpl_metadata_prog_acct: &'a AccountInfo<'b>,
+
     // `[]` the token program account
     pub token_prog_acct: &'a AccountInfo<'b>,
 
@@ -316,12 +322,15 @@ pub struct InitMintAccountArgs<'a, 'b: 'a> {
 pub fn get_ix_init_mint(owner: Pubkey) -> Instruction {
     let (place_state_pda, _) = PlaceState::pda();
     let (place_mint_pda, _) = PlaceState::token_mint_pda();
+    let (place_mint_mpl_metadata_pda, _) = PlaceState::token_mint_mpl_metadata_pda();
     Instruction {
         program_id: crate::id(),
         accounts: vec![
             AccountMeta::new(owner, true),
             AccountMeta::new(place_state_pda, false),
             AccountMeta::new(place_mint_pda, false),
+            AccountMeta::new(place_mint_mpl_metadata_pda, false),
+            AccountMeta::new_readonly(mpl_token_metadata::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),

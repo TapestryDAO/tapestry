@@ -20,7 +20,7 @@ use crate::{
         SetPixelAccountArgs, SetPixelDataArgs, UpdatePlaceStateAccountArgs,
         UpdatePlaceStateDataArgs,
     },
-    utils::{assert_system_prog, assert_token_prog},
+    utils::{assert_mpl_metadata_prog, assert_system_prog, assert_token_prog},
 };
 
 use spl_token::{
@@ -78,6 +78,8 @@ impl Processor {
                     owner_acct: next_account_info(acct_info_iter)?,
                     place_state_pda_acct: next_account_info(acct_info_iter)?,
                     place_token_mint_pda_acct: next_account_info(acct_info_iter)?,
+                    place_token_mint_mpl_pda_acct: next_account_info(acct_info_iter)?,
+                    mpl_metadata_prog_acct: next_account_info(acct_info_iter)?,
                     token_prog_acct: next_account_info(acct_info_iter)?,
                     system_prog_acct: next_account_info(acct_info_iter)?,
                     rent_sysvar_acct: next_account_info(acct_info_iter)?,
@@ -144,6 +146,8 @@ fn process_init_mint(
         owner_acct,
         place_state_pda_acct,
         place_token_mint_pda_acct,
+        place_token_mint_mpl_pda_acct,
+        mpl_metadata_prog_acct,
         token_prog_acct,
         system_prog_acct,
         rent_sysvar_acct,
@@ -152,10 +156,16 @@ fn process_init_mint(
     assert_signer(owner_acct)?;
     assert_system_prog(system_prog_acct)?;
     assert_token_prog(token_prog_acct)?;
+    assert_mpl_metadata_prog(mpl_metadata_prog_acct)?;
 
-    let (place_state_pda, _) = PlaceState::pda();
+    let (place_state_pda, place_state_pda_bump) = PlaceState::pda();
     if place_state_pda != *place_state_pda_acct.key {
         return Err(PlaceError::InvalidAccountArgument.into());
+    }
+
+    let (place_token_mpl_meta_pda, _) = PlaceState::token_mint_mpl_metadata_pda();
+    if place_token_mpl_meta_pda != *place_token_mint_mpl_pda_acct.key {
+        return Err(PlaceError::InvalidPlaceTokenMPLMetadataPDA.into());
     }
 
     let place_state = PlaceState::from_account_info(place_state_pda_acct)?;
@@ -179,6 +189,8 @@ fn process_init_mint(
         &[place_token_mint_pda_bump],
     ];
 
+    msg!("TAP: Allocating Token Mint Account");
+
     create_or_allocate_account_raw(
         *token_prog_acct.key,
         place_token_mint_pda_acct,
@@ -188,6 +200,8 @@ fn process_init_mint(
         place_token_mint_seeds,
     )?;
 
+    msg!("TAP: Init token mint");
+
     let init_mint_ix = initialize_mint(
         &spl_token::id(),
         &place_token_mint_pda,
@@ -195,8 +209,6 @@ fn process_init_mint(
         None,
         0,
     )?;
-
-    msg!("TAP: Creating Token Mint");
 
     invoke_signed(
         &init_mint_ix,
@@ -207,6 +219,48 @@ fn process_init_mint(
             (*rent_sysvar_acct).clone(),
         ],
         &[place_token_mint_seeds],
+    )?;
+
+    msg!("TAP: alloc token mint MPL metadata account");
+
+    let create_metadata_ix = create_metadata_accounts_v2(
+        mpl_token_metadata::id(),
+        place_token_mpl_meta_pda,
+        place_token_mint_pda.clone(),
+        place_state_pda.clone(),
+        owner_acct.key.clone(),
+        place_state_pda.clone(),
+        String::from("Tapestry"),
+        String::from("TAPESTRY"),
+        String::from("http://localhost:8080/tapestry_token.json"),
+        None,
+        0,
+        true,
+        false,
+        None,
+        None,
+    );
+
+    let place_token_mint_pda_seeds = &[
+        PlaceState::PREFIX.as_bytes(),
+        PlaceState::TOKEN_MINT_PREFIX.as_bytes(),
+        &[place_token_mint_pda_bump],
+    ];
+
+    let place_state_acct_pda_seeds = &[PlaceState::PREFIX.as_bytes(), &[place_state_pda_bump]];
+
+    invoke_signed(
+        &create_metadata_ix,
+        &[
+            (*mpl_metadata_prog_acct).clone(),
+            (*place_token_mint_pda_acct).clone(),
+            (*place_token_mint_mpl_pda_acct).clone(),
+            (*place_state_pda_acct).clone(),
+            (*owner_acct).clone(),
+            (*rent_sysvar_acct).clone(),
+            (*system_prog_acct).clone(),
+        ],
+        &[place_token_mint_pda_seeds, place_state_acct_pda_seeds],
     )?;
 
     Ok(())

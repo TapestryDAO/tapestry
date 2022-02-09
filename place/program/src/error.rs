@@ -66,6 +66,12 @@ pub enum PlaceError {
 
     #[error("Invalid token program account")]
     InvalidTokenProgramAccount, // 20
+
+    #[error("Invalid metaplex metadata program account")]
+    InvalidMplMetadataProgramAccount, // 21
+
+    #[error("The metadata account to hold MPL metadata is wrong")]
+    InvalidPlaceTokenMPLMetadataPDA, // 22
 }
 
 impl From<PlaceError> for ProgramError {

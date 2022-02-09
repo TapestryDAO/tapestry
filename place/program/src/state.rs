@@ -98,6 +98,11 @@ impl PlaceState {
             &crate::id(),
         )
     }
+
+    pub fn token_mint_mpl_metadata_pda() -> (Pubkey, u8) {
+        let (token_mint_pda, _) = Self::token_mint_pda();
+        mpl_token_metadata::pda::find_metadata_account(&token_mint_pda)
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////
