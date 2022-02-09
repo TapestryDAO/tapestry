@@ -136,6 +136,12 @@ pub struct GameplayTokenMeta {
 
     // number of slots for the cooldown of this token
     pub cooldown_duration: Slot,
+
+    // Number of place tokens due to be paid out to the owner of this gameplay token
+    // NOTE(will): in order to avoid a shared write lock on the SetPixel instruction
+    // and potentially causing tx's to be slow or fail, we increment this number
+    // user's can later claim their tokens in a separate transaction.
+    pub place_tokens_owed: u32,
 }
 
 impl GameplayTokenMeta {
@@ -149,7 +155,8 @@ impl GameplayTokenMeta {
         8 + // random_seed
         32 + // token_mint_pda
         8 +  // update_allowed_after
-        8; // cooldown_duration
+        8 +  // cooldown_duration
+        4; // place_tokens_owed
 
     pub fn from_account_info(a: &AccountInfo) -> Result<GameplayTokenMeta, ProgramError> {
         let state: GameplayTokenMeta =

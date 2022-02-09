@@ -277,6 +277,11 @@ async fn test_all_the_things() {
 
     // Attempt to set a pixel
 
+    let gampelay_token_acct_before: GameplayTokenMeta = banks_client
+        .get_account_data_with_borsh(gameplay_token_pda)
+        .await
+        .unwrap();
+
     println!("Setting Pixel");
 
     let set_pixel_ix = solana_place::instruction::get_ix_set_pixel(
@@ -311,6 +316,16 @@ async fn test_all_the_things() {
 
         let patch: Patch = try_from_slice_unchecked(&patch_acct.data).unwrap();
 
+        let gampelay_token_acct_after: GameplayTokenMeta = banks_client
+            .get_account_data_with_borsh(gameplay_token_pda)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            gampelay_token_acct_before.place_tokens_owed + 1,
+            gampelay_token_acct_after.place_tokens_owed,
+        );
+
         // iterate over patches
         for y in 0..PATCH_SIZE_PX {
             for x in 0..PATCH_SIZE_PX {
@@ -328,6 +343,11 @@ async fn test_all_the_things() {
         .get_latest_blockhash_with_commitment(CommitmentLevel::Confirmed)
         .await
         .unwrap()
+        .unwrap();
+
+    let gampelay_token_acct_before: GameplayTokenMeta = banks_client
+        .get_account_data_with_borsh(gameplay_token_pda)
+        .await
         .unwrap();
 
     // Attempt to set another pixel, but should fail because of cooldown
@@ -361,4 +381,14 @@ async fn test_all_the_things() {
     ));
 
     assert_matches!(set_pixel_result2, Err(expected_result));
+
+    let gampelay_token_acct_after: GameplayTokenMeta = banks_client
+        .get_account_data_with_borsh(gameplay_token_pda)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        gampelay_token_acct_before.place_tokens_owed,
+        gampelay_token_acct_after.place_tokens_owed,
+    );
 }

@@ -539,6 +539,7 @@ fn process_purchase_gameplay_token(
         token_mint_pda: gameplay_token_mint_pda,
         update_allowed_slot: clock.slot,
         cooldown_duration: state.paintbrush_cooldown,
+        place_tokens_owed: 5, // maybe give some "free" tokens for buying a gameplay token
     };
 
     // -- Allocate space for the token mint and initialize it
@@ -679,6 +680,7 @@ fn process_purchase_gameplay_token(
 
     // IMPORTANT - save the game state, for some reason if i do this earlier the transfer
     // of SOL to this account fails
+
     gameplay_token_meta.serialize(&mut *gameplay_meta_pda_acct.data.borrow_mut())?;
 
     Ok(())
@@ -776,6 +778,7 @@ fn process_set_pixel(
 
     // update the cooldown for the token
     gameplay_token.update_allowed_slot = current_slot + gameplay_token.cooldown_duration;
+    gameplay_token.place_tokens_owed += 1;
     gameplay_token.serialize(&mut *gameplay_token_meta_acct.data.borrow_mut())?;
 
     // Change the pixel
