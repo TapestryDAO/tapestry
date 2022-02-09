@@ -16,10 +16,15 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from '@solana/spl-token';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Metadata, MetadataProgram } from '@metaplex-foundation/mpl-token-metadata';
 import { PurchaseGameplayTokenArgsData } from './instructions/purchaseGameplayToken';
+import { InitMintArgsData } from './instructions/initMint';
 
 export const PLACE_HEIGHT_PX = 1000;
 export const PLACE_WIDTH_PX = 1000;
 export const PATCH_SIZE_PX = 20;
+
+export type InitTokenMintParams = {
+    owner: PublicKey,
+}
 
 export type SetPixelParams = {
     x: number,
@@ -65,6 +70,7 @@ export class PlaceProgram extends Program {
 
     static readonly PATCH_PDA_PREFIX = "patch";
     static readonly PLACE_STATE_PDA_PREFIX = "place";
+    static readonly PLACE_TOKEN_MINT_PDA_PREFIX = "tokes";
     static readonly GAMEPLAY_TOKEN_META_PREFIX = "game";
     static readonly GAMEPLAY_TOKEN_MINT_PREFIX = "mint";
 
@@ -146,6 +152,26 @@ export class PlaceProgram extends Program {
         });
     }
 
+    public static async initTokenMint(params: InitTokenMintParams) {
+        let place_state_pda = await this.findPlaceStatePda();
+        let place_token_mint_pda = await this.findPlaceTokenMintPda();
+
+        let data = InitMintArgsData.serialize({});
+
+        return new TransactionInstruction({
+            keys: [
+                { pubkey: params.owner, isSigner: true, isWritable: true },
+                { pubkey: place_state_pda, isSigner: false, isWritable: false },
+                { pubkey: place_token_mint_pda, isSigner: false, isWritable: true },
+                { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+                { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+            ],
+            programId: this.PUBKEY,
+            data: data
+        })
+    }
+
     public static async setPixel(params: SetPixelParams) {
         let patchCoords = this.computePatchCoords(params.x, params.y);
 
@@ -193,6 +219,16 @@ export class PlaceProgram extends Program {
     static async findPlaceStatePda(): Promise<PublicKey> {
         let seeds = Buffer.concat([
             Buffer.from(this.PLACE_STATE_PDA_PREFIX),
+        ])
+
+        let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
+        return result[0];
+    }
+
+    static async findPlaceTokenMintPda(): Promise<PublicKey> {
+        let seeds = Buffer.concat([
+            Buffer.from(this.PLACE_STATE_PDA_PREFIX),
+            Buffer.from(this.PLACE_TOKEN_MINT_PDA_PREFIX),
         ])
 
         let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);

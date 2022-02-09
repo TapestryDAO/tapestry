@@ -80,6 +80,24 @@ const init_all_patches_command = {
     }
 }
 
+type InitMintCommandArgs = KeynameOptionArgs
+
+const init_mint_command = {
+    command: "initmint",
+    description: "Initialize the global token mint",
+    builder: (args: Argv): Argv<InitMintCommandArgs> => {
+        return applyKeynameOption(args);
+    },
+    handler: async (args: ArgumentsCamelCase<InitMintCommandArgs>) => {
+        let owner_keypair = loadKey(args.keyname);
+        let init_mint_ix = await PlaceProgram.initTokenMint({ owner: owner_keypair.publicKey })
+        let tx = new Transaction().add(init_mint_ix);
+        let connection = getNewConnection();
+        let result = await sendAndConfirmTransaction(connection, tx, [owner_keypair]);
+        console.log("Result: ", result);
+    }
+}
+
 // type SetPixelCommandArgs =
 //     XYOptionArgs &
 //     KeynameOptionArgs &
@@ -373,6 +391,7 @@ export const command = {
             // .command(set_pixel_command)
             // .command(random_walker_command)
             .command(init_all_patches_command)
+            .command(init_mint_command)
             .command(rent_check_command)
             .command(update_place_state_command)
             .command(get_state_command)

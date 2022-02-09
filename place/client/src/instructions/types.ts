@@ -5,4 +5,5 @@ export enum PlaceInstruction {
     InitPatch,
     PurchaseGameplayToken,
     SetPixel,
+    InitMint,
 };
