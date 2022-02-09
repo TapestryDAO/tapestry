@@ -11,6 +11,8 @@ use solana_program::{
 
 use std::convert::TryInto;
 
+use crate::{error::PlaceError, state::PlaceAccountType};
+
 /// Create account almost from scratch, lifted from
 /// https://github.com/solana-labs/solana-program-library/tree/master/associated-token-account/program/src/processor.rs#L51-L98
 #[inline(always)]
@@ -64,5 +66,21 @@ pub fn assert_signer(account_info: &AccountInfo) -> ProgramResult {
         Err(ProgramError::MissingRequiredSignature)
     } else {
         Ok(())
+    }
+}
+
+pub fn assert_system_prog(account_info: &AccountInfo) -> ProgramResult {
+    if solana_program::system_program::check_id(account_info.key) {
+        Ok(())
+    } else {
+        Err(PlaceError::InvalidSystemProgramAccount.into())
+    }
+}
+
+pub fn assert_token_prog(account_info: &AccountInfo) -> ProgramResult {
+    if spl_token::check_id(account_info.key) {
+        Ok(())
+    } else {
+        Err(PlaceError::InvalidTokenProgramAccount.into())
     }
 }

@@ -20,6 +20,9 @@ pub enum PlaceInstruction {
 
     // Set a pixel to a particular value
     SetPixel(SetPixelDataArgs),
+
+    // Initialize the tapestry token mint, will fail if the mint is already setup
+    InitMint(InitMintDataArgs),
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -279,5 +282,52 @@ pub fn get_ix_set_pixel(
         })
         .try_to_vec()
         .unwrap(),
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// Init Mint //////////////////////////////////////
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct InitMintDataArgs {
+    // anything?
+}
+
+pub struct InitMintAccountArgs<'a, 'b: 'a> {
+    // `[signer]` the owner of the tapestry
+    pub owner_acct: &'a AccountInfo<'b>,
+
+    // `[writable]` the global tapestry state pda
+    pub place_state_pda_acct: &'a AccountInfo<'b>,
+
+    // `[writable]` the mint that will be created by this instruction
+    pub place_token_mint_pda_acct: &'a AccountInfo<'b>,
+
+    // `[]` the token program account
+    pub token_prog_acct: &'a AccountInfo<'b>,
+
+    // `[]` the system program
+    pub system_prog_acct: &'a AccountInfo<'b>,
+
+    // `[]` the rent sysvar account
+    pub rent_sysvar_acct: &'a AccountInfo<'b>,
+}
+
+pub fn get_ix_init_mint(owner: Pubkey) -> Instruction {
+    let (place_state_pda, _) = PlaceState::pda();
+    let (place_mint_pda, _) = PlaceState::token_mint_pda();
+    Instruction {
+        program_id: crate::id(),
+        accounts: vec![
+            AccountMeta::new(owner, true),
+            AccountMeta::new(place_state_pda, false),
+            AccountMeta::new(place_mint_pda, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+        ],
+        data: PlaceInstruction::InitMint(InitMintDataArgs {})
+            .try_to_vec()
+            .unwrap(),
     }
 }

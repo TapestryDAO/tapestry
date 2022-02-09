@@ -54,6 +54,18 @@ pub enum PlaceError {
 
     #[error("Invalid Gameplay token balance")]
     InvalidGameplayTokenAccountMint, // 16
+
+    #[error("Invalid Place Token Mint PDA")]
+    InvalidPlaceTokenMintPDA, // 17
+
+    #[error("Place token mint already exists")]
+    PlaceTokenMintAlreadyInitialized, // 18
+
+    #[error("Invalid system program account")]
+    InvalidSystemProgramAccount, // 19
+
+    #[error("Invalid token program account")]
+    InvalidTokenProgramAccount, // 20
 }
 
 impl From<PlaceError> for ProgramError {

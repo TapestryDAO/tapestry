@@ -68,6 +68,7 @@ impl PlaceState {
         8; // bomb_price
 
     pub const PREFIX: &'static str = "place";
+    pub const TOKEN_MINT_PREFIX: &'static str = "tokes";
 
     pub fn from_account_info(a: &AccountInfo) -> Result<PlaceState, ProgramError> {
         let state: PlaceState =
@@ -84,6 +85,16 @@ impl PlaceState {
     pub fn pda() -> (Pubkey, u8) {
         Pubkey::find_program_address(
             &[Self::PREFIX.as_bytes()],
+            &crate::id(),
+        )
+    }
+
+    pub fn token_mint_pda() -> (Pubkey, u8) {
+        Pubkey::find_program_address(
+            &[
+                Self::PREFIX.as_bytes(),
+                Self::TOKEN_MINT_PREFIX.as_bytes(),
+            ],
             &crate::id(),
         )
     }

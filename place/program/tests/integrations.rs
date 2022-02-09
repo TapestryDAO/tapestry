@@ -17,7 +17,7 @@ use solana_place::instruction;
 use solana_place::state::{GameplayTokenType, Patch, PlaceAccountType, PlaceState, PATCH_SIZE_PX};
 
 #[tokio::test]
-async fn test_purchase_account() {
+async fn test_all_the_things() {
     // let program_id = Pubkey::new_unique();
     let program_id = solana_place::id();
     let mut pt = ProgramTest::new(
@@ -137,6 +137,51 @@ async fn test_purchase_account() {
         assert_eq!(state.paintbrush_cooldown, new_paintbrush_cooldown);
         assert_eq!(state.bomb_price, new_bomb_price);
     }
+
+    // initialize the token mint
+
+    let init_mint_ix = instruction::get_ix_init_mint(payer.pubkey());
+    let init_mint_tx = Transaction::new_signed_with_payer(
+        &[init_mint_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    let init_mint_result = banks_client.process_transaction(init_mint_tx).await;
+
+    assert_matches!(init_mint_result, Ok(()));
+
+    let (recent_blockhash2, _) = banks_client
+        .get_latest_blockhash_with_commitment(CommitmentLevel::Confirmed)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let init_mint_ix2 = instruction::get_ix_init_mint(payer.pubkey());
+    let init_mint_tx2 = Transaction::new_signed_with_payer(
+        &[init_mint_ix2],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash2,
+    );
+
+    let init_mint_result2 = banks_client.process_transaction(init_mint_tx2).await;
+
+    let expected_mint_failure =
+        TransportError::TransactionError(TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(18), // PlaceTokenMintAlreadyInitialized
+        ));
+
+    assert_matches!(init_mint_result2, expected_mint_failure);
+
+    // let expected_result = TransportError::TransactionError(TransactionError::InstructionError(
+    //     0,
+    //     InstructionError::Custom(12),
+    // ));
+
+    // assert_matches!(set_pixel_result2, Err(expected_result));
 
     // purchase a gameplay token
 

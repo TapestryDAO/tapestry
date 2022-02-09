@@ -15,10 +15,12 @@ use solana_program::{
 use crate::{
     id,
     instruction::{
-        InitPatchAccountArgs, InitPatchDataArgs, PlaceInstruction,
-        PurchaseGameplayTokenAccountArgs, PurchaseGameplayTokenDataArgs, SetPixelAccountArgs,
-        SetPixelDataArgs, UpdatePlaceStateAccountArgs, UpdatePlaceStateDataArgs,
+        InitMintAccountArgs, InitMintDataArgs, InitPatchAccountArgs, InitPatchDataArgs,
+        PlaceInstruction, PurchaseGameplayTokenAccountArgs, PurchaseGameplayTokenDataArgs,
+        SetPixelAccountArgs, SetPixelDataArgs, UpdatePlaceStateAccountArgs,
+        UpdatePlaceStateDataArgs,
     },
+    utils::{assert_system_prog, assert_token_prog},
 };
 
 use spl_token::{
@@ -68,6 +70,20 @@ impl Processor {
                 };
 
                 process_update_place_state(program_id, acct_args, args)
+            }
+            PlaceInstruction::InitMint(args) => {
+                let acct_info_iter = &mut accounts.iter();
+
+                let acct_args = InitMintAccountArgs {
+                    owner_acct: next_account_info(acct_info_iter)?,
+                    place_state_pda_acct: next_account_info(acct_info_iter)?,
+                    place_token_mint_pda_acct: next_account_info(acct_info_iter)?,
+                    token_prog_acct: next_account_info(acct_info_iter)?,
+                    system_prog_acct: next_account_info(acct_info_iter)?,
+                    rent_sysvar_acct: next_account_info(acct_info_iter)?,
+                };
+
+                process_init_mint(program_id, acct_args, args)
             }
             PlaceInstruction::InitPatch(args) => {
                 let acct_info_iter = &mut accounts.iter();
@@ -119,6 +135,82 @@ impl Processor {
     }
 }
 
+fn process_init_mint(
+    program_id: &Pubkey,
+    acct_args: InitMintAccountArgs,
+    data_args: InitMintDataArgs,
+) -> ProgramResult {
+    let InitMintAccountArgs {
+        owner_acct,
+        place_state_pda_acct,
+        place_token_mint_pda_acct,
+        token_prog_acct,
+        system_prog_acct,
+        rent_sysvar_acct,
+    } = acct_args;
+
+    assert_signer(owner_acct)?;
+    assert_system_prog(system_prog_acct)?;
+    assert_token_prog(token_prog_acct)?;
+
+    let (place_state_pda, _) = PlaceState::pda();
+    if place_state_pda != *place_state_pda_acct.key {
+        return Err(PlaceError::InvalidAccountArgument.into());
+    }
+
+    let place_state = PlaceState::from_account_info(place_state_pda_acct)?;
+
+    if place_state.owner != *owner_acct.key {
+        return Err(PlaceError::InvalidOwner.into());
+    }
+
+    let (place_token_mint_pda, place_token_mint_pda_bump) = PlaceState::token_mint_pda();
+    if place_token_mint_pda != *place_token_mint_pda_acct.key {
+        return Err(PlaceError::InvalidPlaceTokenMintPDA.into());
+    }
+
+    if !place_token_mint_pda_acct.data_is_empty() {
+        return Err(PlaceError::PlaceTokenMintAlreadyInitialized.into());
+    }
+
+    let place_token_mint_seeds = &[
+        PlaceState::PREFIX.as_bytes(),
+        PlaceState::TOKEN_MINT_PREFIX.as_bytes(),
+        &[place_token_mint_pda_bump],
+    ];
+
+    create_or_allocate_account_raw(
+        *token_prog_acct.key,
+        place_token_mint_pda_acct,
+        system_prog_acct,
+        owner_acct,
+        Mint::LEN,
+        place_token_mint_seeds,
+    )?;
+
+    let init_mint_ix = initialize_mint(
+        &spl_token::id(),
+        &place_token_mint_pda,
+        &place_state_pda,
+        None,
+        0,
+    )?;
+
+    msg!("TAP: Creating Token Mint");
+
+    invoke_signed(
+        &init_mint_ix,
+        &[
+            (*token_prog_acct).clone(),
+            (*place_state_pda_acct).clone(),
+            (*place_token_mint_pda_acct).clone(),
+            (*rent_sysvar_acct).clone(),
+        ],
+        &[place_token_mint_seeds],
+    )?;
+
+    Ok(())
+}
 fn process_update_place_state(
     program_id: &Pubkey,
     acct_args: UpdatePlaceStateAccountArgs,
