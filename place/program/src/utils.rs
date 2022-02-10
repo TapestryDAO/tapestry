@@ -11,6 +11,8 @@ use solana_program::{
 
 use std::convert::TryInto;
 
+use crate::{error::PlaceError, state::PlaceAccountType};
+
 /// Create account almost from scratch, lifted from
 /// https://github.com/solana-labs/solana-program-library/tree/master/associated-token-account/program/src/processor.rs#L51-L98
 #[inline(always)]
@@ -62,6 +64,46 @@ pub fn create_or_allocate_account_raw<'a>(
 pub fn assert_signer(account_info: &AccountInfo) -> ProgramResult {
     if !account_info.is_signer {
         Err(ProgramError::MissingRequiredSignature)
+    } else {
+        Ok(())
+    }
+}
+
+pub fn assert_system_prog(account_info: &AccountInfo) -> ProgramResult {
+    if solana_program::system_program::check_id(account_info.key) {
+        Ok(())
+    } else {
+        Err(PlaceError::InvalidSystemProgramAccount.into())
+    }
+}
+
+pub fn assert_token_prog(account_info: &AccountInfo) -> ProgramResult {
+    if spl_token::check_id(account_info.key) {
+        Ok(())
+    } else {
+        Err(PlaceError::InvalidTokenProgramAccount.into())
+    }
+}
+
+pub fn assert_mpl_metadata_prog(account_info: &AccountInfo) -> ProgramResult {
+    if mpl_token_metadata::check_id(account_info.key) {
+        Ok(())
+    } else {
+        Err(PlaceError::InvalidMplMetadataProgramAccount.into())
+    }
+}
+
+pub fn assert_owned_by_token_prog(account_info: &AccountInfo) -> ProgramResult {
+    if spl_token::check_id(account_info.owner) {
+        Ok(())
+    } else {
+        Err(PlaceError::AccountNotOwnedByTokenProgram.into())
+    }
+}
+
+pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
+    if account.owner != owner {
+        Err(PlaceError::UnexpectedAccountOwner.into())
     } else {
         Ok(())
     }

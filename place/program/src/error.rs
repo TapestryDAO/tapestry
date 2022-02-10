@@ -54,6 +54,48 @@ pub enum PlaceError {
 
     #[error("Invalid Gameplay token balance")]
     InvalidGameplayTokenAccountMint, // 16
+
+    #[error("Invalid Place Token Mint PDA")]
+    InvalidPlaceTokenMintPDA, // 17
+
+    #[error("Place token mint already exists")]
+    PlaceTokenMintAlreadyInitialized, // 18
+
+    #[error("Invalid system program account")]
+    InvalidSystemProgramAccount, // 19
+
+    #[error("Invalid token program account")]
+    InvalidTokenProgramAccount, // 20
+
+    #[error("Invalid metaplex metadata program account")]
+    InvalidMplMetadataProgramAccount, // 21
+
+    #[error("The metadata account to hold MPL metadata is wrong")]
+    InvalidPlaceTokenMPLMetadataPDA, // 22
+
+    #[error("The gameplay token meta account was invalid")]
+    InvalidGameplayTokenMetaPDA, // 23
+
+    #[error("The gameplay token meta account was not owned by expected account")]
+    InvalidGameplayTokenMetaPDAOwner, // 24
+
+    #[error("The gameplay token ATA did not match the signer")]
+    GameplayTokenATADidNotMatchSigner, // 25
+
+    #[error("Expected account owned by token program")]
+    AccountNotOwnedByTokenProgram, // 26
+
+    #[error("Account was not owned by the expected key")]
+    UnexpectedAccountOwner, // 27
+
+    #[error("Gameplay token ATA mint did not match gameplay token meta mint")]
+    GameplayTokenATAMintDidNotMatch, // 28
+
+    #[error("Place token destination account was invalid")]
+    InvalidPlaceTokenDestinationATA, // 29
+
+    #[error("No tokens available to claim")]
+    NoTokensToBeClaimed, // 30
 }
 
 impl From<PlaceError> for ProgramError {

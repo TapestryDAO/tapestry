@@ -13,6 +13,7 @@ type GameplayTokenMetaArgs = {
     token_mint_pda: PublicKey,
     update_allowed_slot: BN,
     cooldown_duration: BN,
+    place_tokens_owed: number,
 }
 
 export class GameplayTokenMetaData extends Borsh.Data<GameplayTokenMetaArgs> {
@@ -25,6 +26,7 @@ export class GameplayTokenMetaData extends Borsh.Data<GameplayTokenMetaArgs> {
             ['token_mint_pda', 'pubkey'],
             ['update_allowed_slot', 'u64'],
             ['cooldown_duration', 'u64'],
+            ['place_tokens_owed', 'u32'],
         ])
     ]);
 
@@ -35,6 +37,7 @@ export class GameplayTokenMetaData extends Borsh.Data<GameplayTokenMetaArgs> {
     token_mint_pda: PublicKey;
     update_allowed_slot: BN;
     cooldown_duration: BN;
+    place_tokens_owed: number;
 
     constructor(args: GameplayTokenMetaArgs) {
         super(args);
@@ -46,6 +49,7 @@ export class GameplayTokenMetaData extends Borsh.Data<GameplayTokenMetaArgs> {
         this.token_mint_pda = args.token_mint_pda;
         this.update_allowed_slot = args.update_allowed_slot;
         this.cooldown_duration = args.cooldown_duration;
+        this.place_tokens_owed = args.place_tokens_owed;
     }
 }
 

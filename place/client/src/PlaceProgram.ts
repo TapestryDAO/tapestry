@@ -16,10 +16,16 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from '@solana/spl-token';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Metadata, MetadataProgram } from '@metaplex-foundation/mpl-token-metadata';
 import { PurchaseGameplayTokenArgsData } from './instructions/purchaseGameplayToken';
+import { InitMintArgsData } from './instructions/initMint';
+import { ClaimTokensArgsData } from './instructions/claimTokens';
 
 export const PLACE_HEIGHT_PX = 1000;
 export const PLACE_WIDTH_PX = 1000;
 export const PATCH_SIZE_PX = 20;
+
+export type InitTokenMintParams = {
+    owner: PublicKey,
+}
 
 export type SetPixelParams = {
     x: number,
@@ -53,6 +59,13 @@ export type PurchaseGameplayTokenParams = {
     desired_price: BN,
 }
 
+export type ClaimTokensParams = {
+    claimer: PublicKey,
+    gameplay_token_random_seed: BN,
+    gameplay_token_ata: PublicKey,
+    dest_ata: PublicKey,
+}
+
 type PixelPatchCoords = {
     xPatch: number,
     yPatch: number,
@@ -65,6 +78,7 @@ export class PlaceProgram extends Program {
 
     static readonly PATCH_PDA_PREFIX = "patch";
     static readonly PLACE_STATE_PDA_PREFIX = "place";
+    static readonly PLACE_TOKEN_MINT_PDA_PREFIX = "tokes";
     static readonly GAMEPLAY_TOKEN_META_PREFIX = "game";
     static readonly GAMEPLAY_TOKEN_MINT_PREFIX = "mint";
 
@@ -87,17 +101,32 @@ export class PlaceProgram extends Program {
         })
     }
 
+    public static async claimTokens(params: ClaimTokensParams) {
+        let data = ClaimTokensArgsData.serialize({});
+        let gameplay_token_meta_pda = await this.findGameplayMetaPda(params.gameplay_token_random_seed);
+        let place_token_mint_pda = await this.findPlaceTokenMintPda();
+        let place_state_pda = await this.findPlaceStatePda();
+        return new TransactionInstruction({
+            keys: [
+                { pubkey: params.claimer, isSigner: true, isWritable: false },
+                { pubkey: gameplay_token_meta_pda, isSigner: false, isWritable: true },
+                { pubkey: params.gameplay_token_ata, isSigner: false, isWritable: false },
+                { pubkey: place_token_mint_pda, isSigner: false, isWritable: true },
+                { pubkey: params.dest_ata, isSigner: false, isWritable: true },
+                { pubkey: place_state_pda, isSigner: false, isWritable: false },
+                { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+            ],
+            programId: this.PUBKEY,
+            data: data,
+        });
+    }
+
     public static async purchaseGameplayToken(params: PurchaseGameplayTokenParams) {
         let place_state_pda = await this.findPlaceStatePda();
         let randomSeed = new BN(randomBytes(8));
         let gameplay_meta_pda = await this.findGameplayMetaPda(randomSeed);
         let gameplay_token_mint_pda = await this.findGameplayTokenMintPda(randomSeed);
-        let gameplay_token_ata = await Token.getAssociatedTokenAddress(
-            ASSOCIATED_TOKEN_PROGRAM_ID,
-            TOKEN_PROGRAM_ID,
-            gameplay_token_mint_pda,
-            params.payer,
-            false);
+        let gameplay_token_ata = await this.findGameplayTokenMintAta(gameplay_token_mint_pda, params.payer);
         let gameplay_token_mpl_pda = await Metadata.getPDA(gameplay_token_mint_pda);
 
         let data = PurchaseGameplayTokenArgsData.serialize({
@@ -144,6 +173,29 @@ export class PlaceProgram extends Program {
             programId: this.PUBKEY,
             data: data,
         });
+    }
+
+    public static async initTokenMint(params: InitTokenMintParams) {
+        let place_state_pda = await this.findPlaceStatePda();
+        let place_token_mint_pda = await this.findPlaceTokenMintPda();
+        let place_token_mpl_meta_pda = await Metadata.getPDA(place_token_mint_pda);
+
+        let data = InitMintArgsData.serialize({});
+
+        return new TransactionInstruction({
+            keys: [
+                { pubkey: params.owner, isSigner: true, isWritable: true },
+                { pubkey: place_state_pda, isSigner: false, isWritable: false },
+                { pubkey: place_token_mint_pda, isSigner: false, isWritable: true },
+                { pubkey: place_token_mpl_meta_pda, isSigner: false, isWritable: true },
+                { pubkey: MetadataProgram.PUBKEY, isSigner: false, isWritable: false },
+                { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+                { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+            ],
+            programId: this.PUBKEY,
+            data: data
+        })
     }
 
     public static async setPixel(params: SetPixelParams) {
@@ -199,6 +251,16 @@ export class PlaceProgram extends Program {
         return result[0];
     }
 
+    static async findPlaceTokenMintPda(): Promise<PublicKey> {
+        let seeds = Buffer.concat([
+            Buffer.from(this.PLACE_STATE_PDA_PREFIX),
+            Buffer.from(this.PLACE_TOKEN_MINT_PDA_PREFIX),
+        ])
+
+        let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
+        return result[0];
+    }
+
     static async findGameplayMetaPda(randomSeed: BN): Promise<PublicKey> {
         let seeds = Buffer.concat([
             Buffer.from(this.GAMEPLAY_TOKEN_META_PREFIX),
@@ -220,6 +282,15 @@ export class PlaceProgram extends Program {
         ]);
         let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
         return result[0];
+    }
+
+    static async findGameplayTokenMintAta(gameplayTokenMintPda: PublicKey, userPubkey: PublicKey): Promise<PublicKey> {
+        return await Token.getAssociatedTokenAddress(
+            ASSOCIATED_TOKEN_PROGRAM_ID,
+            TOKEN_PROGRAM_ID,
+            gameplayTokenMintPda,
+            userPubkey,
+            false); // TODO(will): what are the implications of this?
     }
 
     static computePatchCoords(x: number, y: number): PixelPatchCoords {

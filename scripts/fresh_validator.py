@@ -96,6 +96,11 @@ def main():
             "--keyname", "owner",
         ])
 
+        run_command([
+            "pla", "tx", "initmint",
+            "--keyname", "owner",
+        ])
+
         # Initialize all patch data
         run_command([
             "pla", "tx", "initpatches", 

@@ -40,6 +40,7 @@
     "tiny-async-pool": "^1.2.0"
   },
   "devDependencies": {
+    "@solana/spl-token": "^0.1.8",
     "@solana/web3.js": "^1.31.0",
     "@types/bs58": "^4.0.1",
     "@types/jimp": "^0.2.28",

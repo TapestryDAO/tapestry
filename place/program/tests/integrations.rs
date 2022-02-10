@@ -1,4 +1,5 @@
 use solana_program::instruction::InstructionError;
+use solana_program::program_pack::Pack;
 use solana_program::{
     borsh::try_from_slice_unchecked, program_error::ProgramError, system_instruction,
 };
@@ -13,11 +14,13 @@ use solana_sdk::{
     transaction::Transaction, transport::TransportError,
 };
 
+use spl_token::state::Account as TokenAccount;
+
 use solana_place::instruction;
 use solana_place::state::{GameplayTokenType, Patch, PlaceAccountType, PlaceState, PATCH_SIZE_PX};
 
 #[tokio::test]
-async fn test_purchase_account() {
+async fn test_all_the_things() {
     // let program_id = Pubkey::new_unique();
     let program_id = solana_place::id();
     let mut pt = ProgramTest::new(
@@ -138,6 +141,44 @@ async fn test_purchase_account() {
         assert_eq!(state.bomb_price, new_bomb_price);
     }
 
+    // initialize the token mint
+
+    let init_mint_ix = instruction::get_ix_init_mint(payer.pubkey());
+    let init_mint_tx = Transaction::new_signed_with_payer(
+        &[init_mint_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    let init_mint_result = banks_client.process_transaction(init_mint_tx).await;
+
+    assert_matches!(init_mint_result, Ok(()));
+
+    let (recent_blockhash2, _) = banks_client
+        .get_latest_blockhash_with_commitment(CommitmentLevel::Confirmed)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let init_mint_ix2 = instruction::get_ix_init_mint(payer.pubkey());
+    let init_mint_tx2 = Transaction::new_signed_with_payer(
+        &[init_mint_ix2],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash2,
+    );
+
+    let init_mint_result2 = banks_client.process_transaction(init_mint_tx2).await;
+
+    let expected_mint_failure =
+        TransportError::TransactionError(TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(18), // PlaceTokenMintAlreadyInitialized
+        ));
+
+    assert_matches!(init_mint_result2, expected_mint_failure);
+
     // purchase a gameplay token
 
     let random_seed: u64 = 10101;
@@ -205,11 +246,77 @@ async fn test_purchase_account() {
     );
     println!("cooldown: {}", new_paintbrush_cooldown);
     assert_eq!(gameplay_token_acct.update_allowed_slot, current_slot);
-
     let game_player_ata = spl_associated_token_account::get_associated_token_address(
         &game_player.pubkey(),
         &gameplay_token_acct.token_mint_pda,
     );
+
+    let claimable_tokens = gameplay_token_acct.place_tokens_owed;
+    let (place_token_mint_pda, _) = PlaceState::token_mint_pda();
+
+    // Create an ATA for game_player to claim tokens into
+
+    let place_tokens_ata = spl_associated_token_account::get_associated_token_address(
+        &game_player.pubkey(),
+        &place_token_mint_pda,
+    );
+
+    let create_place_token_ata_ix = spl_associated_token_account::create_associated_token_account(
+        &game_player.pubkey(),
+        &game_player.pubkey(),
+        &place_token_mint_pda,
+    );
+
+    let create_place_token_ata_tx = Transaction::new_signed_with_payer(
+        &[create_place_token_ata_ix],
+        Some(&game_player.pubkey()),
+        &[&game_player],
+        recent_blockhash,
+    );
+
+    let create_place_token_ata_result = banks_client
+        .process_transaction(create_place_token_ata_tx)
+        .await;
+    assert_matches!(create_place_token_ata_result, Ok(()));
+
+    // Claim the tokens from the purchase into the game_player's ata
+
+    let claim_tokens_ix = solana_place::instruction::get_ix_claim_tokens(
+        game_player.pubkey(),
+        place_tokens_ata,
+        gameplay_token_acct.token_mint_pda,
+        gameplay_token_acct.random_seed,
+    );
+
+    let claim_tokens_tx = Transaction::new_signed_with_payer(
+        &[claim_tokens_ix],
+        Some(&game_player.pubkey()),
+        &[&game_player],
+        recent_blockhash,
+    );
+
+    let claim_tokens_result = banks_client.process_transaction(claim_tokens_tx).await;
+    assert_matches!(claim_tokens_result, Ok(()));
+
+    let game_player_token_acct = banks_client
+        .get_account(place_tokens_ata)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let game_player_ata_parsed =
+        TokenAccount::unpack(&game_player_token_acct.data.as_slice()).unwrap();
+    let tokens_expected = gameplay_token_acct.place_tokens_owed as u64;
+    assert_eq!(game_player_ata_parsed.amount, tokens_expected);
+
+    let gameplay_token_acct: GameplayTokenMeta = banks_client
+        .get_account_data_with_borsh(gameplay_token_pda)
+        .await
+        .unwrap();
+
+    assert_eq!(gameplay_token_acct.place_tokens_owed, 0);
+
+    // let game_player_ata = TokenAccount::unpack_from_slice(&game_player_token_acct.data.borrow())?;
 
     // assert_eq(gameplay_token_acct.update_allowed_slot,)
 
@@ -238,6 +345,11 @@ async fn test_purchase_account() {
     assert_matches!(init_patch_result, Ok(()));
 
     // Attempt to set a pixel
+
+    let gampelay_token_acct_before: GameplayTokenMeta = banks_client
+        .get_account_data_with_borsh(gameplay_token_pda)
+        .await
+        .unwrap();
 
     println!("Setting Pixel");
 
@@ -273,6 +385,16 @@ async fn test_purchase_account() {
 
         let patch: Patch = try_from_slice_unchecked(&patch_acct.data).unwrap();
 
+        let gampelay_token_acct_after: GameplayTokenMeta = banks_client
+            .get_account_data_with_borsh(gameplay_token_pda)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            gampelay_token_acct_before.place_tokens_owed + 1,
+            gampelay_token_acct_after.place_tokens_owed,
+        );
+
         // iterate over patches
         for y in 0..PATCH_SIZE_PX {
             for x in 0..PATCH_SIZE_PX {
@@ -290,6 +412,11 @@ async fn test_purchase_account() {
         .get_latest_blockhash_with_commitment(CommitmentLevel::Confirmed)
         .await
         .unwrap()
+        .unwrap();
+
+    let gampelay_token_acct_before: GameplayTokenMeta = banks_client
+        .get_account_data_with_borsh(gameplay_token_pda)
+        .await
         .unwrap();
 
     // Attempt to set another pixel, but should fail because of cooldown
@@ -323,4 +450,14 @@ async fn test_purchase_account() {
     ));
 
     assert_matches!(set_pixel_result2, Err(expected_result));
+
+    let gampelay_token_acct_after: GameplayTokenMeta = banks_client
+        .get_account_data_with_borsh(gameplay_token_pda)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        gampelay_token_acct_before.place_tokens_owed,
+        gampelay_token_acct_after.place_tokens_owed,
+    );
 }

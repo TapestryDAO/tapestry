@@ -20,6 +20,12 @@ pub enum PlaceInstruction {
 
     // Set a pixel to a particular value
     SetPixel(SetPixelDataArgs),
+
+    // Initialize the tapestry token mint, will fail if the mint is already setup
+    InitMint(InitMintDataArgs),
+
+    // Claim tokens owed for a gampeplay token account
+    ClaimTokens(ClaimTokensDataArgs),
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -279,5 +285,125 @@ pub fn get_ix_set_pixel(
         })
         .try_to_vec()
         .unwrap(),
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// Init Mint //////////////////////////////////////
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct InitMintDataArgs {
+    // anything?
+}
+
+pub struct InitMintAccountArgs<'a, 'b: 'a> {
+    // `[signer]` the owner of the tapestry
+    pub owner_acct: &'a AccountInfo<'b>,
+
+    // `[writable]` the global tapestry state pda
+    pub place_state_pda_acct: &'a AccountInfo<'b>,
+
+    // `[writable]` the mint that will be created by this instruction
+    pub place_token_mint_pda_acct: &'a AccountInfo<'b>,
+
+    // `[writable]` the token metadata account for the place token mint
+    pub place_token_mint_mpl_pda_acct: &'a AccountInfo<'b>,
+
+    // `[]` The MPL token metadata program account
+    pub mpl_metadata_prog_acct: &'a AccountInfo<'b>,
+
+    // `[]` the token program account
+    pub token_prog_acct: &'a AccountInfo<'b>,
+
+    // `[]` the system program
+    pub system_prog_acct: &'a AccountInfo<'b>,
+
+    // `[]` the rent sysvar account
+    pub rent_sysvar_acct: &'a AccountInfo<'b>,
+}
+
+pub fn get_ix_init_mint(owner: Pubkey) -> Instruction {
+    let (place_state_pda, _) = PlaceState::pda();
+    let (place_mint_pda, _) = PlaceState::token_mint_pda();
+    let (place_mint_mpl_metadata_pda, _) = PlaceState::token_mint_mpl_metadata_pda();
+    Instruction {
+        program_id: crate::id(),
+        accounts: vec![
+            AccountMeta::new(owner, true),
+            AccountMeta::new(place_state_pda, false),
+            AccountMeta::new(place_mint_pda, false),
+            AccountMeta::new(place_mint_mpl_metadata_pda, false),
+            AccountMeta::new_readonly(mpl_token_metadata::id(), false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+        ],
+        data: PlaceInstruction::InitMint(InitMintDataArgs {})
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+////////////////////////////// CLAIM TOKENS //////////////////////////////////////
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct ClaimTokensDataArgs {
+    // anything?
+}
+
+// NOTE(will): I could design this such that anyone can trigger as long as the owner of the ata
+// for the place tokens matches the owner of the gameplay token NFT, but i'm going to do it where
+// the pubkey that owns those things is the account that owns the transactions, because i'm not
+// entirely sure of the implications of making it so that anyone could call it.
+pub struct ClaimTokensAccountArgs<'a, 'b: 'a> {
+    // `[signer]` account that owns the ATA, which is claiming the tokens and the acct
+    pub claimer_acct: &'a AccountInfo<'b>,
+
+    // `[writable]` the gameplay token meta account to claim tokens from
+    pub gameplay_token_pda_acct: &'a AccountInfo<'b>,
+
+    // `[]` the token account holding the NFT that owns the gameplay token account
+    pub gameplay_token_ata_acct: &'a AccountInfo<'b>,
+
+    // `[writable]` the global mint for place tokens
+    pub place_token_mint_acct: &'a AccountInfo<'b>,
+
+    // `[writable]` the destination token account for the place tokens to be sent
+    pub place_token_dest_ata_acct: &'a AccountInfo<'b>,
+
+    // `[]` the global place state account (needed to sign mint ix)
+    pub place_state_pda_acct: &'a AccountInfo<'b>,
+
+    // `[]` the spl token program executable
+    pub token_prog_acct: &'a AccountInfo<'b>,
+}
+
+pub fn get_ix_claim_tokens(
+    claimer: Pubkey,
+    place_token_dest: Pubkey,
+    gameplay_token_mint: Pubkey,
+    gameplay_token_seed: u64,
+) -> Instruction {
+    let (gameplay_meta_pda, _) = GameplayTokenMeta::pda(gameplay_token_seed);
+    let gameplay_token_ata =
+        spl_associated_token_account::get_associated_token_address(&claimer, &gameplay_token_mint);
+
+    let (place_token_mint_pda, _) = PlaceState::token_mint_pda();
+    let (place_state_pda, _) = PlaceState::pda();
+    Instruction {
+        program_id: crate::id(),
+        accounts: vec![
+            AccountMeta::new_readonly(claimer, true),
+            AccountMeta::new(gameplay_meta_pda, false),
+            AccountMeta::new_readonly(gameplay_token_ata, false),
+            AccountMeta::new(place_token_mint_pda, false),
+            AccountMeta::new(place_token_dest, false),
+            AccountMeta::new_readonly(place_state_pda, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: PlaceInstruction::ClaimTokens(ClaimTokensDataArgs {})
+            .try_to_vec()
+            .unwrap(),
     }
 }

@@ -15,9 +15,13 @@ use solana_program::{
 use crate::{
     id,
     instruction::{
+        ClaimTokensAccountArgs, ClaimTokensDataArgs, InitMintAccountArgs, InitMintDataArgs,
         InitPatchAccountArgs, InitPatchDataArgs, PlaceInstruction,
         PurchaseGameplayTokenAccountArgs, PurchaseGameplayTokenDataArgs, SetPixelAccountArgs,
         SetPixelDataArgs, UpdatePlaceStateAccountArgs, UpdatePlaceStateDataArgs,
+    },
+    utils::{
+        assert_mpl_metadata_prog, assert_owned_by_token_prog, assert_system_prog, assert_token_prog,
     },
 };
 
@@ -33,7 +37,9 @@ use crate::error::PlaceError::{
     IncorrectPatchPDA, InvalidPatchCoordinates, PatchAccountAlreadyInitialized,
 };
 
-use mpl_token_metadata::{instruction::create_metadata_accounts_v2, state::Collection};
+use mpl_token_metadata::{
+    instruction::create_metadata_accounts_v2, state::Collection, utils::assert_owned_by,
+};
 
 use crate::state::{
     find_address_for_patch, GameplayTokenMeta, GameplayTokenType, Patch, PlaceAccountType,
@@ -56,6 +62,7 @@ impl Processor {
 
         match instruction {
             PlaceInstruction::UpdatePlaceState(args) => {
+                msg!("PlaceIX: UpdatePlaceState");
                 let acct_info_iter = &mut accounts.iter();
                 let current_owner_acct = next_account_info(acct_info_iter)?;
                 let place_state_pda_acct = next_account_info(acct_info_iter)?;
@@ -69,7 +76,25 @@ impl Processor {
 
                 process_update_place_state(program_id, acct_args, args)
             }
+            PlaceInstruction::InitMint(args) => {
+                msg!("PlaceIX: InitMint");
+                let acct_info_iter = &mut accounts.iter();
+
+                let acct_args = InitMintAccountArgs {
+                    owner_acct: next_account_info(acct_info_iter)?,
+                    place_state_pda_acct: next_account_info(acct_info_iter)?,
+                    place_token_mint_pda_acct: next_account_info(acct_info_iter)?,
+                    place_token_mint_mpl_pda_acct: next_account_info(acct_info_iter)?,
+                    mpl_metadata_prog_acct: next_account_info(acct_info_iter)?,
+                    token_prog_acct: next_account_info(acct_info_iter)?,
+                    system_prog_acct: next_account_info(acct_info_iter)?,
+                    rent_sysvar_acct: next_account_info(acct_info_iter)?,
+                };
+
+                process_init_mint(program_id, acct_args, args)
+            }
             PlaceInstruction::InitPatch(args) => {
+                msg!("PlaceIX: InitPatch");
                 let acct_info_iter = &mut accounts.iter();
                 let payer_acct = next_account_info(acct_info_iter)?;
                 let patch_pda_acct = next_account_info(acct_info_iter)?;
@@ -84,6 +109,7 @@ impl Processor {
                 process_init_patch(program_id, acct_args, &args)
             }
             PlaceInstruction::PurchaseGameplayToken(args) => {
+                msg!("PlaceIX: PurchaseGameplayToken");
                 let acct_info_iter = &mut accounts.iter();
 
                 let acct_args = PurchaseGameplayTokenAccountArgs {
@@ -103,6 +129,7 @@ impl Processor {
                 process_purchase_gameplay_token(program_id, acct_args, args)
             }
             PlaceInstruction::SetPixel(args) => {
+                msg!("PlaceIX: SetPixel");
                 let acct_info_iter = &mut accounts.iter();
 
                 let acct_args = SetPixelAccountArgs {
@@ -115,10 +142,269 @@ impl Processor {
 
                 process_set_pixel(program_id, acct_args, &args)
             }
+            PlaceInstruction::ClaimTokens(args) => {
+                msg!("PlaceIX: ClaimTokens");
+                let acct_info_iter = &mut accounts.iter();
+
+                let acct_args = ClaimTokensAccountArgs {
+                    claimer_acct: next_account_info(acct_info_iter)?,
+                    gameplay_token_pda_acct: next_account_info(acct_info_iter)?,
+                    gameplay_token_ata_acct: next_account_info(acct_info_iter)?,
+                    place_token_mint_acct: next_account_info(acct_info_iter)?,
+                    place_token_dest_ata_acct: next_account_info(acct_info_iter)?,
+                    place_state_pda_acct: next_account_info(acct_info_iter)?,
+                    token_prog_acct: next_account_info(acct_info_iter)?,
+                };
+
+                process_claim_tokens(program_id, acct_args, args)
+            }
         }
     }
 }
 
+fn process_claim_tokens(
+    program_id: &Pubkey,
+    acct_args: ClaimTokensAccountArgs,
+    data_args: ClaimTokensDataArgs,
+) -> ProgramResult {
+    let ClaimTokensAccountArgs {
+        claimer_acct,
+        gameplay_token_pda_acct,
+        gameplay_token_ata_acct,
+        place_token_mint_acct,
+        place_token_dest_ata_acct,
+        place_state_pda_acct,
+        token_prog_acct,
+    } = acct_args;
+
+    // Theres a certain amount of paranoia with all these validations
+    // not sure all checks are necessary, but erring on the side of over checking
+
+    // not strictly necessary
+    assert_signer(claimer_acct)?;
+    assert_token_prog(token_prog_acct)?;
+    assert_owned_by_token_prog(place_token_mint_acct)?;
+
+    // the place state owns all the accounts, so need to check against it's pda
+    let (place_state_pda, place_state_pda_bump) = PlaceState::pda();
+
+    if *place_state_pda_acct.key != place_state_pda {
+        return Err(PlaceError::IncorrectPlaceStatePDA.into());
+    }
+
+    if *gameplay_token_pda_acct.owner != crate::id() {
+        return Err(PlaceError::InvalidGameplayTokenMetaPDAOwner.into());
+    }
+
+    let (place_token_mint_pda, _) = PlaceState::token_mint_pda();
+    msg!("desered place state");
+
+    if *place_token_mint_acct.key != place_token_mint_pda {
+        return Err(PlaceError::InvalidPlaceTokenMintPDA.into());
+    }
+
+    let mut gameplay_token_meta = GameplayTokenMeta::from_account_info(gameplay_token_pda_acct)?;
+    msg!("desered gpt meta");
+
+    if gameplay_token_meta.place_tokens_owed == 0 {
+        return Err(PlaceError::NoTokensToBeClaimed.into());
+    }
+
+    let (gameplay_token_pda, _) = gameplay_token_meta.pda_for_instance();
+    if gameplay_token_pda != *gameplay_token_pda_acct.key {
+        return Err(PlaceError::InvalidGameplayTokenMetaPDA.into());
+    }
+
+    let (gameplay_token_mint_pda, _) =
+        GameplayTokenMeta::token_mint_pda(gameplay_token_meta.random_seed);
+    if gameplay_token_mint_pda != gameplay_token_meta.token_mint_pda {
+        return Err(PlaceError::InvalidGameplayTokenMetaPDA.into());
+    }
+
+    let gameplay_token_ata =
+        TokenAccount::unpack_from_slice(&gameplay_token_ata_acct.data.borrow())?;
+
+    msg!("desered gpt ata");
+    if gameplay_token_ata.amount != 1 {
+        return Err(PlaceError::InvalidGameplayTokenAccountBalance.into());
+    }
+    // this also probably not strictly necessary
+    if gameplay_token_ata.owner != *claimer_acct.key {
+        return Err(PlaceError::GameplayTokenATADidNotMatchSigner.into());
+    }
+
+    if gameplay_token_ata.mint != gameplay_token_meta.token_mint_pda {
+        return Err(PlaceError::GameplayTokenATAMintDidNotMatch.into());
+    }
+
+    let place_token_ata =
+        TokenAccount::unpack_from_slice(&place_token_dest_ata_acct.data.borrow())?;
+    msg!("desered place token ata");
+
+    if place_token_mint_pda != place_token_ata.mint {
+        return Err(PlaceError::InvalidPlaceTokenDestinationATA.into());
+    }
+
+    let place_state_acct_pda_seeds = &[PlaceState::PREFIX.as_bytes(), &[place_state_pda_bump]];
+
+    // TODO(will): check if dest account owned by claimer?
+    // check anything else?
+
+    msg!("TAP: Minting place tokens into dest ata");
+    let mint_tokens_ix = spl_token::instruction::mint_to(
+        token_prog_acct.key,
+        place_token_mint_acct.key,
+        place_token_dest_ata_acct.key,
+        place_state_pda_acct.key,
+        &[place_state_pda_acct.key],
+        gameplay_token_meta.place_tokens_owed as u64,
+    )?;
+
+    invoke_signed(
+        &mint_tokens_ix,
+        &[
+            (*token_prog_acct).clone(),
+            (*place_token_mint_acct).clone(),
+            (*place_token_dest_ata_acct).clone(),
+            (*place_state_pda_acct).clone(),
+        ],
+        &[place_state_acct_pda_seeds],
+    )?;
+
+    gameplay_token_meta.place_tokens_owed = 0;
+    gameplay_token_meta.serialize(&mut *gameplay_token_pda_acct.data.borrow_mut())?;
+
+    Ok(())
+}
+
+fn process_init_mint(
+    program_id: &Pubkey,
+    acct_args: InitMintAccountArgs,
+    data_args: InitMintDataArgs,
+) -> ProgramResult {
+    let InitMintAccountArgs {
+        owner_acct,
+        place_state_pda_acct,
+        place_token_mint_pda_acct,
+        place_token_mint_mpl_pda_acct,
+        mpl_metadata_prog_acct,
+        token_prog_acct,
+        system_prog_acct,
+        rent_sysvar_acct,
+    } = acct_args;
+
+    assert_signer(owner_acct)?;
+    assert_system_prog(system_prog_acct)?;
+    assert_token_prog(token_prog_acct)?;
+    assert_mpl_metadata_prog(mpl_metadata_prog_acct)?;
+
+    let (place_state_pda, place_state_pda_bump) = PlaceState::pda();
+    if place_state_pda != *place_state_pda_acct.key {
+        return Err(PlaceError::InvalidAccountArgument.into());
+    }
+
+    let (place_token_mpl_meta_pda, _) = PlaceState::token_mint_mpl_metadata_pda();
+    if place_token_mpl_meta_pda != *place_token_mint_mpl_pda_acct.key {
+        return Err(PlaceError::InvalidPlaceTokenMPLMetadataPDA.into());
+    }
+
+    let place_state = PlaceState::from_account_info(place_state_pda_acct)?;
+
+    if place_state.owner != *owner_acct.key {
+        return Err(PlaceError::InvalidOwner.into());
+    }
+
+    let (place_token_mint_pda, place_token_mint_pda_bump) = PlaceState::token_mint_pda();
+    if place_token_mint_pda != *place_token_mint_pda_acct.key {
+        return Err(PlaceError::InvalidPlaceTokenMintPDA.into());
+    }
+
+    if !place_token_mint_pda_acct.data_is_empty() {
+        return Err(PlaceError::PlaceTokenMintAlreadyInitialized.into());
+    }
+
+    let place_token_mint_seeds = &[
+        PlaceState::PREFIX.as_bytes(),
+        PlaceState::TOKEN_MINT_PREFIX.as_bytes(),
+        &[place_token_mint_pda_bump],
+    ];
+
+    msg!("TAP: Allocating Token Mint Account");
+
+    create_or_allocate_account_raw(
+        *token_prog_acct.key,
+        place_token_mint_pda_acct,
+        system_prog_acct,
+        owner_acct,
+        Mint::LEN,
+        place_token_mint_seeds,
+    )?;
+
+    msg!("TAP: Init token mint");
+
+    let init_mint_ix = initialize_mint(
+        &spl_token::id(),
+        &place_token_mint_pda,
+        &place_state_pda,
+        None,
+        0,
+    )?;
+
+    invoke_signed(
+        &init_mint_ix,
+        &[
+            (*token_prog_acct).clone(),
+            (*place_state_pda_acct).clone(),
+            (*place_token_mint_pda_acct).clone(),
+            (*rent_sysvar_acct).clone(),
+        ],
+        &[place_token_mint_seeds],
+    )?;
+
+    msg!("TAP: alloc token mint MPL metadata account");
+
+    let create_metadata_ix = create_metadata_accounts_v2(
+        mpl_token_metadata::id(),
+        place_token_mpl_meta_pda,
+        place_token_mint_pda.clone(),
+        place_state_pda.clone(),
+        owner_acct.key.clone(),
+        place_state_pda.clone(),
+        String::from("Tapestry"),
+        String::from("TAPESTRY"),
+        String::from("http://localhost:8080/tapestry_token.json"),
+        None,
+        0,
+        true,
+        false,
+        None,
+        None,
+    );
+
+    let place_token_mint_pda_seeds = &[
+        PlaceState::PREFIX.as_bytes(),
+        PlaceState::TOKEN_MINT_PREFIX.as_bytes(),
+        &[place_token_mint_pda_bump],
+    ];
+
+    let place_state_acct_pda_seeds = &[PlaceState::PREFIX.as_bytes(), &[place_state_pda_bump]];
+
+    invoke_signed(
+        &create_metadata_ix,
+        &[
+            (*mpl_metadata_prog_acct).clone(),
+            (*place_token_mint_pda_acct).clone(),
+            (*place_token_mint_mpl_pda_acct).clone(),
+            (*place_state_pda_acct).clone(),
+            (*owner_acct).clone(),
+            (*rent_sysvar_acct).clone(),
+            (*system_prog_acct).clone(),
+        ],
+        &[place_token_mint_pda_seeds, place_state_acct_pda_seeds],
+    )?;
+
+    Ok(())
+}
 fn process_update_place_state(
     program_id: &Pubkey,
     acct_args: UpdatePlaceStateAccountArgs,
@@ -393,6 +679,7 @@ fn process_purchase_gameplay_token(
         token_mint_pda: gameplay_token_mint_pda,
         update_allowed_slot: clock.slot,
         cooldown_duration: state.paintbrush_cooldown,
+        place_tokens_owed: 5, // maybe give some "free" tokens for buying a gameplay token
     };
 
     // -- Allocate space for the token mint and initialize it
@@ -533,6 +820,7 @@ fn process_purchase_gameplay_token(
 
     // IMPORTANT - save the game state, for some reason if i do this earlier the transfer
     // of SOL to this account fails
+
     gameplay_token_meta.serialize(&mut *gameplay_meta_pda_acct.data.borrow_mut())?;
 
     Ok(())
@@ -630,6 +918,7 @@ fn process_set_pixel(
 
     // update the cooldown for the token
     gameplay_token.update_allowed_slot = current_slot + gameplay_token.cooldown_duration;
+    gameplay_token.place_tokens_owed += 1;
     gameplay_token.serialize(&mut *gameplay_token_meta_acct.data.borrow_mut())?;
 
     // Change the pixel

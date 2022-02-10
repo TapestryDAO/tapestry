@@ -68,6 +68,7 @@ impl PlaceState {
         8; // bomb_price
 
     pub const PREFIX: &'static str = "place";
+    pub const TOKEN_MINT_PREFIX: &'static str = "tokes";
 
     pub fn from_account_info(a: &AccountInfo) -> Result<PlaceState, ProgramError> {
         let state: PlaceState =
@@ -86,6 +87,21 @@ impl PlaceState {
             &[Self::PREFIX.as_bytes()],
             &crate::id(),
         )
+    }
+
+    pub fn token_mint_pda() -> (Pubkey, u8) {
+        Pubkey::find_program_address(
+            &[
+                Self::PREFIX.as_bytes(),
+                Self::TOKEN_MINT_PREFIX.as_bytes(),
+            ],
+            &crate::id(),
+        )
+    }
+
+    pub fn token_mint_mpl_metadata_pda() -> (Pubkey, u8) {
+        let (token_mint_pda, _) = Self::token_mint_pda();
+        mpl_token_metadata::pda::find_metadata_account(&token_mint_pda)
     }
 }
 
@@ -120,6 +136,12 @@ pub struct GameplayTokenMeta {
 
     // number of slots for the cooldown of this token
     pub cooldown_duration: Slot,
+
+    // Number of place tokens due to be paid out to the owner of this gameplay token
+    // NOTE(will): in order to avoid a global write lock on the place token mint
+    // within the SetPixel instruction, we increment this number instead.
+    // user's can later claim their tokens in a separate transaction.
+    pub place_tokens_owed: u32,
 }
 
 impl GameplayTokenMeta {
@@ -133,7 +155,8 @@ impl GameplayTokenMeta {
         8 + // random_seed
         32 + // token_mint_pda
         8 +  // update_allowed_after
-        8; // cooldown_duration
+        8 +  // cooldown_duration
+        4; // place_tokens_owed
 
     pub fn from_account_info(a: &AccountInfo) -> Result<GameplayTokenMeta, ProgramError> {
         let state: GameplayTokenMeta =

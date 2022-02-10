@@ -116,6 +116,16 @@ export class PlaceClient {
             });
     }
 
+    // NOTE(will): I think these subscriptions cause CLI commands to hang
+    // so currently this is just being called at the end of CLI commands
+    public kill() {
+        this.connection.removeSlotChangeListener(this.currentSlotSubscription);
+
+        if (this.subscription !== null) {
+            this.connection.removeProgramAccountChangeListener(this.subscription);
+        }
+    }
+
     public static getInstance(): PlaceClient {
         if (!PlaceClient.instance) {
             this.instance = new PlaceClient(new Connection("http://127.0.0.1:8899"))
@@ -375,7 +385,6 @@ export class PlaceClient {
         }
 
         let sorted = this.getSortedGameplayTokenResultsForOwner(owner);
-        console.log(sorted);
         this.OnGameplayTokenAcctsDidUpdate.dispatch(owner, sorted);
     }
 }
