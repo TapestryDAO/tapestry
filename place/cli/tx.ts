@@ -9,6 +9,8 @@ import BN from 'bn.js';
 import { GameplayTokenType } from '../client/src/accounts';
 // @ts-ignore
 import asyncPool from "tiny-async-pool"
+import { GameplayTokenMetaAccount } from '../client/src/accounts/GameplayTokenMetaAccount';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 const MAX_COLORS = 256;
 
@@ -366,6 +368,106 @@ const purchase_gameplay_token_command = {
     }
 }
 
+type ClaimTokensCommandArgs =
+    KeynameOptionArgs &
+    { gpt_acct: string }
+
+const claim_tokens_command = {
+    command: "claim",
+    description: "Claim place tokens from a gameplay token account (use pla get gameplay_tokens to get addresses)",
+    builder: (args: Argv): Argv<ClaimTokensCommandArgs> => {
+        return applyKeynameOption(args)
+            .option("gpt_acct", {
+                description: "The gameplay token account to claim tokens from (base58 string)",
+                type: "string",
+                required: true
+            })
+    },
+    handler: async (args: ArgumentsCamelCase<ClaimTokensCommandArgs>) => {
+        let claimer = loadKey(args.keyname);
+        let connection = getNewConnection();
+        let gps_acct_pubkey = new PublicKey(args.gpt_acct);
+        let gpt_acct_info = await connection.getAccountInfo(gps_acct_pubkey);
+        if (gpt_acct_info == null) {
+            console.log("Gameplay token not found: ", gps_acct_pubkey.toBase58());
+            return;
+        }
+
+        let gpt_acct = new GameplayTokenMetaAccount(gps_acct_pubkey, gpt_acct_info);
+        console.log("Got GPT Acct: ", gpt_acct.pubkey.toBase58())
+        console.log("Tokens Claimable: ", gpt_acct.data.place_tokens_owed);
+
+        let place_state_pda = await PlaceProgram.findPlaceTokenMintPda();
+
+        let token_accounts = await connection.getTokenAccountsByOwner(claimer.publicKey, {
+            mint: place_state_pda,
+        })
+
+        if (token_accounts.value.length > 1) {
+            console.log("WARNING: multiple ATA accounts (", token_accounts.value.length, ") exist for keypair: ", args.keyname);
+        }
+
+        let tx = new Transaction();
+        let dest_ata: PublicKey | null = null
+
+        if (token_accounts.value.length == 0) {
+            console.log("creating place tokens ATA for keyname: ", args.keyname);
+            let ata = await Token.getAssociatedTokenAddress(
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                place_state_pda,
+                claimer.publicKey,
+                true, // TODO(will): what are the implications of this?
+            );
+
+            let create_ata_ix = Token.createAssociatedTokenAccountInstruction(
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                place_state_pda,
+                ata,
+                claimer.publicKey,
+                claimer.publicKey,
+            )
+
+
+            tx.add(create_ata_ix);
+            dest_ata = ata;
+
+            // let result = await connection.sendTransaction(tx, [claimer]);
+            // console.log("Result: ", result);
+        }
+
+        if (dest_ata == null) {
+            dest_ata = token_accounts.value[0].pubkey;
+        }
+
+        // in theory this could be wrong, but should generally be correct
+        let gpt_ata = await PlaceProgram.findGameplayTokenMintAta(gpt_acct.data.token_mint_pda, claimer.publicKey);
+        console.log("GPT ATA: ", gpt_ata.toBase58());
+
+        let claim_tokens_ix = await PlaceProgram.claimTokens({
+            claimer: claimer.publicKey,
+            gameplay_token_random_seed: gpt_acct.data.random_seed,
+            gameplay_token_ata: gpt_ata,
+            dest_ata: dest_ata
+        })
+
+        console.log(inspect(claim_tokens_ix.keys, true, null, true));
+
+        // let tx = new Transaction();
+        tx.add(claim_tokens_ix)
+
+        let result = await connection.sendTransaction(tx, [claimer], {});
+        console.log("Result: ", result);
+
+        let confirmation = await connection.confirmTransaction(result, "finalized");
+        console.log("confirmation: ", confirmation);
+
+        let dest_ata_balance = await connection.getTokenAccountBalance(dest_ata);
+        console.log("Keyname ", args.keyname, " now has ", dest_ata_balance.value, " place tokens");
+    }
+}
+
 const get_state_command = {
     command: "get_state",
     description: "Get the current Place State account and print contents",
@@ -396,6 +498,7 @@ export const command = {
             .command(update_place_state_command)
             .command(get_state_command)
             .command(purchase_gameplay_token_command)
+            .command(claim_tokens_command)
             .demandCommand()
     }
 }

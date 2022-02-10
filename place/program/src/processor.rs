@@ -183,8 +183,10 @@ fn process_claim_tokens(
     // not strictly necessary
     assert_signer(claimer_acct)?;
     assert_token_prog(token_prog_acct)?;
-    assert_owned_by_token_prog(gameplay_token_ata_acct)?;
-    assert_owned_by_token_prog(place_token_dest_ata_acct)?;
+    // TODO(will): I don't need to check who owns these right?
+    // though the gameplay token ata is probably owned by place_state account?
+    // assert_owned_by_token_prog(gameplay_token_ata_acct)?;
+    // assert_owned_by_token_prog(place_token_dest_ata_acct)?;
     assert_owned_by_token_prog(place_token_mint_acct)?;
 
     // the place state owns all the accounts, so need to check against it's pda
@@ -198,12 +200,14 @@ fn process_claim_tokens(
         return Err(PlaceError::InvalidGameplayTokenMetaPDAOwner.into());
     }
 
-    let (place_token_mint_pda, place_token_mint_pda_bump) = PlaceState::token_mint_pda();
+    let (place_token_mint_pda, _) = PlaceState::token_mint_pda();
+    msg!("desered place state");
     if *place_token_mint_acct.key != place_token_mint_pda {
         return Err(PlaceError::InvalidPlaceTokenMintPDA.into());
     }
 
     let mut gameplay_token_meta = GameplayTokenMeta::from_account_info(gameplay_token_pda_acct)?;
+    msg!("desered gpt meta");
     if gameplay_token_meta.place_tokens_owed == 0 {
         return Err(PlaceError::NoTokensToBeClaimed.into());
     }
@@ -221,6 +225,8 @@ fn process_claim_tokens(
 
     let gameplay_token_ata =
         TokenAccount::unpack_from_slice(&gameplay_token_ata_acct.data.borrow())?;
+
+    msg!("desered gpt ata");
     if gameplay_token_ata.amount != 1 {
         return Err(PlaceError::InvalidGameplayTokenAccountBalance.into());
     }
@@ -233,19 +239,13 @@ fn process_claim_tokens(
         return Err(PlaceError::GameplayTokenATAMintDidNotMatch.into());
     }
 
+    msg!("desered place token ata");
     let place_token_ata =
         TokenAccount::unpack_from_slice(&place_token_dest_ata_acct.data.borrow())?;
 
     if place_token_mint_pda != place_token_ata.mint {
         return Err(PlaceError::InvalidPlaceTokenDestinationATA.into());
     }
-
-    // do i need these?
-    // let place_state_mint_seeds = &[
-    //     PlaceState::PREFIX.as_bytes(),
-    //     PlaceState::TOKEN_MINT_PREFIX.as_bytes(),
-    //     &[place_token_mint_pda_bump],
-    // ];
 
     let place_state_acct_pda_seeds = &[PlaceState::PREFIX.as_bytes(), &[place_state_pda_bump]];
 

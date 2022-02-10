@@ -394,7 +394,7 @@ pub fn get_ix_claim_tokens(
     Instruction {
         program_id: crate::id(),
         accounts: vec![
-            AccountMeta::new(claimer, true),
+            AccountMeta::new_readonly(claimer, true),
             AccountMeta::new(gameplay_meta_pda, false),
             AccountMeta::new_readonly(gameplay_token_ata, false),
             AccountMeta::new(place_token_mint_pda, false),

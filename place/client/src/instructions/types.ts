@@ -6,4 +6,5 @@ export enum PlaceInstruction {
     PurchaseGameplayToken,
     SetPixel,
     InitMint,
+    ClaimTokens,
 };

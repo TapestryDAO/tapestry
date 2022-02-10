@@ -92,10 +92,10 @@ pub enum PlaceError {
     GameplayTokenATAMintDidNotMatch, // 28
 
     #[error("Place token destination account was invalid")]
-    InvalidPlaceTokenDestinationATA, // 28
+    InvalidPlaceTokenDestinationATA, // 29
 
     #[error("No tokens available to claim")]
-    NoTokensToBeClaimed, // 29
+    NoTokensToBeClaimed, // 30
 }
 
 impl From<PlaceError> for ProgramError {
