@@ -92,3 +92,19 @@ pub fn assert_mpl_metadata_prog(account_info: &AccountInfo) -> ProgramResult {
         Err(PlaceError::InvalidMplMetadataProgramAccount.into())
     }
 }
+
+pub fn assert_owned_by_token_prog(account_info: &AccountInfo) -> ProgramResult {
+    if spl_token::check_id(account_info.owner) {
+        Ok(())
+    } else {
+        Err(PlaceError::AccountNotOwnedByTokenProgram.into())
+    }
+}
+
+pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
+    if account.owner != owner {
+        Err(PlaceError::UnexpectedAccountOwner.into())
+    } else {
+        Ok(())
+    }
+}

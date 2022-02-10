@@ -72,6 +72,30 @@ pub enum PlaceError {
 
     #[error("The metadata account to hold MPL metadata is wrong")]
     InvalidPlaceTokenMPLMetadataPDA, // 22
+
+    #[error("The gameplay token meta account was invalid")]
+    InvalidGameplayTokenMetaPDA, // 23
+
+    #[error("The gameplay token meta account was not owned by expected account")]
+    InvalidGameplayTokenMetaPDAOwner, // 24
+
+    #[error("The gameplay token ATA did not match the signer")]
+    GameplayTokenATADidNotMatchSigner, // 25
+
+    #[error("Expected account owned by token program")]
+    AccountNotOwnedByTokenProgram, // 26
+
+    #[error("Account was not owned by the expected key")]
+    UnexpectedAccountOwner, // 27
+
+    #[error("Gameplay token ATA mint did not match gameplay token meta mint")]
+    GameplayTokenATAMintDidNotMatch, // 28
+
+    #[error("Place token destination account was invalid")]
+    InvalidPlaceTokenDestinationATA, // 28
+
+    #[error("No tokens available to claim")]
+    NoTokensToBeClaimed, // 29
 }
 
 impl From<PlaceError> for ProgramError {
