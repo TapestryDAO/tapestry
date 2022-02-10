@@ -47,12 +47,31 @@ const get_gameplay_tokens_command = {
     }
 }
 
+const get_state_command = {
+    command: "state",
+    description: "Get the current Place State account and print contents",
+    handler: async (args: ArgumentsCamelCase) => {
+        let client = PlaceClient.getInstance();
+        let state = await client.fetchPlaceStateAccount();
+        console.log("Place State:")
+        console.log("AcctType     :", state.acct_type);
+        console.log("Owner        :", state.owner.toBase58());
+        console.log("Frozen?      :", state.is_frozen);
+        console.log("Pbrush price :", state.paintbrush_price.toNumber());
+        console.log("Pbrush cool  :", state.paintbrush_cooldown.toNumber());
+        console.log("Bomb price   :", state.bomb_price.toNumber());
+        client.kill()
+    }
+}
+
+
 export const command = {
     command: "get",
     description: "get various state for the place program",
     builder: (argv: Argv) => {
         return argv
             .command(get_gameplay_tokens_command)
+            .command(get_state_command)
             .demandCommand()
     }
 }

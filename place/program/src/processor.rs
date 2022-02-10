@@ -183,10 +183,6 @@ fn process_claim_tokens(
     // not strictly necessary
     assert_signer(claimer_acct)?;
     assert_token_prog(token_prog_acct)?;
-    // TODO(will): I don't need to check who owns these right?
-    // though the gameplay token ata is probably owned by place_state account?
-    // assert_owned_by_token_prog(gameplay_token_ata_acct)?;
-    // assert_owned_by_token_prog(place_token_dest_ata_acct)?;
     assert_owned_by_token_prog(place_token_mint_acct)?;
 
     // the place state owns all the accounts, so need to check against it's pda
@@ -202,12 +198,14 @@ fn process_claim_tokens(
 
     let (place_token_mint_pda, _) = PlaceState::token_mint_pda();
     msg!("desered place state");
+
     if *place_token_mint_acct.key != place_token_mint_pda {
         return Err(PlaceError::InvalidPlaceTokenMintPDA.into());
     }
 
     let mut gameplay_token_meta = GameplayTokenMeta::from_account_info(gameplay_token_pda_acct)?;
     msg!("desered gpt meta");
+
     if gameplay_token_meta.place_tokens_owed == 0 {
         return Err(PlaceError::NoTokensToBeClaimed.into());
     }
@@ -239,9 +237,9 @@ fn process_claim_tokens(
         return Err(PlaceError::GameplayTokenATAMintDidNotMatch.into());
     }
 
-    msg!("desered place token ata");
     let place_token_ata =
         TokenAccount::unpack_from_slice(&place_token_dest_ata_acct.data.borrow())?;
+    msg!("desered place token ata");
 
     if place_token_mint_pda != place_token_ata.mint {
         return Err(PlaceError::InvalidPlaceTokenDestinationATA.into());

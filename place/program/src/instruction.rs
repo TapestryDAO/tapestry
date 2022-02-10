@@ -345,7 +345,7 @@ pub fn get_ix_init_mint(owner: Pubkey) -> Instruction {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-////////////////////////// UPDATE TAPESTRY STATE /////////////////////////////////
+////////////////////////////// CLAIM TOKENS //////////////////////////////////////
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct ClaimTokensDataArgs {
@@ -372,7 +372,7 @@ pub struct ClaimTokensAccountArgs<'a, 'b: 'a> {
     // `[writable]` the destination token account for the place tokens to be sent
     pub place_token_dest_ata_acct: &'a AccountInfo<'b>,
 
-    // `[]` the global palce state account (needed to sign mint ix)
+    // `[]` the global place state account (needed to sign mint ix)
     pub place_state_pda_acct: &'a AccountInfo<'b>,
 
     // `[]` the spl token program executable

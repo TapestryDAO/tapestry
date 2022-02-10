@@ -116,8 +116,8 @@ export class PlaceClient {
             });
     }
 
-    // NOTE(will): currently only calling this from CLI where this seems like it might
-    // be causing commands to hang?
+    // NOTE(will): I think these subscriptions cause CLI commands to hang
+    // so currently this is just being called at the end of CLI commands
     public kill() {
         this.connection.removeSlotChangeListener(this.currentSlotSubscription);
 

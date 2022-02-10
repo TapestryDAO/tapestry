@@ -417,7 +417,7 @@ const claim_tokens_command = {
                 TOKEN_PROGRAM_ID,
                 place_state_pda,
                 claimer.publicKey,
-                true, // TODO(will): what are the implications of this?
+                true,
             );
 
             let create_ata_ix = Token.createAssociatedTokenAccountInstruction(
@@ -432,9 +432,6 @@ const claim_tokens_command = {
 
             tx.add(create_ata_ix);
             dest_ata = ata;
-
-            // let result = await connection.sendTransaction(tx, [claimer]);
-            // console.log("Result: ", result);
         }
 
         if (dest_ata == null) {
@@ -452,9 +449,6 @@ const claim_tokens_command = {
             dest_ata: dest_ata
         })
 
-        console.log(inspect(claim_tokens_ix.keys, true, null, true));
-
-        // let tx = new Transaction();
         tx.add(claim_tokens_ix)
 
         let result = await connection.sendTransaction(tx, [claimer], {});
@@ -465,23 +459,6 @@ const claim_tokens_command = {
 
         let dest_ata_balance = await connection.getTokenAccountBalance(dest_ata);
         console.log("Keyname ", args.keyname, " now has ", dest_ata_balance.value, " place tokens");
-    }
-}
-
-const get_state_command = {
-    command: "get_state",
-    description: "Get the current Place State account and print contents",
-    handler: async (args: ArgumentsCamelCase) => {
-        let state = await PlaceClient.getInstance().fetchPlaceStateAccount();
-        console.log("Place State:")
-        console.log("AcctType     :", state.acct_type);
-        console.log("Owner        :", state.owner.toBase58());
-        console.log("Frozen?      :", state.is_frozen);
-        console.log("Pbrush price :", state.paintbrush_price.toNumber());
-        console.log("Pbrush cool  :", state.paintbrush_cooldown.toNumber());
-        console.log("Bomb price   :", state.bomb_price.toNumber());
-        // console.log("Raw: ")
-        // console.log(inspect(state, true, null, true))
     }
 }
 
@@ -496,7 +473,6 @@ export const command = {
             .command(init_mint_command)
             .command(rent_check_command)
             .command(update_place_state_command)
-            .command(get_state_command)
             .command(purchase_gameplay_token_command)
             .command(claim_tokens_command)
             .demandCommand()
