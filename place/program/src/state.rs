@@ -138,8 +138,8 @@ pub struct GameplayTokenMeta {
     pub cooldown_duration: Slot,
 
     // Number of place tokens due to be paid out to the owner of this gameplay token
-    // NOTE(will): in order to avoid a shared write lock on the SetPixel instruction
-    // and potentially causing tx's to be slow or fail, we increment this number
+    // NOTE(will): in order to avoid a global write lock on the place token mint
+    // within the SetPixel instruction, we increment this number instead.
     // user's can later claim their tokens in a separate transaction.
     pub place_tokens_owed: u32,
 }
