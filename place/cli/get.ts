@@ -21,29 +21,20 @@ const get_gameplay_tokens_command = {
     handler: async (args: ArgumentsCamelCase<GetGameplayTokensCommandArgs>) => {
         let keypair = loadKey(args.keyname);
         let client = PlaceClient.getInstance();
-        await client.fetchGameplayTokensForOwner(keypair.publicKey);
+        client.setCurrentUser(keypair.publicKey);
 
-        let game_play_token_metas = client.getSortedGameplayTokenResultsForOwner(keypair.publicKey);
-
-        for (const meta of game_play_token_metas) {
-            if (meta.gameplayTokenAccount == null) {
-                console.log("unexpected null gameplay token meta account");
-                continue;
+        client.OnGameplayTokenRecordsUpdated.addMemo((records) => {
+            for (const record of records) {
+                console.log("---- ")
+                console.log("Gpt meta pubkey   : ", record.gameplayTokenMetaAcct.pubkey.toBase58());
+                console.log("Token Acct Pubkey : ", record.userTokenAccount.pubkey.toBase58());
+                console.log("Balance           : ", record.userTokenAccount.data.amount.toString()); // should always be 1
+                console.log("Rand Seed         : ", record.gameplayTokenMetaAcct.data.random_seed.toString());
+                console.log("Update Slot       : ", record.gameplayTokenMetaAcct.data.update_allowed_slot.toString());
+                console.log("Claimable Tokes   : ", record.gameplayTokenMetaAcct.data.place_tokens_owed);
             }
-            if (meta.tokenAccount == null) {
-                console.log("token account is null");
-                continue;
-            }
-            console.log("---- ")
-            console.log("Gpt meta pubkey   : ", meta.gameplayTokenAccount.pubkey.toBase58());
-            console.log("Token Acct Pubkey : ", meta.tokenAccount.pubkey.toBase58());
-            console.log("Balance           : ", meta.tokenAccount.data.amount.toString()); // should always be 1
-            console.log("Rand Seed         : ", meta.gameplayTokenAccount.data.random_seed.toString());
-            console.log("Update Slot       : ", meta.gameplayTokenAccount.data.update_allowed_slot.toString());
-            console.log("Claimable Tokes   : ", meta.gameplayTokenAccount.data.place_tokens_owed);
-        }
-
-        client.kill();
+            client.kill();
+        });
     }
 }
 

@@ -8,7 +8,7 @@ import { TokenAccount } from "@metaplex-foundation/mpl-core";
 import BN from 'bn.js';
 import { GameplayTokenMetaAccount } from "./accounts/GameplayTokenMetaAccount";
 import { Signal } from './signals';
-import { MintLayout, Token, MintInfo } from "@solana/spl-token";
+import { MintLayout, Token, MintInfo, ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const PATCH_WIDTH = 20;
 export const PATCH_HEIGHT = 20;
@@ -195,14 +195,14 @@ export class PlaceClient {
         return this.currentUserPlaceTokenAccounts[0];
     }
 
-    public async packClaimTokensTX(currentUser: PublicKey): Promise<Transaction[] | null> {
-        if (currentUser.toBase58() !== this.currentUser.toBase58()) {
-            console.log("WARNING: tried to pack claim tx with mismatched user")
+    public async packClaimTokensTX(): Promise<Transaction[] | null> {
+        if (this.currentUser === null) {
+            console.log("WARNING: tried to pack claim tx but current user was null")
             return null;
         }
 
-        if (currentUser === null) {
-            console.log("WARNING: tried to pack claim tx for null user");
+        if (this.currentUserGptRecords === null) {
+            console.log("WARNING: tried to pack claim tx but had no user gpt records")
             return null;
         }
 
@@ -215,30 +215,57 @@ export class PlaceClient {
         }
 
         if (claimableGptAccts.length == 0) {
-            console.log("WARNING: no claimable accounts for user", currentUser.toBase58());
+            console.log("WARNING: no claimable accounts for user", this.currentUser.toBase58());
             return null;
         }
 
         let allTransactions: Transaction[] = []
         let currentTx = new Transaction();
         let destAta = this.getLargestCurrentUserAta();
+        let destAtaPubkey: PublicKey;
 
-        let max = 5;
+        // if this user doesn't have an ata, create one
+        if (destAta === null) {
+            let placeStatePda = await PlaceProgram.findPlaceStatePda();
+            destAtaPubkey = await Token.getAssociatedTokenAddress(
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                placeStatePda,
+                this.currentUser,
+                true,
+            );
+
+            let create_ata_ix = Token.createAssociatedTokenAccountInstruction(
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                placeStatePda,
+                destAtaPubkey,
+                this.currentUser,
+                this.currentUser,
+            )
+            currentTx.add(create_ata_ix);
+
+            // TODO(will): subscribe to updates for this account so we can propagate state to UI
+        } else {
+            destAtaPubkey = destAta.pubkey;
+        }
+
+        let max = 6;
 
         for (let result of claimableGptAccts) {
-            if (currentTx.instructions.length >= max) {
+            if (currentTx.instructions.length > max) {
                 allTransactions.push(currentTx);
                 currentTx = new Transaction();
             }
 
             let gptAcct = result.gameplayTokenMetaAcct;
             let randomSeed = result.gameplayTokenMetaAcct.data.random_seed
-            let gptAta = await PlaceProgram.findGameplayTokenMintAta(gptAcct.data.token_mint_pda, currentUser);
+            let gptAta = await PlaceProgram.findGameplayTokenMintAta(gptAcct.data.token_mint_pda, this.currentUser);
             let ix = await PlaceProgram.claimTokens({
-                claimer: currentUser,
+                claimer: this.currentUser,
                 gameplay_token_random_seed: randomSeed,
                 gameplay_token_ata: gptAta,
-                dest_ata: destAta.pubkey,
+                dest_ata: destAtaPubkey,
             })
 
             currentTx.add(ix);
@@ -288,6 +315,8 @@ export class PlaceClient {
         let oldIsNull = this.currentUser === null;
         if (newIsNull && oldIsNull) return;
         let onlyOneNull = (newIsNull && !oldIsNull) || (!newIsNull && oldIsNull); // logical xor
+
+        // @ts-ignore
         if (!onlyOneNull && newCurrentUser.toBase58() === this.currentUser.toBase58()) return;
 
         if (this.currentUser !== null) {
@@ -506,7 +535,7 @@ export class PlaceClient {
         console.log("Subscribing to user token updates", this.currentUser.toBase58())
 
         this.currentUserGptRecords = await this.fetchGptRecords(this.currentUser);
-        console.log("records len", this.currentUserGptRecords)
+        console.log("got ", this.currentUserGptRecords.length, " gpt records for current user");
 
         for (let record of this.currentUserGptRecords) {
             let mintPubkey = record.mintPubkey;
@@ -516,6 +545,7 @@ export class PlaceClient {
                 console.log("GPT acct changed: ", mintPubkey);
                 let gptAcct = new GameplayTokenMetaAccount(gptAcctPubkey, acct);
                 record.gameplayTokenMetaAcct = gptAcct;
+                // @ts-ignore
                 this.OnGameplayTokenRecordsUpdated.dispatch(this.currentUserGptRecords);
             }, "recent")
             record._gptAccountSubscription = gptSub;

@@ -152,7 +152,7 @@ export const Ownership: FC = () => {
     const handleClaimButtonPressed = async () => {
         if (publicKey === null) return;
         setClaimProcessing(true);
-        let claimTxs = await PlaceClient.getInstance().packClaimTokensTX(publicKey);
+        let claimTxs = await PlaceClient.getInstance().packClaimTokensTX();
         if (claimTxs === null) {
             setClaimProcessing(false);
             return;
