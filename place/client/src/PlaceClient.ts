@@ -308,11 +308,10 @@ export class PlaceClient {
     // Set to null to remove subscriptions for a user
     public setCurrentUser(newCurrentUser: PublicKey | null) {
         // this is a fucking atrocity
-        if (newCurrentUser === null && this.currentUser === null) return;
         let newIsNull = newCurrentUser === null;
         let oldIsNull = this.currentUser === null;
-        // logical xor
-        let onlyOneNull = (newIsNull && !oldIsNull) || (!newIsNull && oldIsNull)
+        if (newIsNull && oldIsNull) return;
+        let onlyOneNull = (newIsNull && !oldIsNull) || (!newIsNull && oldIsNull); // logical xor
         if (!onlyOneNull && newCurrentUser.toBase58() === this.currentUser.toBase58()) return;
 
         if (this.currentUser !== null) {
