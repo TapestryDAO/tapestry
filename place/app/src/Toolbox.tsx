@@ -1,7 +1,7 @@
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenFetchResult } from '@tapestrydao/place-client';
-import { DragEventHandler, FC, UIEventHandler, useEffect, useState } from 'react';
+import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenFetchResult, GameplayTokenRecord } from '@tapestrydao/place-client';
+import { DragEvent, FC, useEffect, useState } from 'react';
 import BN from 'bn.js';
 import { MintInfo, u64 } from '@solana/spl-token';
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
@@ -44,7 +44,8 @@ export const PaintbrushTool: FC = () => {
     const { connection } = useConnection();
     const { sendTransaction, publicKey } = useWallet();
     const [processingPurchase, setProcessingPurchase] = useState<boolean>(false);
-    const [gameplayTokens, setGameplayTokens] = useState<Array<GameplayTokenFetchResult>>([]);
+    const [tokensTotal, setTokensTotal] = useState<number>(0);
+    const [tokensReady, setTokensReady] = useState<number>(0);
 
     const onBuyButtonClicked = async () => {
         console.log("Buy Paintbrush Clicked");
@@ -57,6 +58,7 @@ export const PaintbrushTool: FC = () => {
         console.log("payer: ", publicKey);
         console.log("token_type: ", GameplayTokenType.PaintBrush);
         console.log("desired_price: ", state.paintbrush_price);
+
         let ix = await PlaceProgram.purchaseGameplayToken({
             payer: publicKey,
             token_type: GameplayTokenType.PaintBrush,
@@ -72,7 +74,7 @@ export const PaintbrushTool: FC = () => {
         let result = await connection.confirmTransaction(signature, "finalized")
         console.log(result);
         setProcessingPurchase(false);
-        await placeClient.fetchGameplayTokensForOwner(publicKey);
+        // await placeClient.fetchGameplayTokensForOwner(publicKey);
     }
 
     useEffect(() => {
@@ -80,41 +82,26 @@ export const PaintbrushTool: FC = () => {
 
         let placeClient = PlaceClient.getInstance();
 
-        let subscription = placeClient.OnGameplayTokenAcctsDidUpdate.add((owner, accounts) => {
-            if (owner === publicKey) {
-                setGameplayTokens(accounts);
-            }
+        let subscription = placeClient.OnGameplayTokenRecordsUpdated.addMemo((records) => {
+            console.log("got records blooob: ", records.length);
+            let tokensReady = records.filter((result) => {
+                let client = PlaceClient.getInstance();
+                if (client.currentSlot == null) return false;
+                return result.gameplayTokenMetaAcct.data.update_allowed_slot.lte(new BN(client.currentSlot));
+            });
+
+            setTokensReady(tokensReady.length);
+            setTokensTotal(records.length);
         })
 
-        // Trigger a fetch
-        PlaceClient.getInstance().fetchGameplayTokensForOwner(publicKey);
-
         return () => {
-            PlaceClient.getInstance().OnGameplayTokenAcctsDidUpdate.detach(subscription)
+            PlaceClient.getInstance().OnGameplayTokenRecordsUpdated.detach(subscription)
         }
     }, [publicKey]);
 
-    let client = PlaceClient.getInstance();
-
-    let totalTokenResults = gameplayTokens.filter((result) => result.gameplayTokenAccount !== null);
-
-    // TODO(will): currentSlot is annoyingly null here sometimes
-    let tokensReady = totalTokenResults.filter((result) => {
-        let gameplayToken = result.gameplayTokenAccount
-        if (gameplayToken === null) {
-            return false;
-        }
-
-        if (client.currentSlot == null) {
-            return false;
-        }
-
-        return gameplayToken.data.update_allowed_slot.lte(new BN(client.currentSlot));
-    });
-
     return <div className='toolbox__paintbrush-container'>
         <img className='toolbox__paintbrush-image' src="paintbrush_pixel.png"></img>
-        <h4>Ready: {tokensReady.length}/{totalTokenResults.length}</h4>
+        <h4>Ready: {tokensReady}/{tokensTotal}</h4>
         <button onClick={onBuyButtonClicked} className='toolbox__buy_button'>{processingPurchase ? "Processing..." : "Buy"}</button>
     </div>
 }
@@ -131,7 +118,7 @@ export const Ownership: FC = () => {
     const updateClaimableTokensCount = () => {
         let client = PlaceClient.getInstance();
         if (publicKey !== null && publicKey !== undefined) {
-            let count = client.getTotalClaimableTokensCount(publicKey);
+            let count = client.getTotalClaimableTokensCount();
             setClaimableTokensCount(count);
         } else {
             setClaimableTokensCount(null);
@@ -165,7 +152,7 @@ export const Ownership: FC = () => {
     const handleClaimButtonPressed = async () => {
         if (publicKey === null) return;
         setClaimProcessing(true);
-        let claimTxs = await PlaceClient.getInstance().packClaimTokensTX(publicKey);
+        let claimTxs = await PlaceClient.getInstance().packClaimTokensTX();
         if (claimTxs === null) {
             setClaimProcessing(false);
             return;
@@ -175,11 +162,7 @@ export const Ownership: FC = () => {
             console.log("Sending claim tx");
             let sig = await sendTransaction(tx, connection);
             console.log("claim tx sig: ", sig);
-            let result = await connection.confirmTransaction(sig, "finalized")
-            console.log("Claim Result: ", result);
         }
-
-        await PlaceClient.getInstance().fetchGameplayTokensForOwner(publicKey);
 
         setClaimProcessing(false);
     }
@@ -187,13 +170,10 @@ export const Ownership: FC = () => {
     useEffect(() => {
         let client = PlaceClient.getInstance();
 
-        client.setCurrentUser(publicKey);
-
         updateClaimableTokensCount();
-        let sub = client.OnGameplayTokenAcctsDidUpdate.add((owner, accts) => {
-            console.log("app got gpt update")
+        let sub = client.OnGameplayTokenRecordsUpdated.addMemo((records) => {
             updateClaimableTokensCount();
-        });
+        })
 
         updatePlaceTokenSupply(client.currentMintInfo)
         let tokenMintSub = client.OnPlaceTokenMintUpdated.add(updatePlaceTokenSupply);
@@ -202,7 +182,7 @@ export const Ownership: FC = () => {
         let tokenAcctsSub = client.OnCurrentUserPlaceTokenAcctsUpdated.add(updateUserPlaceTokens)
 
         return () => {
-            client.OnGameplayTokenAcctsDidUpdate.detach(sub);
+            client.OnGameplayTokenRecordsUpdated.detach(sub);
             client.OnPlaceTokenMintUpdated.detach(tokenMintSub);
             client.OnCurrentUserPlaceTokenAcctsUpdated.detach(tokenAcctsSub);
         };
