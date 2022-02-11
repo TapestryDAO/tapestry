@@ -1,4 +1,4 @@
-import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter } from "@solana/web3.js";
+import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter, AccountInfo, Transaction } from "@solana/web3.js";
 import { PlaceProgram } from ".";
 import { extendBorsh } from "./utils/borsh";
 // import { nintendo } from "./palletes/nintendo";
@@ -10,6 +10,9 @@ import { Account, TokenAccount } from "@metaplex-foundation/mpl-core";
 import BN from 'bn.js';
 import { GameplayTokenMetaAccount } from "./accounts/GameplayTokenMetaAccount";
 import { Signal } from 'type-signals';
+import { number } from "yargs";
+import { MintLayout, Token, MintInfo } from "@solana/spl-token";
+import { text } from "stream/consumers";
 
 
 export const PATCH_WIDTH = 20;
@@ -41,11 +44,21 @@ export type GameplayTokenFetchResult = {
 export type GameplayTokenAcctUpdateHandler =
     (owner: PublicKey, gameplayAccounts: GameplayTokenFetchResult[]) => void;
 
+export type PlaceTokenMintUpdateHandler =
+    (mintInfo: MintInfo) => void;
+
+export type CurrentUserPlaceTokenAcctsUpdateHandler =
+    (tokenAccounts: TokenAccount[] | null) => void;
+
 export class PlaceClient {
     private static instance: PlaceClient;
 
     private connection: Connection;
+
     private subscription: number | null = null;
+    private placeTokenMintSubscription: number | null = null;
+    private currentSlotSubscription: number;
+    private currentUserATASubscriptions: number[] | null = null;
 
     // A buffer containing a color pallete
     // a color pallete is mapping from 8 bit values to full 32 bit color values (RBGA)
@@ -55,14 +68,20 @@ export class PlaceClient {
 
     private pallete = blend32;
 
+    // TODO(will): maybe implement a buffer pool to save on alloc's when queuing updates?
     public updatesQueue: CanvasUpdate[] = [];
 
     public OnGameplayTokenAcctsDidUpdate = new Signal<GameplayTokenAcctUpdateHandler>();
-
-    public currentSlotSubscription: number;
+    public OnPlaceTokenMintUpdated = new Signal<PlaceTokenMintUpdateHandler>();
+    public OnCurrentUserPlaceTokenAcctsUpdated = new Signal<CurrentUserPlaceTokenAcctsUpdateHandler>();
 
     // Updated via connection's subscription to slot changes
     public currentSlot: number | null = null;
+
+    public currentMintInfo: MintInfo | null = null;
+
+    public currentUser: PublicKey | null = null;
+    public currentUserPlaceTokenAccounts: TokenAccount[] | null = null;
 
     // ownerPubkey -> (mintPubkey -> GameplayTokenFetchResult)
     private tokenAccountsCache: Map<PublicKeyB58, Map<PublicKeyB58, GameplayTokenFetchResult>> = new Map();
@@ -114,16 +133,16 @@ export class PlaceClient {
             this.connection.onSlotChange((slotChange) => {
                 this.currentSlot = slotChange.slot
             });
+
+        this.subscribeToPlaceTokenMint();
     }
 
     // NOTE(will): I think these subscriptions cause CLI commands to hang
     // so currently this is just being called at the end of CLI commands
     public kill() {
         this.connection.removeSlotChangeListener(this.currentSlotSubscription);
-
-        if (this.subscription !== null) {
-            this.connection.removeProgramAccountChangeListener(this.subscription);
-        }
+        this.unsubscribeFromPatchUpdates()
+        this.unsubscribeFromPlaceTokenMint()
     }
 
     public static getInstance(): PlaceClient {
@@ -181,9 +200,81 @@ export class PlaceClient {
         return 0;
     }
 
+    public getLargestCurrentUserAta(): TokenAccount | null {
+        if (this.currentUserPlaceTokenAccounts === null || this.currentUserPlaceTokenAccounts.length == 0) {
+            return null;
+        }
+
+        // TODO(will): maybe sort these by amount? maybe try to combine them if user has multiple?
+
+        return this.currentUserPlaceTokenAccounts[0];
+    }
+
+    public async packClaimTokensTX(currentUser: PublicKey): Promise<Transaction[] | null> {
+        if (currentUser.toBase58() !== this.currentUser.toBase58()) {
+            console.log("WARNING: tried to pack claim tx with mismatched user")
+            return null;
+        }
+
+        if (currentUser === null) {
+            console.log("WARNING: tried to pack claim tx for null user");
+            return null;
+        }
+
+        let ownerCache = this.tokenAccountsCache.get(currentUser.toBase58())
+        if (ownerCache === undefined) {
+            console.log("WARNING: no gpt token accounts for user: ", currentUser.toBase58());
+            return null;
+        }
+
+
+        let claimableGptAccts: GameplayTokenFetchResult[] = []
+
+        for (let [k, v] of ownerCache) {
+            if (v.gameplayTokenAccount !== null
+                && v.tokenAccount != null
+                && v.gameplayTokenAccount.data.place_tokens_owed > 0) {
+                claimableGptAccts.push(v);
+            }
+        }
+
+        if (claimableGptAccts.length == 0) {
+            console.log("WARNING: no claimable accounts for user", currentUser.toBase58());
+            return null;
+        }
+
+        let allTransactions: Transaction[] = []
+        let currentTx = new Transaction();
+        let destAta = this.getLargestCurrentUserAta();
+
+        let max = 5;
+
+        for (let result of claimableGptAccts) {
+            if (currentTx.instructions.length >= max) {
+                allTransactions.push(currentTx);
+                currentTx = new Transaction();
+            }
+
+            let gptAcct = result.gameplayTokenAccount;
+            let randomSeed = result.gameplayTokenAccount.data.random_seed
+            let gptAta = await PlaceProgram.findGameplayTokenMintAta(gptAcct.data.token_mint_pda, currentUser);
+            let ix = await PlaceProgram.claimTokens({
+                claimer: currentUser,
+                gameplay_token_random_seed: randomSeed,
+                gameplay_token_ata: gptAta,
+                dest_ata: destAta.pubkey,
+            })
+
+            currentTx.add(ix);
+        }
+
+        allTransactions.push(currentTx);
+        return allTransactions;
+    }
+
     public subscribeToPatchUpdates() {
         extendBorsh();
-        if (this.subscription != null) return;
+        if (this.subscription !== null) return;
 
         console.log("Subscribing to patch updates");
         this.subscription = this.connection.onProgramAccountChange(PlaceProgram.PUBKEY, async (accountInfo, ctx) => {
@@ -203,6 +294,139 @@ export class PlaceClient {
                 console.log("got update for account: ", accountInfo.accountId);
             }
         }, "processed", [this.patchAccountsFilter]);
+    }
+
+    public unsubscribeFromPatchUpdates() {
+        console.log("unsubscribing from patch updates")
+        if (this.subscription !== null) {
+            this.connection.removeProgramAccountChangeListener(this.subscription);
+        }
+
+        this.subscription = null;
+    }
+
+    // Set to null to remove subscriptions for a user
+    public setCurrentUser(newCurrentUser: PublicKey | null) {
+        // this is a fucking atrocity
+        if (newCurrentUser === null && this.currentUser === null) return;
+        let newIsNull = newCurrentUser === null;
+        let oldIsNull = this.currentUser === null;
+        // logical xor
+        let onlyOneNull = (newIsNull && !oldIsNull) || (!newIsNull && oldIsNull)
+        if (!onlyOneNull && newCurrentUser.toBase58() === this.currentUser.toBase58()) return;
+
+        if (this.currentUser !== null) {
+            console.log("Unsubscribing from previous user: ", this.currentUser)
+            this.unsubscribeFromCurrentUserPlaceTokenAccounts();
+        }
+
+        this.currentUser = newCurrentUser;
+
+        if (this.currentUser !== null) {
+            console.log("Subscribing to state for new user: ", this.currentUser.toBase58());
+            this.subscribeToCurrentUserPlaceTokenAccounts();
+        }
+    }
+
+
+    public async subscribeToPlaceTokenMint() {
+        extendBorsh();
+        if (this.placeTokenMintSubscription !== null) {
+            return;
+        }
+
+        let placeMintPDA = await PlaceProgram.findPlaceTokenMintPda();
+        let mintAcctInfo = await this.connection.getAccountInfo(placeMintPDA)
+
+        // TODO(will): set up some sort of retry if this fails
+        if (mintAcctInfo === null) {
+            console.log("WARNING: mint acct info null")
+            return;
+        }
+
+        let mintInfo = MintLayout.decode(mintAcctInfo.data) as MintInfo
+        this.currentMintInfo = mintInfo;
+
+        this.OnPlaceTokenMintUpdated.dispatch(mintInfo);
+
+        console.log("Subscribing to place token mint");
+        this.placeTokenMintSubscription = this.connection.onAccountChange(placeMintPDA, async (accountInfo, ctx) => {
+            let mintInfo = MintLayout.decode(accountInfo.data) as MintInfo
+            console.log("Mint supply: ", mintInfo.supply);
+            this.OnPlaceTokenMintUpdated.dispatch(mintInfo);
+        })
+    }
+
+    public unsubscribeFromPlaceTokenMint() {
+        if (this.placeTokenMintSubscription !== null) {
+            this.connection.removeAccountChangeListener(this.placeTokenMintSubscription);
+        }
+        this.placeTokenMintSubscription = null;
+    }
+
+    private async subscribeToCurrentUserPlaceTokenAccounts() {
+
+        let currentUser = this.currentUser;
+        if (currentUser === null) {
+            console.log("WARNING: attempted to subscribe to place token ATAs for null currentuser");
+            return;
+        }
+
+        let placeMintPDA = await PlaceProgram.findPlaceTokenMintPda();
+        let ownerTokenAccounts = await this.connection.getTokenAccountsByOwner(currentUser, {
+            mint: placeMintPDA,
+        })
+
+        for (let acct of ownerTokenAccounts.value) {
+            let acctPubKey = acct.pubkey
+            let tokenAcct = new TokenAccount(acctPubKey, acct.account);
+            this.updateCurrentUserPlaceTokenAccounts(tokenAcct);
+            let sub = this.connection.onAccountChange(acct.pubkey, (acctInfo) => {
+                console.log("user place tokens");
+                let tokenAccount = new TokenAccount(acctPubKey, acctInfo);
+                this.updateCurrentUserPlaceTokenAccounts(tokenAccount);
+            })
+
+            if (this.currentUserATASubscriptions === null) {
+                this.currentUserATASubscriptions = [sub]
+            } else {
+                this.currentUserATASubscriptions.push(sub)
+            }
+        }
+    }
+
+    private unsubscribeFromCurrentUserPlaceTokenAccounts() {
+        if (this.currentUserATASubscriptions === null) {
+            return;
+        }
+
+        console.log("Unsubscribing from user place token accounts")
+
+        for (let sub of this.currentUserATASubscriptions) {
+            this.connection.removeAccountChangeListener(sub)
+        }
+    }
+
+    private updateCurrentUserPlaceTokenAccounts(updatedAcct: TokenAccount) {
+        if (this.currentUserPlaceTokenAccounts === null) {
+            this.currentUserPlaceTokenAccounts = [updatedAcct];
+        } else {
+            let found = false;
+            this.currentUserPlaceTokenAccounts.map((existingAcct) => {
+                if (existingAcct.pubkey.toBase58() === updatedAcct.pubkey.toBase58()) {
+                    found = true;
+                    return updatedAcct;
+                } else {
+                    return existingAcct;
+                }
+            })
+
+            if (!found) {
+                this.currentUserPlaceTokenAccounts.push(updatedAcct);
+            }
+        }
+
+        this.OnCurrentUserPlaceTokenAcctsUpdated.dispatch(this.currentUserPlaceTokenAccounts);
     }
 
     public patchAccountToPixels(acct: PatchData): Uint8ClampedArray {
@@ -247,11 +471,7 @@ export class PlaceClient {
 
     public async fetchAllPatches() {
         extendBorsh();
-        if (this.subscription !== null) {
-            this.connection.removeProgramAccountChangeListener(this.subscription);
-        }
-
-        this.subscription = null;
+        this.unsubscribeFromPatchUpdates();
         const config = { filters: [this.patchAccountsFilter] }
         let allAccounts = await this.connection.getProgramAccounts(PlaceProgram.PUBKEY, config);
         let allAccountsParsed = allAccounts.flatMap((value) => {
@@ -278,6 +498,22 @@ export class PlaceClient {
         }
 
         this.subscribeToPatchUpdates();
+    }
+
+    public getTotalClaimableTokensCount(owner: PublicKey): number | null {
+        if (owner === null || owner === undefined) return null;
+        let ownerCache = this.tokenAccountsCache.get(owner.toBase58())
+        if (ownerCache === undefined) return null;
+
+        let claimableTokensCount = 0;
+
+        for (let [k, v] of ownerCache) {
+            if (v.gameplayTokenAccount !== null) {
+                claimableTokensCount += v.gameplayTokenAccount.data.place_tokens_owed;
+            }
+        }
+
+        return claimableTokensCount;
     }
 
     public getSortedGameplayTokenResultsForOwner(owner: PublicKey) {
@@ -385,6 +621,7 @@ export class PlaceClient {
         }
 
         let sorted = this.getSortedGameplayTokenResultsForOwner(owner);
+        console.log("dispatching gameplay tokens update");
         this.OnGameplayTokenAcctsDidUpdate.dispatch(owner, sorted);
     }
 }

@@ -91,6 +91,45 @@
     cursor: pointer;
 }
 
+.toolbox__ownership-container {
+    margin: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.toolbox__ownership-stat {
+    width: 100%;
+    display: flex;
+    padding: 0;
+    margin: 5px;
+}
+
+.toolbox__ownership-heading {
+    width: 100%;
+    display: flex;
+    padding: 0;
+    margin: 5px;
+    border-top: 1px solid #fefefe;
+}
+
+.toolbox__ownership-claim-tokens-btn {
+    border-radius: 0.25rem;
+    background-color: #5497D5;
+    min-width: 100px;
+    min-height: 48px;
+    font-family: 'PublicPixel';
+    font-weight: normal;
+    border: 0;
+    text-transform: capitalize;
+    color: white;
+    margin: 10px;
+}
+
+.toolbox__ownership-stat>h6 {
+    padding: 0;
+    margin: 5px;
+}
+
 @media (max-width: 576px) {
     /* TODO - Figure out how to handle mobile
 

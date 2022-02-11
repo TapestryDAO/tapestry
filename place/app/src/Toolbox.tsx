@@ -1,9 +1,11 @@
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenFetchResult } from '@tapestrydao/place-client';
-import { DragEventHandler, FC, useEffect, useState } from 'react';
+import { DragEventHandler, FC, UIEventHandler, useEffect, useState } from 'react';
 import BN from 'bn.js';
+import { MintInfo, u64 } from '@solana/spl-token';
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { TokenAccount } from '@metaplex-foundation/mpl-core';
 
 require('./toolbox.css');
 
@@ -117,6 +119,124 @@ export const PaintbrushTool: FC = () => {
     </div>
 }
 
+export const Ownership: FC = () => {
+
+    let { publicKey, sendTransaction } = useWallet();
+    let { connection } = useConnection();
+    let [claimableTokensCount, setClaimableTokensCount] = useState<number | null>(null);
+    let [placeTokenSuppy, setPlaceTokenSuppy] = useState<number | null>(null);
+    let [userOwnedTokens, setUserOwnedTokens] = useState<number | null>(null);
+    let [claimProcessing, setClaimProcessing] = useState<boolean>(false);
+
+    const updateClaimableTokensCount = () => {
+        let client = PlaceClient.getInstance();
+        if (publicKey !== null && publicKey !== undefined) {
+            let count = client.getTotalClaimableTokensCount(publicKey);
+            setClaimableTokensCount(count);
+        } else {
+            setClaimableTokensCount(null);
+        }
+    }
+
+    const updatePlaceTokenSupply = (mintInfo: MintInfo | null) => {
+        if (mintInfo === null) {
+            setPlaceTokenSuppy(null);
+            return;
+        }
+
+        let buffer = Buffer.from(mintInfo.supply);
+        let supplyBN = u64.fromBuffer(buffer);
+        let supply = parseInt(supplyBN.toString());
+        setPlaceTokenSuppy(supply);
+    }
+
+    const updateUserPlaceTokens = (tokenAccts: TokenAccount[] | null) => {
+        if (tokenAccts === null) {
+            setUserOwnedTokens(null);
+            return;
+        }
+
+        let tokenAmountTotal = tokenAccts.reduce((prev, current) => {
+            return prev.add(current.data.amount)
+        }, new BN(0));
+        setUserOwnedTokens(tokenAmountTotal.toNumber())
+    }
+
+    const handleClaimButtonPressed = async () => {
+        if (publicKey === null) return;
+        setClaimProcessing(true);
+        let claimTxs = await PlaceClient.getInstance().packClaimTokensTX(publicKey);
+        if (claimTxs === null) {
+            setClaimProcessing(false);
+            return;
+        }
+
+        for (let tx of claimTxs) {
+            console.log("Sending claim tx");
+            let sig = await sendTransaction(tx, connection);
+            console.log("claim tx sig: ", sig);
+            let result = await connection.confirmTransaction(sig, "finalized")
+            console.log("Claim Result: ", result);
+        }
+
+        await PlaceClient.getInstance().fetchGameplayTokensForOwner(publicKey);
+
+        setClaimProcessing(false);
+    }
+
+    useEffect(() => {
+        let client = PlaceClient.getInstance();
+
+        client.setCurrentUser(publicKey);
+
+        updateClaimableTokensCount();
+        let sub = client.OnGameplayTokenAcctsDidUpdate.add((owner, accts) => {
+            console.log("app got gpt update")
+            updateClaimableTokensCount();
+        });
+
+        updatePlaceTokenSupply(client.currentMintInfo)
+        let tokenMintSub = client.OnPlaceTokenMintUpdated.add(updatePlaceTokenSupply);
+
+        updateUserPlaceTokens(client.currentUserPlaceTokenAccounts)
+        let tokenAcctsSub = client.OnCurrentUserPlaceTokenAcctsUpdated.add(updateUserPlaceTokens)
+
+        return () => {
+            client.OnGameplayTokenAcctsDidUpdate.detach(sub);
+            client.OnPlaceTokenMintUpdated.detach(tokenMintSub);
+            client.OnCurrentUserPlaceTokenAcctsUpdated.detach(tokenAcctsSub);
+        };
+    }, [publicKey])
+
+    let showClaimTokensButton = claimableTokensCount !== null ? claimableTokensCount > 0 : false;
+    let claimButtonText = claimProcessing ? "Processing..." : "CLAIM " + claimableTokensCount;
+
+    return <div className="toolbox__ownership-container">
+        <div className='toolbox__ownership-heading'>
+            <h4>Place Tokens</h4>
+        </div>
+        <div className="toolbox__ownership-stat">
+            {placeTokenSuppy === null ? <></> : <h6>Total Supply: {placeTokenSuppy}</h6>}
+        </div>
+        <div className='toolbox__ownership-stat'>
+            {claimableTokensCount === null ?
+                <></> :
+                <h6>Claimable: {claimableTokensCount}</h6>
+            }
+        </div>
+        <div className='toolbox__ownership-stat'>
+            {userOwnedTokens === null ? <></> : <h6>Owned: {userOwnedTokens}</h6>}
+        </div>
+        {showClaimTokensButton ?
+            <button
+                disabled={claimProcessing}
+                onClick={handleClaimButtonPressed}
+                className='toolbox__ownership-claim-tokens-btn'
+            >{claimButtonText}</button>
+            : <></>}
+    </div>
+}
+
 export const Toolbox: FC = () => {
     const { wallet } = useWallet();
 
@@ -130,6 +250,7 @@ export const Toolbox: FC = () => {
                 {wallet && <WalletDisconnectButton />}
             </div>
             <PaintbrushTool></PaintbrushTool>
+            <Ownership></Ownership>
             <Pallete />
         </div>
     );
