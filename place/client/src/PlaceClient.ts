@@ -1,19 +1,14 @@
 import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter, AccountInfo, Transaction } from "@solana/web3.js";
 import { PlaceProgram } from ".";
 import { extendBorsh } from "./utils/borsh";
-// import { nintendo } from "./palletes/nintendo";
-// import { hept32 } from "./palletes/hept32";
 import { blend32 } from "./palletes/blend32";
 import { PlaceAccountType, PatchData, PlaceStateData } from "./accounts";
 import base58 from "bs58";
-import { Account, TokenAccount } from "@metaplex-foundation/mpl-core";
+import { TokenAccount } from "@metaplex-foundation/mpl-core";
 import BN from 'bn.js';
 import { GameplayTokenMetaAccount } from "./accounts/GameplayTokenMetaAccount";
-import { Signal } from 'type-signals';
-import { number } from "yargs";
+import { Signal } from './signals';
 import { MintLayout, Token, MintInfo } from "@solana/spl-token";
-import { text } from "stream/consumers";
-
 
 export const PATCH_WIDTH = 20;
 export const PATCH_HEIGHT = 20;
@@ -28,21 +23,16 @@ export type CanvasUpdate = {
 
 type PublicKeyB58 = string;
 
-export enum GameplayTokenFetchStatus {
-    Found,
-    NotFound,
+export type GameplayTokenRecord = {
+    mintPubkey: PublicKeyB58,
+    gameplayTokenMetaAcct: GameplayTokenMetaAccount,
+    userTokenAccount: TokenAccount,
+    _userTokenAccountSubscription: number | null,
+    _gptAccountSubscription: number | null,
 }
 
-export type GameplayTokenFetchResult = {
-    status: GameplayTokenFetchStatus,
-    // the account holding our metadata related to the NFT
-    gameplayTokenAccount: GameplayTokenMetaAccount | null,
-    // account that holds the NFT (i.e. has balance of 1)
-    tokenAccount: TokenAccount | null,
-}
-
-export type GameplayTokenAcctUpdateHandler =
-    (owner: PublicKey, gameplayAccounts: GameplayTokenFetchResult[]) => void;
+export type GameplayTokenRecordsHandler =
+    (records: GameplayTokenRecord[]) => void;
 
 export type PlaceTokenMintUpdateHandler =
     (mintInfo: MintInfo) => void;
@@ -62,29 +52,26 @@ export class PlaceClient {
     private currentUserATASubscriptions: number[] | null = null;
 
     // Signals to expose state changes to react app
-    public OnGameplayTokenAcctsDidUpdate = new Signal<GameplayTokenAcctUpdateHandler>();
     public OnPlaceTokenMintUpdated = new Signal<PlaceTokenMintUpdateHandler>();
     public OnCurrentUserPlaceTokenAcctsUpdated = new Signal<CurrentUserPlaceTokenAcctsUpdateHandler>();
+    public OnGameplayTokenRecordsUpdated = new Signal<GameplayTokenRecordsHandler>();
 
-    // state that gets updated via various RPC subscriptions
+    // current state updated via various RPC subscriptions
     public currentSlot: number | null = null;
     public currentMintInfo: MintInfo | null = null;
     public currentUser: PublicKey | null = null;
     public currentUserPlaceTokenAccounts: TokenAccount[] | null = null;
+    public currentUserGptRecords: GameplayTokenRecord[] | null = null;
 
     // A buffer containing a color pallete
     // a color pallete is mapping from 8 bit values to full 32 bit color values (RBGA)
     // simply use the 8 bit value, multiplied by 4 to find the index of the mapping
     // for that value
     private colorPallete: Buffer;
-
     private pallete = blend32;
 
     // TODO(will): maybe implement a buffer pool to save on alloc's when queuing updates?
     public updatesQueue: CanvasUpdate[] = [];
-
-    // ownerPubkey -> (mintPubkey -> GameplayTokenFetchResult)
-    private tokenAccountsCache: Map<PublicKeyB58, Map<PublicKeyB58, GameplayTokenFetchResult>> = new Map();
 
     private patchAccountsFilter: GetProgramAccountsFilter = {
         memcmp: {
@@ -177,8 +164,6 @@ export class PlaceClient {
             offset += 1;
         }
 
-        console.log("OFFSET: ", offset);
-
         let r = rgb.substring(offset, offset += 2);
         let g = rgb.substring(offset, offset += 2);
         let b = rgb.substring(offset, offset += 2);
@@ -221,20 +206,11 @@ export class PlaceClient {
             return null;
         }
 
-        let ownerCache = this.tokenAccountsCache.get(currentUser.toBase58())
-        if (ownerCache === undefined) {
-            console.log("WARNING: no gpt token accounts for user: ", currentUser.toBase58());
-            return null;
-        }
+        let claimableGptAccts: GameplayTokenRecord[] = []
 
-
-        let claimableGptAccts: GameplayTokenFetchResult[] = []
-
-        for (let [k, v] of ownerCache) {
-            if (v.gameplayTokenAccount !== null
-                && v.tokenAccount != null
-                && v.gameplayTokenAccount.data.place_tokens_owed > 0) {
-                claimableGptAccts.push(v);
+        for (let record of this.currentUserGptRecords) {
+            if (record.gameplayTokenMetaAcct.data.place_tokens_owed > 0) {
+                claimableGptAccts.push(record);
             }
         }
 
@@ -255,8 +231,8 @@ export class PlaceClient {
                 currentTx = new Transaction();
             }
 
-            let gptAcct = result.gameplayTokenAccount;
-            let randomSeed = result.gameplayTokenAccount.data.random_seed
+            let gptAcct = result.gameplayTokenMetaAcct;
+            let randomSeed = result.gameplayTokenMetaAcct.data.random_seed
             let gptAta = await PlaceProgram.findGameplayTokenMintAta(gptAcct.data.token_mint_pda, currentUser);
             let ix = await PlaceProgram.claimTokens({
                 claimer: currentUser,
@@ -297,7 +273,7 @@ export class PlaceClient {
     }
 
     public unsubscribeFromPatchUpdates() {
-        console.log("unsubscribing from patch updates")
+        console.log("unsubscribing from patch updates");
         if (this.placePatchesSubscription !== null) {
             this.connection.removeProgramAccountChangeListener(this.placePatchesSubscription);
         }
@@ -317,6 +293,7 @@ export class PlaceClient {
         if (this.currentUser !== null) {
             console.log("Unsubscribing from previous user: ", this.currentUser)
             this.unsubscribeFromCurrentUserPlaceTokenAccounts();
+            this.unsubscribeFromCurrentUserGptRecords();
         }
 
         this.currentUser = newCurrentUser;
@@ -324,6 +301,7 @@ export class PlaceClient {
         if (this.currentUser !== null) {
             console.log("Subscribing to state for new user: ", this.currentUser.toBase58());
             this.subscribeToCurrentUserPlaceTokenAccounts();
+            this.subscribeToCurrentUserGptRecords();
         }
     }
 
@@ -381,7 +359,6 @@ export class PlaceClient {
             let tokenAcct = new TokenAccount(acctPubKey, acct.account);
             this.updateCurrentUserPlaceTokenAccounts(tokenAcct);
             let sub = this.connection.onAccountChange(acct.pubkey, (acctInfo) => {
-                console.log("user place tokens");
                 let tokenAccount = new TokenAccount(acctPubKey, acctInfo);
                 this.updateCurrentUserPlaceTokenAccounts(tokenAccount);
             })
@@ -499,128 +476,143 @@ export class PlaceClient {
         this.subscribeToPatchUpdates();
     }
 
-    public getTotalClaimableTokensCount(owner: PublicKey): number | null {
-        if (owner === null || owner === undefined) return null;
-        let ownerCache = this.tokenAccountsCache.get(owner.toBase58())
-        if (ownerCache === undefined) return null;
+    public getTotalClaimableTokensCount(): number | null {
+        if (this.currentUser === null) return null;
+        if (this.currentUserGptRecords === null) return null;
 
-        let claimableTokensCount = 0;
-
-        for (let [k, v] of ownerCache) {
-            if (v.gameplayTokenAccount !== null) {
-                claimableTokensCount += v.gameplayTokenAccount.data.place_tokens_owed;
-            }
-        }
-
-        return claimableTokensCount;
+        return this.currentUserGptRecords.reduce((prev, value) => {
+            return prev + value.gameplayTokenMetaAcct.data.place_tokens_owed
+        }, 0);
     }
 
-    public getSortedGameplayTokenResultsForOwner(owner: PublicKey) {
-        if (owner === null || owner === undefined) return [];
-        let ownerCache = this.tokenAccountsCache.get(owner.toBase58());
-        if (ownerCache === undefined) return [];
-
-        let results: GameplayTokenFetchResult[] = [];
-        for (let [k, v] of ownerCache) {
-            if (v.gameplayTokenAccount !== null) {
-                // TODO(will): could need to handle case where data failed to parse for some reason?
-                results.push(v);
-            }
-        }
-
-        results = results.filter((a) => a.gameplayTokenAccount !== null)
-
-        results.sort((a, b) => {
-            return a.gameplayTokenAccount!.data.update_allowed_slot
-                .cmp(b.gameplayTokenAccount!.data.update_allowed_slot)
+    public getCurrentUserGptRecordsSorted(): GameplayTokenRecord[] | null {
+        if (this.currentUserGptRecords === null) return null;
+        return this.currentUserGptRecords.sort((a, b) => {
+            return a.gameplayTokenMetaAcct.data.update_allowed_slot
+                .cmp(b.gameplayTokenMetaAcct.data.update_allowed_slot)
         })
-
-        return results;
     }
 
-    // attempts to refresh a gameplay token from rpc by deleting it from the cache and re-fetching
-    public async refreshGameplayToken(owner: PublicKey, token: GameplayTokenMetaAccount) {
-
-        let currentOwnerCache = this.tokenAccountsCache.get(owner.toBase58());
-        if (currentOwnerCache !== undefined) {
-            let tokenMintPubkey = token.data.token_mint_pda;
-            if (tokenMintPubkey === undefined) {
-                console.log("Tried to refresh bad token mint");
-            } else {
-                currentOwnerCache.delete(tokenMintPubkey.toBase58())
-            }
-        } else {
-            console.log("tried to refresh non-existant owner", owner.toBase58());
+    private async subscribeToCurrentUserGptRecords() {
+        if (this.currentUser === null) {
+            console.log("WARNING: refreshing current user gpt accounts with null current user");
+            return;
         }
-        this.fetchGameplayTokensForOwner(owner);
-    }
 
-    public async fetchGameplayTokensForOwner(owner: PublicKey) {
-        let allTokenAccounts = await TokenAccount.getTokenAccountsByOwner(this.connection, owner);
-        let nftTokenAccounts = allTokenAccounts
-            .filter((acct) => acct.data.amount != new BN(1));
-        // let nftMintPubkeys = nftTokenAccounts.map((acct) => acct.data.mint);
+        if (this.currentUserGptRecords !== null) {
+            console.log("WARNING: tried to subscribe without unsubscribing")
+        }
 
-        let currentOwnerCache = this.tokenAccountsCache.get(owner.toBase58())
+        console.log("Subscribing to user token updates", this.currentUser.toBase58())
 
-        let nftAccountsToFetch: TokenAccount[] = []
+        this.currentUserGptRecords = await this.fetchGptRecords(this.currentUser);
+        console.log("records len", this.currentUserGptRecords)
 
-        if (currentOwnerCache !== undefined) {
-            // any NFT owned by `owner` that we do not have a cache record for, prepare to fetch it
-            for (let nftAcct of nftTokenAccounts) {
-                let found = currentOwnerCache.get(nftAcct.data.mint.toBase58()) != undefined
-                if (!found) {
-                    nftAccountsToFetch.push(nftAcct)
+        for (let record of this.currentUserGptRecords) {
+            let mintPubkey = record.mintPubkey;
+            let gptAcctPubkey = record.gameplayTokenMetaAcct.pubkey;
+            let tokenAcctPubkey = record.userTokenAccount.pubkey;
+            let gptSub = this.connection.onAccountChange(gptAcctPubkey, (acct) => {
+                console.log("GPT acct changed: ", mintPubkey);
+                let gptAcct = new GameplayTokenMetaAccount(gptAcctPubkey, acct);
+                record.gameplayTokenMetaAcct = gptAcct;
+                this.OnGameplayTokenRecordsUpdated.dispatch(this.currentUserGptRecords);
+            }, "recent")
+            record._gptAccountSubscription = gptSub;
+
+            let tokenAcctSub = this.connection.onAccountChange(tokenAcctPubkey, (acct) => {
+                console.log("GPT token acct changed: ", mintPubkey);
+                let tokenAcct = new TokenAccount(tokenAcctPubkey, acct);
+                if (!tokenAcct.data.amount.eq(new BN(1))) {
+                    this.unsubscribeFromGptRecord(mintPubkey)
                 }
-            }
-        } else {
-            nftAccountsToFetch = nftTokenAccounts;
-            currentOwnerCache = new Map()
-            this.tokenAccountsCache.set(owner.toBase58(), currentOwnerCache);
+            }, "recent")
+            record._userTokenAccountSubscription = tokenAcctSub
         }
 
-        console.log("found ", nftTokenAccounts.length, " NFT mints, fetching: ", nftAccountsToFetch.length);
+        console.log("Dispatching records update")
+        this.OnGameplayTokenRecordsUpdated.dispatch(this.currentUserGptRecords);
+    }
 
-        // NOTE(will): theres a lot of potential for cache corruption here
-        // i.e. user buys a gameplay token, fetch happens, but RPC nodes don't find newly minted
-        // gameplay token for whatever reason, cache record exists but as NotFound
+    private unsubscribeFromCurrentUserGptRecords() {
+        if (this.currentUserGptRecords === null) {
+            console.log("WARNING: tried to unsubscribe without subscribing")
+            return;
+        }
 
-        // TODO(will): there some edge cases here to think about, like if account fails to parse
-        // for some reason and cache corruption
+        for (let record of this.currentUserGptRecords) {
+            if (record._gptAccountSubscription !== null) {
+                this.connection.removeAccountChangeListener(record._gptAccountSubscription);
+            }
 
-        for (const nftAcct of nftAccountsToFetch) {
-            let gameplayTokenAccount = await PlaceProgram.getProgramAccounts(this.connection, {
-                commitment: "recent",
+            if (record._userTokenAccountSubscription !== null) {
+                this.connection.removeAccountChangeListener(record._userTokenAccountSubscription);
+            }
+        }
+
+        this.currentUserGptRecords = null;
+    }
+
+
+    private unsubscribeFromGptRecord(mintPubkey: PublicKeyB58) {
+        if (this.currentUserGptRecords === null) {
+            console.log("WARNING: attempted to remove gpt record, but no records exist: ", mintPubkey);
+            return;
+        }
+
+        this.currentUserGptRecords = this.currentUserGptRecords
+            .filter((record) => {
+                if (record.mintPubkey === mintPubkey) {
+                    if (record._gptAccountSubscription !== null) {
+                        this.connection.removeAccountChangeListener(record._gptAccountSubscription);
+                    }
+                    if (record._userTokenAccountSubscription !== null) {
+                        this.connection.removeAccountChangeListener(record._userTokenAccountSubscription);
+                    }
+                    return false;
+                } else {
+                    return true;
+                }
+            })
+
+        this.OnGameplayTokenRecordsUpdated.dispatch(this.currentUserGptRecords);
+    }
+
+    private async fetchGptRecords(owner: PublicKey): Promise<GameplayTokenRecord[]> {
+        let allUserTokenAccounts = await TokenAccount.getTokenAccountsByOwner(this.connection, owner);
+        console.log("user token accts: ", allUserTokenAccounts.length)
+        let potentialGptNftTokens = allUserTokenAccounts
+            .filter((acct) => acct.data.amount != new BN(1));
+
+        let gptRecords: GameplayTokenRecord[] = []
+
+        for (const nftAcct of potentialGptNftTokens) {
+            let mintPubkey = nftAcct.data.mint.toBase58();
+            let gameplayTokenAccounts = await PlaceProgram.getProgramAccounts(this.connection, {
+                commitment: "processed",
                 filters: [
                     {
                         memcmp: {
-                            bytes: nftAcct.data.mint.toBase58(),
+                            bytes: mintPubkey,
                             offset: 1 + 1 + 8 + 8,
                         }
                     }
                 ]
-            });
+            })
 
-            if (gameplayTokenAccount.length == 0) {
-                currentOwnerCache.set(nftAcct.data.mint.toBase58(), {
-                    status: GameplayTokenFetchStatus.NotFound,
-                    gameplayTokenAccount: null,
-                    tokenAccount: null,
-                })
-            } else {
-                let accountInfo = gameplayTokenAccount[0];
+            if (gameplayTokenAccounts.length > 0) {
+                let accountInfo = gameplayTokenAccounts[0];
                 let account = new GameplayTokenMetaAccount(accountInfo.pubkey, accountInfo.info)
-
-                currentOwnerCache.set(nftAcct.data.mint.toBase58(), {
-                    status: GameplayTokenFetchStatus.Found,
-                    gameplayTokenAccount: account,
-                    tokenAccount: nftAcct,
+                gptRecords.push({
+                    gameplayTokenMetaAcct: account,
+                    mintPubkey: mintPubkey,
+                    userTokenAccount: nftAcct,
+                    _gptAccountSubscription: null,
+                    _userTokenAccountSubscription: null,
                 })
             }
         }
 
-        let sorted = this.getSortedGameplayTokenResultsForOwner(owner);
-        console.log("dispatching gameplay tokens update");
-        this.OnGameplayTokenAcctsDidUpdate.dispatch(owner, sorted);
+        return gptRecords;
     }
 }

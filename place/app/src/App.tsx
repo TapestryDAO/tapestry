@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useRef, useState } from 'react';
+import React, { FC, useEffect, useRef, useState, DragEvent, WheelEvent, MouseEvent } from 'react';
 import { PlaceClient, PlaceProgram } from '@tapestrydao/place-client'
 import { renderToStaticMarkup } from "react-dom/server"
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
@@ -12,9 +12,6 @@ const PLACE_WIDTH = 1000;
 const PLACE_HEIGHT = 1000;
 
 export const TapestryCanvas: FC = (props) => {
-    let thing = PlaceClient.getInstance();
-    thing.subscribeToPatchUpdates();
-
     const { publicKey, sendTransaction } = useWallet();
     const { connection } = useConnection();
 
@@ -132,42 +129,36 @@ export const TapestryCanvas: FC = (props) => {
     }
 
     const onDrop = async (event: DragEvent) => {
+        let client = PlaceClient.getInstance();
+
+        if (publicKey === null) return;
+        if (client.currentSlot === null) {
+            console.log("bailing on drop because we don't know current slot")
+            return;
+        }
+
         const droppedColor = event.dataTransfer?.getData("text/plain")
         console.log("Dropped Color: ", droppedColor);
+
         // NOTE(will): So these offsets give us the coordinates we want within the canvs
         // but unfortunately, they are rounded integers, the effect of this is that
         // only dropping in the top left of a pixel is rounded to the correct coordinates
         // I don't see floats anywhere on this object so unsure how to resolve this at the moment. 
-
-
         // NOTE(will): subtracting 1 works here because I am offseting the canvas by 0.5 on top and left
         let eventX = event.nativeEvent.offsetX as number - 1;
         let eventY = event.nativeEvent.offsetY as number - 1;
         console.log("drop location: ", eventX, ",", eventY);
 
-        if (publicKey === null) return;
-
-        let client = PlaceClient.getInstance();
-
-        let sortedTokenResults = client.getSortedGameplayTokenResultsForOwner(publicKey);
+        let sortedTokenResults = client.getCurrentUserGptRecordsSorted();
+        if (sortedTokenResults === null || sortedTokenResults.length == 0) return;
 
         console.log("got sorted results: ", sortedTokenResults.length);
 
-        if (sortedTokenResults === undefined || sortedTokenResults.length == 0) return;
-
         let tokenResult = sortedTokenResults[0];
+        let readyForUpdate = tokenResult.gameplayTokenMetaAcct.data.update_allowed_slot
+            .lte(new BN(client.currentSlot))
 
-        if (client.currentSlot === null) {
-            console.log("we don't know what slot it is!");
-            return;
-        }
-
-        if (tokenResult.gameplayTokenAccount === null || tokenResult.tokenAccount === null) {
-            console.log("bad result, something was null");
-            return;
-        }
-
-        if (tokenResult.gameplayTokenAccount.data.update_allowed_slot.gt(new BN(client.currentSlot))) {
+        if (!readyForUpdate) {
             console.log("Token not ready for update");
             return;
         }
@@ -177,8 +168,8 @@ export const TapestryCanvas: FC = (props) => {
             y: eventY,
             pixel: PlaceClient.getInstance().pixelColorToPalletColor(droppedColor),
             payer: publicKey,
-            gameplay_token_meta_acct: tokenResult.gameplayTokenAccount.pubkey,
-            gameplay_token_acct: tokenResult.tokenAccount.pubkey,
+            gameplay_token_meta_acct: tokenResult.gameplayTokenMetaAcct.pubkey,
+            gameplay_token_acct: tokenResult.userTokenAccount.pubkey,
         }
 
         let ix = await PlaceProgram.setPixel(pixelParams);
@@ -186,9 +177,6 @@ export const TapestryCanvas: FC = (props) => {
         let sig = await sendTransaction(tx, connection);
         let result = await connection.confirmTransaction(sig, "confirmed");
         console.log(result)
-
-        // Refresh the token cache (not convinced this is 100% reliable)
-        client.refreshGameplayToken(publicKey, tokenResult.gameplayTokenAccount);
     }
 
     return (
@@ -237,6 +225,13 @@ export const TapestryCanvas: FC = (props) => {
 
 // TODO(will): "App" element here is awkward because its nested
 export const App: FC = () => {
+
+    let { publicKey } = useWallet();
+
+    useEffect(() => {
+        PlaceClient.getInstance().setCurrentUser(publicKey);
+    })
+
     return (
         <div className="App">
             <TapestryCanvas />
