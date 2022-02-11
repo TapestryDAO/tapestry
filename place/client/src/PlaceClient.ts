@@ -55,10 +55,22 @@ export class PlaceClient {
 
     private connection: Connection;
 
-    private subscription: number | null = null;
+    // Subscriptions
+    private placePatchesSubscription: number | null = null;
     private placeTokenMintSubscription: number | null = null;
     private currentSlotSubscription: number;
     private currentUserATASubscriptions: number[] | null = null;
+
+    // Signals to expose state changes to react app
+    public OnGameplayTokenAcctsDidUpdate = new Signal<GameplayTokenAcctUpdateHandler>();
+    public OnPlaceTokenMintUpdated = new Signal<PlaceTokenMintUpdateHandler>();
+    public OnCurrentUserPlaceTokenAcctsUpdated = new Signal<CurrentUserPlaceTokenAcctsUpdateHandler>();
+
+    // state that gets updated via various RPC subscriptions
+    public currentSlot: number | null = null;
+    public currentMintInfo: MintInfo | null = null;
+    public currentUser: PublicKey | null = null;
+    public currentUserPlaceTokenAccounts: TokenAccount[] | null = null;
 
     // A buffer containing a color pallete
     // a color pallete is mapping from 8 bit values to full 32 bit color values (RBGA)
@@ -70,18 +82,6 @@ export class PlaceClient {
 
     // TODO(will): maybe implement a buffer pool to save on alloc's when queuing updates?
     public updatesQueue: CanvasUpdate[] = [];
-
-    public OnGameplayTokenAcctsDidUpdate = new Signal<GameplayTokenAcctUpdateHandler>();
-    public OnPlaceTokenMintUpdated = new Signal<PlaceTokenMintUpdateHandler>();
-    public OnCurrentUserPlaceTokenAcctsUpdated = new Signal<CurrentUserPlaceTokenAcctsUpdateHandler>();
-
-    // Updated via connection's subscription to slot changes
-    public currentSlot: number | null = null;
-
-    public currentMintInfo: MintInfo | null = null;
-
-    public currentUser: PublicKey | null = null;
-    public currentUserPlaceTokenAccounts: TokenAccount[] | null = null;
 
     // ownerPubkey -> (mintPubkey -> GameplayTokenFetchResult)
     private tokenAccountsCache: Map<PublicKeyB58, Map<PublicKeyB58, GameplayTokenFetchResult>> = new Map();
@@ -274,10 +274,10 @@ export class PlaceClient {
 
     public subscribeToPatchUpdates() {
         extendBorsh();
-        if (this.subscription !== null) return;
+        if (this.placePatchesSubscription !== null) return;
 
         console.log("Subscribing to patch updates");
-        this.subscription = this.connection.onProgramAccountChange(PlaceProgram.PUBKEY, async (accountInfo, ctx) => {
+        this.placePatchesSubscription = this.connection.onProgramAccountChange(PlaceProgram.PUBKEY, async (accountInfo, ctx) => {
 
             let data = accountInfo.accountInfo.data;
             if (data !== undefined) {
@@ -298,11 +298,11 @@ export class PlaceClient {
 
     public unsubscribeFromPatchUpdates() {
         console.log("unsubscribing from patch updates")
-        if (this.subscription !== null) {
-            this.connection.removeProgramAccountChangeListener(this.subscription);
+        if (this.placePatchesSubscription !== null) {
+            this.connection.removeProgramAccountChangeListener(this.placePatchesSubscription);
         }
 
-        this.subscription = null;
+        this.placePatchesSubscription = null;
     }
 
     // Set to null to remove subscriptions for a user
