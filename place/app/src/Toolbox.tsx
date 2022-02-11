@@ -3,7 +3,9 @@ import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapte
 import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenFetchResult } from '@tapestrydao/place-client';
 import { DragEventHandler, FC, useEffect, useState } from 'react';
 import BN from 'bn.js';
+import { MintInfo, u64 } from '@solana/spl-token';
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { TokenAccount } from '@metaplex-foundation/mpl-core';
 
 require('./toolbox.css');
 
@@ -117,6 +119,87 @@ export const PaintbrushTool: FC = () => {
     </div>
 }
 
+export const Ownership: FC = () => {
+
+    let { publicKey } = useWallet();
+    let [claimableTokensCount, setClaimableTokensCount] = useState<number | null>(null);
+    let [placeTokenSuppy, setPlaceTokenSuppy] = useState<number | null>(null);
+    let [userOwnedTokens, setUserOwnedTokens] = useState<number | null>(null);
+
+    const updateClaimableTokensCount = () => {
+        let client = PlaceClient.getInstance();
+        if (publicKey !== null && publicKey !== undefined) {
+            let count = client.getTotalClaimableTokensCount(publicKey);
+            setClaimableTokensCount(count);
+        } else {
+            setClaimableTokensCount(null);
+        }
+    }
+
+    const updatePlaceTokenSupply = (mintInfo: MintInfo | null) => {
+        if (mintInfo === null) {
+            setPlaceTokenSuppy(null);
+            return;
+        }
+
+        let buffer = Buffer.from(mintInfo.supply);
+        let supplyBN = u64.fromBuffer(buffer);
+        let supply = parseInt(supplyBN.toString());
+        setPlaceTokenSuppy(supply);
+    }
+
+    const updateUserPlaceTokens = (tokenAccts: TokenAccount[] | null) => {
+        if (tokenAccts === null) {
+            setUserOwnedTokens(null);
+            return;
+        }
+
+        let tokenAmountTotal = tokenAccts.reduce((prev, current, idx) => {
+            return prev.add(current.data.amount)
+        }, new BN(0));
+        setUserOwnedTokens(tokenAmountTotal.toNumber())
+    }
+
+    useEffect(() => {
+        let client = PlaceClient.getInstance();
+
+        client.setCurrentUser(publicKey);
+
+        updateClaimableTokensCount();
+        let sub = client.OnGameplayTokenAcctsDidUpdate.add((owner, accts) => {
+            updateClaimableTokensCount();
+        });
+
+        updatePlaceTokenSupply(client.currentMintInfo)
+        let tokenMintSub = client.OnPlaceTokenMintUpdated.add(updatePlaceTokenSupply);
+
+        updateUserPlaceTokens(client.currentUserPlaceTokenAccounts)
+        let tokenAcctsSub = client.OnCurrentUserPlaceTokenAcctsUpdated.add(updateUserPlaceTokens)
+
+        return () => {
+            client.OnGameplayTokenAcctsDidUpdate.detach(sub);
+            client.OnPlaceTokenMintUpdated.detach(tokenMintSub);
+            client.OnCurrentUserPlaceTokenAcctsUpdated.detach(tokenAcctsSub);
+        };
+    }, [publicKey])
+
+    return <div className="toolbox__ownership-container">
+        <div className="toolbox__ownership-stat">
+            {placeTokenSuppy === null ? <></> : <h6>Total Supply: {placeTokenSuppy}</h6>}
+        </div>
+        <div className='toolbox__ownership-stat'>
+            {claimableTokensCount === null ?
+                <></> :
+                <h6>Claimable: {claimableTokensCount}</h6>
+            }
+        </div>
+        <div className='toolbox__ownership-stat'>
+            {userOwnedTokens === null ? <></> : <h6>Owned: {userOwnedTokens}</h6>}
+        </div>
+
+    </div>
+}
+
 export const Toolbox: FC = () => {
     const { wallet } = useWallet();
 
@@ -130,6 +213,7 @@ export const Toolbox: FC = () => {
                 {wallet && <WalletDisconnectButton />}
             </div>
             <PaintbrushTool></PaintbrushTool>
+            <Ownership></Ownership>
             <Pallete />
         </div>
     );

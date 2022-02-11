@@ -91,6 +91,19 @@
     cursor: pointer;
 }
 
+.toolbox__ownership-container {
+    margin: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.toolbox__ownership-stat {
+    width: 100%;
+    display: flex;
+    padding: 0;
+    margin: 5px;
+}
+
 @media (max-width: 576px) {
     /* TODO - Figure out how to handle mobile
 
