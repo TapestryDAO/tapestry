@@ -226,19 +226,19 @@ export class PlaceClient {
 
         // if this user doesn't have an ata, create one
         if (destAta === null) {
-            let placeStatePda = await PlaceProgram.findPlaceStatePda();
+            let placeTokenMintPda = await PlaceProgram.findPlaceTokenMintPda();
             destAtaPubkey = await Token.getAssociatedTokenAddress(
                 ASSOCIATED_TOKEN_PROGRAM_ID,
                 TOKEN_PROGRAM_ID,
-                placeStatePda,
+                placeTokenMintPda,
                 this.currentUser,
-                true,
+                false,
             );
 
             let create_ata_ix = Token.createAssociatedTokenAccountInstruction(
                 ASSOCIATED_TOKEN_PROGRAM_ID,
                 TOKEN_PROGRAM_ID,
-                placeStatePda,
+                placeTokenMintPda,
                 destAtaPubkey,
                 this.currentUser,
                 this.currentUser,
