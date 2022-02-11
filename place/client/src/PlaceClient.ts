@@ -1,4 +1,4 @@
-import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter, AccountInfo } from "@solana/web3.js";
+import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter, AccountInfo, Transaction } from "@solana/web3.js";
 import { PlaceProgram } from ".";
 import { extendBorsh } from "./utils/borsh";
 // import { nintendo } from "./palletes/nintendo";
@@ -12,6 +12,7 @@ import { GameplayTokenMetaAccount } from "./accounts/GameplayTokenMetaAccount";
 import { Signal } from 'type-signals';
 import { number } from "yargs";
 import { MintLayout, Token, MintInfo } from "@solana/spl-token";
+import { text } from "stream/consumers";
 
 
 export const PATCH_WIDTH = 20;
@@ -199,6 +200,78 @@ export class PlaceClient {
         return 0;
     }
 
+    public getLargestCurrentUserAta(): TokenAccount | null {
+        if (this.currentUserPlaceTokenAccounts === null || this.currentUserPlaceTokenAccounts.length == 0) {
+            return null;
+        }
+
+        // TODO(will): maybe sort these by amount? maybe try to combine them if user has multiple?
+
+        return this.currentUserPlaceTokenAccounts[0];
+    }
+
+    public async packClaimTokensTX(currentUser: PublicKey): Promise<Transaction[] | null> {
+        if (currentUser.toBase58() !== this.currentUser.toBase58()) {
+            console.log("WARNING: tried to pack claim tx with mismatched user")
+            return null;
+        }
+
+        if (currentUser === null) {
+            console.log("WARNING: tried to pack claim tx for null user");
+            return null;
+        }
+
+        let ownerCache = this.tokenAccountsCache.get(currentUser.toBase58())
+        if (ownerCache === undefined) {
+            console.log("WARNING: no gpt token accounts for user: ", currentUser.toBase58());
+            return null;
+        }
+
+
+        let claimableGptAccts: GameplayTokenFetchResult[] = []
+
+        for (let [k, v] of ownerCache) {
+            if (v.gameplayTokenAccount !== null
+                && v.tokenAccount != null
+                && v.gameplayTokenAccount.data.place_tokens_owed > 0) {
+                claimableGptAccts.push(v);
+            }
+        }
+
+        if (claimableGptAccts.length == 0) {
+            console.log("WARNING: no claimable accounts for user", currentUser.toBase58());
+            return null;
+        }
+
+        let allTransactions: Transaction[] = []
+        let currentTx = new Transaction();
+        let destAta = this.getLargestCurrentUserAta();
+
+        let max = 5;
+
+        for (let result of claimableGptAccts) {
+            if (currentTx.instructions.length >= max) {
+                allTransactions.push(currentTx);
+                currentTx = new Transaction();
+            }
+
+            let gptAcct = result.gameplayTokenAccount;
+            let randomSeed = result.gameplayTokenAccount.data.random_seed
+            let gptAta = await PlaceProgram.findGameplayTokenMintAta(gptAcct.data.token_mint_pda, currentUser);
+            let ix = await PlaceProgram.claimTokens({
+                claimer: currentUser,
+                gameplay_token_random_seed: randomSeed,
+                gameplay_token_ata: gptAta,
+                dest_ata: destAta.pubkey,
+            })
+
+            currentTx.add(ix);
+        }
+
+        allTransactions.push(currentTx);
+        return allTransactions;
+    }
+
     public subscribeToPatchUpdates() {
         extendBorsh();
         if (this.subscription !== null) return;
@@ -234,7 +307,13 @@ export class PlaceClient {
 
     // Set to null to remove subscriptions for a user
     public setCurrentUser(newCurrentUser: PublicKey | null) {
-        if (newCurrentUser === this.currentUser) return;
+        // this is a fucking atrocity
+        if (newCurrentUser === null && this.currentUser === null) return;
+        let newIsNull = newCurrentUser === null;
+        let oldIsNull = this.currentUser === null;
+        // logical xor
+        let onlyOneNull = (newIsNull && !oldIsNull) || (!newIsNull && oldIsNull)
+        if (!onlyOneNull && newCurrentUser.toBase58() === this.currentUser.toBase58()) return;
 
         if (this.currentUser !== null) {
             console.log("Unsubscribing from previous user: ", this.currentUser)
@@ -332,16 +411,9 @@ export class PlaceClient {
         if (this.currentUserPlaceTokenAccounts === null) {
             this.currentUserPlaceTokenAccounts = [updatedAcct];
         } else {
-            let shouldRemove = null;
-            for (let existingAcct of this.currentUserPlaceTokenAccounts) {
-                if (existingAcct.pubkey === updatedAcct.pubkey) {
-                    shouldRemove = existingAcct;
-                }
-            }
-
             let found = false;
             this.currentUserPlaceTokenAccounts.map((existingAcct) => {
-                if (existingAcct.pubkey === updatedAcct.pubkey) {
+                if (existingAcct.pubkey.toBase58() === updatedAcct.pubkey.toBase58()) {
                     found = true;
                     return updatedAcct;
                 } else {
@@ -356,16 +428,6 @@ export class PlaceClient {
 
         this.OnCurrentUserPlaceTokenAcctsUpdated.dispatch(this.currentUserPlaceTokenAccounts);
     }
-
-    // public async fetchPlaceTokenMint() {
-    //     let placeMintPDA = await PlaceProgram.findPlaceTokenMintPda();
-    //     let mintAcctInfo = await this.connection.getAccountInfo(placeMintPDA)
-    //     let mintAcctData = Buffer.from(mintAcctInfo.data);
-    //     let mintInfo = MintLayout.decode(mintAcctData) as MintInfo;
-    //     mintInfo.supply
-    //     this.connection.onAccountChange
-
-    // }
 
     public patchAccountToPixels(acct: PatchData): Uint8ClampedArray {
         let array = new Uint8ClampedArray(PATCH_HEIGHT * PATCH_WIDTH * 4);
@@ -559,6 +621,7 @@ export class PlaceClient {
         }
 
         let sorted = this.getSortedGameplayTokenResultsForOwner(owner);
+        console.log("dispatching gameplay tokens update");
         this.OnGameplayTokenAcctsDidUpdate.dispatch(owner, sorted);
     }
 }
