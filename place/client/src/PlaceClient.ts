@@ -227,12 +227,12 @@ export class PlaceClient {
 
     public async packClaimTokensTX(): Promise<Transaction[] | null> {
         if (this.currentUser === null) {
-            console.log("WARNING: tried to pack claim tx but current user was null")
+            console.warn("tried to pack claim tx but current user was null")
             return null;
         }
 
         if (this.currentUserGptRecords === null) {
-            console.log("WARNING: tried to pack claim tx but had no user gpt records")
+            console.warn("tried to pack claim tx but had no user gpt records")
             return null;
         }
 
@@ -245,7 +245,7 @@ export class PlaceClient {
         }
 
         if (claimableGptAccts.length == 0) {
-            console.log("WARNING: no claimable accounts for user", this.currentUser.toBase58());
+            console.warn("no claimable accounts for user", this.currentUser.toBase58());
             return null;
         }
 
@@ -377,7 +377,7 @@ export class PlaceClient {
 
         // TODO(will): set up some sort of retry if this fails
         if (mintAcctInfo === null) {
-            console.log("WARNING: mint acct info null")
+            console.warn("mint acct info null")
             return;
         }
 
@@ -405,7 +405,7 @@ export class PlaceClient {
 
         let currentUser = this.currentUser;
         if (currentUser === null) {
-            console.log("WARNING: attempted to subscribe to place token ATAs for null currentuser");
+            console.warn("attempted to subscribe to place token ATAs for null currentuser");
             return;
         }
 
@@ -422,7 +422,7 @@ export class PlaceClient {
             let sub = this.connection.onAccountChange(acctPubKey, (acctInfo) => {
                 let updatedTokenAcct = new TokenAccount(acctPubKey, acctInfo);
                 this._handleUserPlaceTokenAtaUpdated(acctPubKey, updatedTokenAcct);
-            })
+            }, "processed");
 
             this.currentUserPlaceTokenAtaRecords.push({
                 pubkey: acctPubKey,
@@ -551,7 +551,7 @@ export class PlaceClient {
         const config = { filters: [this.placeStateAccountsFilter] };
         let results = await this.connection.getProgramAccounts(PlaceProgram.PUBKEY, config)
         if (results.length !== 1) {
-            console.log("WARNING: Unexpected number of state accounts: ", results.length);
+            console.warn("nexpected number of state accounts: ", results.length);
         }
 
         let result = results[0];
@@ -599,7 +599,7 @@ export class PlaceClient {
 
     private _handleGptAtaUpdated(mintPubkey: PublicKey, tokenAccount: TokenAccount) {
         if (this.currentUserGptRecords === null) {
-            console.log("WARNING: tried to update record but currentUserGptRecords was null");
+            console.warn("tried to update record but currentUserGptRecords was null");
             return;
         }
 
@@ -657,7 +657,7 @@ export class PlaceClient {
 
     private _handleGptMetaUpdated(mintPubkey: PublicKey, gptMetaAccount: GameplayTokenMetaAccount) {
         if (this.currentUserGptRecords === null) {
-            console.log("WARNING: tried to update record but currentUserGptRecords was null");
+            console.warn("tried to update record but currentUserGptRecords was null");
             return;
         }
 
@@ -702,7 +702,7 @@ export class PlaceClient {
     }
 
     public async awaitGptRecord(purchaseIx: TransactionInstruction) {
-        console.log("Awaiting stuff");
+        console.log("Awaiting gpt record");
         let info = PlaceProgram.parseInfoFromPurchaseGameplayTokenIx(purchaseIx)
 
         let gptMetaSub = this.connection.onAccountChange(info.gptMetaPubkey, (acct) => {
@@ -728,12 +728,12 @@ export class PlaceClient {
 
     private async subscribeToCurrentUserGptRecords() {
         if (this.currentUser === null) {
-            console.log("WARNING: refreshing current user gpt accounts with null current user");
+            console.warn("refreshing current user gpt accounts with null current user");
             return;
         }
 
         if (this.currentUserGptRecords !== null) {
-            console.log("WARNING: tried to subscribe without unsubscribing")
+            console.warn("tried to subscribe without unsubscribing")
         }
 
         console.log("Subscribing to user token updates", this.currentUser.toBase58())
@@ -763,8 +763,9 @@ export class PlaceClient {
     }
 
     private unsubscribeFromCurrentUserGptRecords() {
+        console.log("unsubscribing from current user gpt records")
         if (this.currentUserGptRecords === null) {
-            console.log("WARNING: tried to unsubscribe without subscribing")
+            console.warn("tried to unsubscribe without subscribing")
             return;
         }
 
@@ -784,7 +785,7 @@ export class PlaceClient {
 
     private unsubscribeFromGptRecord(mintPubkey: PublicKeyB58) {
         if (this.currentUserGptRecords === null) {
-            console.log("WARNING: attempted to remove gpt record, but no records exist: ", mintPubkey);
+            console.warn("attempted to remove gpt record, but no records exist: ", mintPubkey);
             return;
         }
 

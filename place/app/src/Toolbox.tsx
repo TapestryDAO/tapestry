@@ -68,9 +68,6 @@ export const PaintbrushTool: FC = () => {
         let tx = new Transaction().add(ix);
         let signature = await sendTransaction(tx, connection);
         placeClient.awaitGptRecord(ix);
-
-        // was hopeful we could use "processed" here because finalized takes a while
-        // but it seems we can't actually get the newly created accounts until finalized
         let result = await connection.confirmTransaction(signature, "processed");
 
         setProcessingPurchase(false);
