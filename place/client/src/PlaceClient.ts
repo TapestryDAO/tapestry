@@ -451,6 +451,7 @@ export class PlaceClient {
 
         this.currentUserPlaceTokenAtaRecords = null;
         this.awaitingUserPlaceTokenRecords = [];
+        this.OnCurrentUserPlaceTokenAcctsUpdated.dispatch(null);
     }
 
     public async awaitPlaceTokenAta(pubkey: PublicKey) {
@@ -586,15 +587,6 @@ export class PlaceClient {
         }
 
         this.subscribeToPatchUpdates();
-    }
-
-    public getTotalClaimableTokensCount(): number | null {
-        if (this.currentUser === null) return null;
-        if (this.currentUserGptRecords === null) return null;
-
-        return this.currentUserGptRecords.reduce((prev, value) => {
-            return prev + value.gameplayTokenMetaAcct.data.place_tokens_owed
-        }, 0);
     }
 
     public getCurrentUserGptRecordsSorted(): GameplayTokenRecord[] | null {
@@ -787,6 +779,7 @@ export class PlaceClient {
         }
 
         this.currentUserGptRecords = null;
+        this.OnGameplayTokenRecordsUpdated.dispatch(null);
     }
 
     private unsubscribeFromGptRecord(mintPubkey: PublicKeyB58) {

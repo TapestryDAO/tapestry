@@ -77,11 +77,14 @@ export const PaintbrushTool: FC = () => {
     }
 
     useEffect(() => {
-        if (publicKey === null || publicKey === undefined) return;
-
         let placeClient = PlaceClient.getInstance();
-
         let subscription = placeClient.OnGameplayTokenRecordsUpdated.addMemo((records) => {
+            if (records === null) {
+                setTokensReady(0);
+                setTokensTotal(0);
+                return;
+            }
+
             let tokensReady = records.filter((result) => {
                 let client = PlaceClient.getInstance();
                 if (client.currentSlot == null) return false;
@@ -95,7 +98,7 @@ export const PaintbrushTool: FC = () => {
         return () => {
             PlaceClient.getInstance().OnGameplayTokenRecordsUpdated.detach(subscription)
         }
-    }, [publicKey]);
+    }, []);
 
     return <div className='toolbox__paintbrush-container'>
         <img className='toolbox__paintbrush-image' src="paintbrush_pixel.png"></img>
@@ -113,13 +116,14 @@ export const Ownership: FC = () => {
     let [userOwnedTokens, setUserOwnedTokens] = useState<number | null>(null);
     let [claimProcessing, setClaimProcessing] = useState<boolean>(false);
 
-    const updateClaimableTokensCount = () => {
-        let client = PlaceClient.getInstance();
-        if (publicKey !== null && publicKey !== undefined) {
-            let count = client.getTotalClaimableTokensCount();
-            setClaimableTokensCount(count);
+    const updateClaimableTokensCount = (records: GameplayTokenRecord[] | null) => {
+        if (records === null) {
+            setClaimableTokensCount(0);
         } else {
-            setClaimableTokensCount(null);
+            let count = records.reduce((prev, value) => {
+                return prev + value.gameplayTokenMetaAcct.data.place_tokens_owed
+            }, 0);
+            setClaimableTokensCount(count);
         }
     }
 
@@ -138,6 +142,7 @@ export const Ownership: FC = () => {
     const updateUserPlaceTokens = (ataRecords: PlaceTokenAtaRecord[] | null) => {
         if (ataRecords === null) {
             setUserOwnedTokens(null);
+            setClaimProcessing(false);
             return;
         }
 
@@ -169,14 +174,12 @@ export const Ownership: FC = () => {
     useEffect(() => {
         let client = PlaceClient.getInstance();
 
-        let sub = client.OnGameplayTokenRecordsUpdated.addMemo((records) => {
-            updateClaimableTokensCount();
-        })
+        let gptSub = client.OnGameplayTokenRecordsUpdated.addMemo(updateClaimableTokensCount);
         let tokenMintSub = client.OnPlaceTokenMintUpdated.addMemo(updatePlaceTokenSupply);
         let tokenAcctsSub = client.OnCurrentUserPlaceTokenAcctsUpdated.addMemo(updateUserPlaceTokens)
 
         return () => {
-            client.OnGameplayTokenRecordsUpdated.detach(sub);
+            client.OnGameplayTokenRecordsUpdated.detach(gptSub);
             client.OnPlaceTokenMintUpdated.detach(tokenMintSub);
             client.OnCurrentUserPlaceTokenAcctsUpdated.detach(tokenAcctsSub);
         };
