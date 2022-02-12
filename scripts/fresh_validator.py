@@ -39,6 +39,12 @@ def set_featured(x: int, y: int, width: int, height: int, callout: str, sol_doma
         "--callout", f"\"{callout}\"",
         "--sol_domain", sol_domain,
     ])
+
+def create_key_if_needed(keyname: str):
+    keypath = KEYS_DIR / f"{keyname}.json"
+    if not keypath.exists():
+        print(f"Creating Key {keyname}")
+        run_command(["solana-keygen", "new", "-o", keypath, "--no-bip39-passphrase"])
     
 
 def main():
@@ -50,13 +56,17 @@ def main():
     args = parser.parse_args()
 
     print("Checking Keys")
-    buyer_keypath = KEYS_DIR / "buyer.json"
-    if not buyer_keypath.exists():
-        run_command(["solana-keygen", "new", "-o", buyer_keypath, "--no-bip39-passphrase"])
 
-    owner_keypath = KEYS_DIR / "owner.json"
-    if not owner_keypath.exists():
-        run_command(["solana-keygen", "new", "-o", owner_keypath, "--no-bip39-passphrase"])
+    default_keys = [
+        "owner",
+        "buyer",
+        "player1",
+        "player2",
+        "player3",
+    ]
+
+    for key in default_keys:
+        create_key_if_needed(key)
 
     run_command(["yarn", "rust:build"])
 
@@ -67,13 +77,13 @@ def main():
     sleep(5)
 
     print("Airdroping SOL")
-    run_command(["tap", "tx", "airdrop", "--keyname", "owner", "--amount", "1000"])
-    run_command(["tap", "tx", "airdrop", "--keyname", "buyer", "--amount", "1000"])
-
-    print("Initializing Tapestry State")
-    run_command(["tap", "tx", "init", "--keyname", "owner"])
+    for key in default_keys:
+        run_command(["tap", "tx", "airdrop", "--keyname", key, "--amount", "1000"])
 
     if args.tapestry:
+        print("Initializing Tapestry State")
+        run_command(["tap", "tx", "init", "--keyname", "owner"])
+
         print("Purchasing initial patches")
         fill_pattern(0, 0, 8, 13, "vango", "buyer")
         fill_pattern(-8, -8, 8, 8, "chunk_border", "buyer")

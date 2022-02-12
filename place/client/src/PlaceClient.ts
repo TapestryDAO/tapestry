@@ -275,7 +275,7 @@ export class PlaceClient {
             )
             currentTx.add(create_ata_ix);
 
-            // TODO(will): subscribe to updates for this account so we can propagate state to UI
+            this.awaitPlaceTokenAta(destAtaPubkey);
         } else {
             destAtaPubkey = destAta.pubkey;
         }
@@ -345,10 +345,8 @@ export class PlaceClient {
         let newIsNull = newCurrentUser === null;
         let oldIsNull = this.currentUser === null;
         if (newIsNull && oldIsNull) return;
-        let onlyOneNull = (newIsNull && !oldIsNull) || (!newIsNull && oldIsNull); // logical xor
-
         // @ts-ignore
-        if (!onlyOneNull && newCurrentUser.toBase58() === this.currentUser.toBase58()) return;
+        if (newIsNull === oldIsNull && newCurrentUser.toBase58() === this.currentUser.toBase58()) return;
 
         if (this.currentUser !== null) {
             console.log("Unsubscribing from previous user: ", this.currentUser)
@@ -500,7 +498,7 @@ export class PlaceClient {
                 _subscription: awaitingRecord.subscription,
             })
 
-            this.awaitingUserPlaceTokenRecords = this.awaitingUserPlaceTokenRecords.splice(awaitingRecordIdx, 1);
+            this.awaitingUserPlaceTokenRecords.splice(awaitingRecordIdx, 1);
             updated = true;
         } else {
             for (let record of this.currentUserPlaceTokenAtaRecords) {
@@ -627,7 +625,7 @@ export class PlaceClient {
                     _userTokenAccountSubscription: awaitingRecord.gptAtaSubscription,
                 })
 
-                this.awaitingGptRecords = this.awaitingGptRecords.splice(awaitingRecordIdx, 1);
+                this.awaitingGptRecords.splice(awaitingRecordIdx, 1);
                 updated = true;
             }
         } else {
@@ -684,7 +682,7 @@ export class PlaceClient {
                     _userTokenAccountSubscription: awaitingRecord.gptAtaSubscription,
                 })
 
-                this.awaitingGptRecords = this.awaitingGptRecords.splice(awaitingRecordIdx, 1);
+                this.awaitingGptRecords.splice(awaitingRecordIdx, 1);
                 updated = true;
             }
         } else {
