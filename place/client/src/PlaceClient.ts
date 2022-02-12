@@ -53,7 +53,7 @@ type AwaitingUserPlaceTokenAtaRecord = {
 }
 
 export type GameplayTokenRecordsHandler =
-    (records: GameplayTokenRecord[]) => void;
+    (records: GameplayTokenRecord[] | null) => void;
 
 export type CurrentUserPlaceTokenAcctsUpdateHandler =
     (tokenAccounts: PlaceTokenAtaRecord[] | null) => void;

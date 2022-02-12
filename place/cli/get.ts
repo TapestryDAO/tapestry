@@ -24,6 +24,12 @@ const get_gameplay_tokens_command = {
         client.setCurrentUser(keypair.publicKey);
 
         client.OnGameplayTokenRecordsUpdated.addMemo((records) => {
+            if (records === null) {
+                console.log("Got null records")
+                client.kill();
+                return;
+            }
+
             for (const record of records) {
                 console.log("---- ")
                 console.log("Gpt meta pubkey   : ", record.gameplayTokenMetaAcct.pubkey.toBase58());
