@@ -1,6 +1,6 @@
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenFetchResult, GameplayTokenRecord } from '@tapestrydao/place-client';
+import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenFetchResult, GameplayTokenRecord, PlaceTokenAtaRecord } from '@tapestrydao/place-client';
 import { DragEvent, FC, useEffect, useState } from 'react';
 import BN from 'bn.js';
 import { MintInfo, u64 } from '@solana/spl-token';
@@ -135,15 +135,16 @@ export const Ownership: FC = () => {
         setPlaceTokenSuppy(supply);
     }
 
-    const updateUserPlaceTokens = (tokenAccts: TokenAccount[] | null) => {
-        if (tokenAccts === null) {
+    const updateUserPlaceTokens = (ataRecords: PlaceTokenAtaRecord[] | null) => {
+        if (ataRecords === null) {
             setUserOwnedTokens(null);
             return;
         }
 
-        let tokenAmountTotal = tokenAccts.reduce((prev, current) => {
-            return prev.add(current.data.amount)
+        let tokenAmountTotal = ataRecords.reduce((prev, current) => {
+            return prev.add(current.tokenAccount.data.amount)
         }, new BN(0));
+
         setUserOwnedTokens(tokenAmountTotal.toNumber())
     }
 
@@ -168,16 +169,11 @@ export const Ownership: FC = () => {
     useEffect(() => {
         let client = PlaceClient.getInstance();
 
-        updateClaimableTokensCount();
         let sub = client.OnGameplayTokenRecordsUpdated.addMemo((records) => {
             updateClaimableTokensCount();
         })
-
-        updatePlaceTokenSupply(client.currentMintInfo)
-        let tokenMintSub = client.OnPlaceTokenMintUpdated.add(updatePlaceTokenSupply);
-
-        updateUserPlaceTokens(client.currentUserPlaceTokenAccounts)
-        let tokenAcctsSub = client.OnCurrentUserPlaceTokenAcctsUpdated.add(updateUserPlaceTokens)
+        let tokenMintSub = client.OnPlaceTokenMintUpdated.addMemo(updatePlaceTokenSupply);
+        let tokenAcctsSub = client.OnCurrentUserPlaceTokenAcctsUpdated.addMemo(updateUserPlaceTokens)
 
         return () => {
             client.OnGameplayTokenRecordsUpdated.detach(sub);

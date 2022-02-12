@@ -31,7 +31,13 @@ export type GameplayTokenRecord = {
     _gptAccountSubscription: number | null,
 }
 
-export type AwaitingGptRecord = {
+export type PlaceTokenAtaRecord = {
+    pubkey: PublicKey,
+    tokenAccount: TokenAccount,
+    _subscription: number,
+}
+
+type AwaitingGptRecord = {
     gptMintPubkey: PublicKey,
     gptAtaPubkey: PublicKey,
     gptMetaPubkey: PublicKey,
@@ -41,14 +47,19 @@ export type AwaitingGptRecord = {
     gptMetaSubscription: number,
 }
 
+type AwaitingUserPlaceTokenAtaRecord = {
+    pubkey: PublicKey,
+    subscription: number,
+}
+
 export type GameplayTokenRecordsHandler =
     (records: GameplayTokenRecord[]) => void;
 
+export type CurrentUserPlaceTokenAcctsUpdateHandler =
+    (tokenAccounts: PlaceTokenAtaRecord[] | null) => void;
+
 export type PlaceTokenMintUpdateHandler =
     (mintInfo: MintInfo) => void;
-
-export type CurrentUserPlaceTokenAcctsUpdateHandler =
-    (tokenAccounts: TokenAccount[] | null) => void;
 
 export class PlaceClient {
     private static instance: PlaceClient;
@@ -59,7 +70,6 @@ export class PlaceClient {
     private placePatchesSubscription: number | null = null;
     private placeTokenMintSubscription: number | null = null;
     private currentSlotSubscription: number;
-    private currentUserATASubscriptions: number[] | null = null;
 
     // Signals to expose state changes to react app
     public OnPlaceTokenMintUpdated = new Signal<PlaceTokenMintUpdateHandler>();
@@ -70,9 +80,12 @@ export class PlaceClient {
     public currentSlot: number | null = null;
     public currentMintInfo: MintInfo | null = null;
     public currentUser: PublicKey | null = null;
-    public currentUserPlaceTokenAccounts: TokenAccount[] | null = null;
+
     public currentUserGptRecords: GameplayTokenRecord[] | null = null;
+    public currentUserPlaceTokenAtaRecords: PlaceTokenAtaRecord[] | null = null;
+
     public awaitingGptRecords: AwaitingGptRecord[] = []
+    public awaitingUserPlaceTokenRecords: AwaitingUserPlaceTokenAtaRecord[] = []
 
     // A buffer containing a color pallete
     // a color pallete is mapping from 8 bit values to full 32 bit color values (RBGA)
@@ -139,8 +152,10 @@ export class PlaceClient {
     // so currently this is just being called at the end of CLI commands
     public kill() {
         this.connection.removeSlotChangeListener(this.currentSlotSubscription);
-        this.unsubscribeFromPatchUpdates()
-        this.unsubscribeFromPlaceTokenMint()
+        this.unsubscribeFromPatchUpdates();
+        this.unsubscribeFromPlaceTokenMint();
+        this.unsubscribeFromCurrentUserGptRecords();
+        this.unsubscribeFromCurrentUserPlaceTokenAccounts();
     }
 
     public static getInstance(): PlaceClient {
@@ -197,13 +212,17 @@ export class PlaceClient {
     }
 
     public getLargestCurrentUserAta(): TokenAccount | null {
-        if (this.currentUserPlaceTokenAccounts === null || this.currentUserPlaceTokenAccounts.length == 0) {
+        if (this.currentUserPlaceTokenAtaRecords === null || this.currentUserPlaceTokenAtaRecords.length === 0) {
+            console.log("ata records is null");
             return null;
         }
 
-        // TODO(will): maybe sort these by amount? maybe try to combine them if user has multiple?
+        let sortedRecords = this.currentUserPlaceTokenAtaRecords
+            .sort((a, b) => a.tokenAccount.data.amount.cmp(b.tokenAccount.data.amount))
 
-        return this.currentUserPlaceTokenAccounts[0];
+        // TODO(will): maybe try to combine them if user has multiple?
+
+        return sortedRecords[sortedRecords.length - 1].tokenAccount;
     }
 
     public async packClaimTokensTX(): Promise<Transaction[] | null> {
@@ -234,8 +253,8 @@ export class PlaceClient {
         let currentTx = new Transaction();
         let destAta = this.getLargestCurrentUserAta();
         let destAtaPubkey: PublicKey;
-
-        // if this user doesn't have an ata, create one
+        console.log("token destination ata: ", destAta);
+        // if this user doesn't have an ata for place tokens, create one
         if (destAta === null) {
             let placeTokenMintPda = await PlaceProgram.findPlaceTokenMintPda();
             destAtaPubkey = await Token.getAssociatedTokenAddress(
@@ -261,11 +280,12 @@ export class PlaceClient {
             destAtaPubkey = destAta.pubkey;
         }
 
-        let max = 6;
+        let max = 7;
 
         for (let result of claimableGptAccts) {
-            if (currentTx.instructions.length > max) {
+            if (currentTx.instructions.length >= max) {
                 allTransactions.push(currentTx);
+                console.log("finishing this tx")
                 currentTx = new Transaction();
             }
 
@@ -278,7 +298,7 @@ export class PlaceClient {
                 gameplay_token_ata: gptAta,
                 dest_ata: destAtaPubkey,
             })
-
+            console.log("adding ix");
             currentTx.add(ix);
         }
 
@@ -371,7 +391,7 @@ export class PlaceClient {
             let mintInfo = MintLayout.decode(accountInfo.data) as MintInfo
             console.log("Mint supply: ", mintInfo.supply);
             this.OnPlaceTokenMintUpdated.dispatch(mintInfo);
-        })
+        }, "processed")
     }
 
     public unsubscribeFromPlaceTokenMint() {
@@ -394,55 +414,107 @@ export class PlaceClient {
             mint: placeMintPDA,
         })
 
+        this.currentUserPlaceTokenAtaRecords = [];
         for (let acct of ownerTokenAccounts.value) {
             let acctPubKey = acct.pubkey
             let tokenAcct = new TokenAccount(acctPubKey, acct.account);
-            this.updateCurrentUserPlaceTokenAccounts(tokenAcct);
-            let sub = this.connection.onAccountChange(acct.pubkey, (acctInfo) => {
-                let tokenAccount = new TokenAccount(acctPubKey, acctInfo);
-                this.updateCurrentUserPlaceTokenAccounts(tokenAccount);
+
+            let sub = this.connection.onAccountChange(acctPubKey, (acctInfo) => {
+                let updatedTokenAcct = new TokenAccount(acctPubKey, acctInfo);
+                this._handleUserPlaceTokenAtaUpdated(acctPubKey, updatedTokenAcct);
             })
 
-            if (this.currentUserATASubscriptions === null) {
-                this.currentUserATASubscriptions = [sub]
-            } else {
-                this.currentUserATASubscriptions.push(sub)
-            }
+            this.currentUserPlaceTokenAtaRecords.push({
+                pubkey: acctPubKey,
+                tokenAccount: tokenAcct,
+                _subscription: sub,
+            })
         }
+
+        this.OnCurrentUserPlaceTokenAcctsUpdated.dispatch(this.currentUserPlaceTokenAtaRecords)
     }
 
     private unsubscribeFromCurrentUserPlaceTokenAccounts() {
-        if (this.currentUserATASubscriptions === null) {
+        if (this.currentUserPlaceTokenAtaRecords === null) {
             return;
         }
 
         console.log("Unsubscribing from user place token accounts")
 
-        for (let sub of this.currentUserATASubscriptions) {
-            this.connection.removeAccountChangeListener(sub)
+        for (let record of this.currentUserPlaceTokenAtaRecords) {
+            this.connection.removeAccountChangeListener(record._subscription);
         }
+
+        for (let record of this.awaitingUserPlaceTokenRecords) {
+            this.connection.removeAccountChangeListener(record.subscription);
+        }
+
+        this.currentUserPlaceTokenAtaRecords = null;
+        this.awaitingUserPlaceTokenRecords = [];
     }
 
-    private updateCurrentUserPlaceTokenAccounts(updatedAcct: TokenAccount) {
-        if (this.currentUserPlaceTokenAccounts === null) {
-            this.currentUserPlaceTokenAccounts = [updatedAcct];
-        } else {
-            let found = false;
-            this.currentUserPlaceTokenAccounts.map((existingAcct) => {
-                if (existingAcct.pubkey.toBase58() === updatedAcct.pubkey.toBase58()) {
-                    found = true;
-                    return updatedAcct;
-                } else {
-                    return existingAcct;
-                }
-            })
+    public async awaitPlaceTokenAta(pubkey: PublicKey) {
+        let sub = this.connection.onAccountChange(pubkey, (acct) => {
+            let tokenAcct = new TokenAccount(pubkey, acct);
+            this._handleUserPlaceTokenAtaUpdated(pubkey, tokenAcct);
+        }, "processed")
 
-            if (!found) {
-                this.currentUserPlaceTokenAccounts.push(updatedAcct);
+        this.awaitingUserPlaceTokenRecords.push({
+            pubkey: pubkey,
+            subscription: sub,
+        })
+    }
+
+    private _handleUserPlaceTokenAtaUpdated(pubkey: PublicKey, acct: TokenAccount) {
+        if (this.currentUserPlaceTokenAtaRecords === null) {
+            console.warn("currentUserPlaceTokenAtaRecords was null when updating")
+            return;
+        }
+
+        if (this.currentUser === null) {
+            console.warn("current user was null");
+            return null;
+        }
+
+        if (acct.data.owner.toBase58() !== this.currentUser.toBase58()) {
+            console.warn("token acct owner did not match curent user?", acct.data.owner.toBase58(), "vs", this.currentUser.toBase58())
+        }
+
+        let updated = false;
+        let awaitingRecord: AwaitingUserPlaceTokenAtaRecord | null = null;
+        let awaitingRecordIdx = 0;
+
+        for (let [idx, record] of this.awaitingUserPlaceTokenRecords.entries()) {
+            if (record.pubkey.toBase58() === pubkey.toBase58()) {
+                awaitingRecord = record;
+                awaitingRecordIdx = idx;
             }
         }
 
-        this.OnCurrentUserPlaceTokenAcctsUpdated.dispatch(this.currentUserPlaceTokenAccounts);
+        if (awaitingRecord !== null) {
+            // check if an awaiting record needs to be updgraded to a record
+            this.currentUserPlaceTokenAtaRecords.push({
+                pubkey: pubkey,
+                tokenAccount: acct,
+                _subscription: awaitingRecord.subscription,
+            })
+
+            this.awaitingUserPlaceTokenRecords = this.awaitingUserPlaceTokenRecords.splice(awaitingRecordIdx, 1);
+            updated = true;
+        } else {
+            for (let record of this.currentUserPlaceTokenAtaRecords) {
+                if (record.pubkey.toBase58() === pubkey.toBase58()) {
+                    record.tokenAccount = acct;
+                    updated = true;
+                }
+            }
+        }
+
+        if (updated) {
+            this.OnCurrentUserPlaceTokenAcctsUpdated.dispatch(this.currentUserPlaceTokenAtaRecords);
+        } else {
+            console.log("record not found for user place token ata ", pubkey.toBase58());
+        }
     }
 
     public patchAccountToPixels(acct: PatchData): Uint8ClampedArray {
@@ -554,7 +626,7 @@ export class PlaceClient {
 
         if (awaitingRecord !== null) {
             // check if the awaiting record is ready to be upgraded
-            if (awaitingRecord.gptMetaAccount !== null && awaitingRecord.gptAtaAccount) {
+            if (awaitingRecord.gptMetaAccount !== null && awaitingRecord.gptAtaAccount !== null) {
                 this.currentUserGptRecords.push({
                     mintPubkey: awaitingRecord.gptMintPubkey.toBase58(),
                     gameplayTokenMetaAcct: awaitingRecord.gptMetaAccount,
@@ -611,7 +683,7 @@ export class PlaceClient {
 
         if (awaitingRecord !== null) {
             // check if the awaiting record is ready to be upgraded
-            if (awaitingRecord.gptMetaAccount !== null && awaitingRecord.gptAtaAccount) {
+            if (awaitingRecord.gptMetaAccount !== null && awaitingRecord.gptAtaAccount !== null) {
                 this.currentUserGptRecords.push({
                     mintPubkey: awaitingRecord.gptMintPubkey.toBase58(),
                     gameplayTokenMetaAcct: awaitingRecord.gptMetaAccount,
@@ -716,7 +788,6 @@ export class PlaceClient {
 
         this.currentUserGptRecords = null;
     }
-
 
     private unsubscribeFromGptRecord(mintPubkey: PublicKeyB58) {
         if (this.currentUserGptRecords === null) {
