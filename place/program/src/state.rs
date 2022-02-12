@@ -31,12 +31,12 @@ pub fn try_from_slice_checked<T: BorshDeserialize>(
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-/////////////////////// GAMEPLAY TOKEN METADATA //////////////////////////////////
+////////////////////////////// PLACE STATE ///////////////////////////////////////
 
 pub const DEFAULT_IS_FROZEN: bool = false;
-pub const DEFAULT_PAINTBRUSH_PRICE: u64 = 20_000_000;    // units are lamports
-pub const DEFAULT_PAINTBRUSH_COOLDOWN: u64 = 60 * 10;   // units are seconds
-pub const DEFAULT_BOMB_PRICE: u64 = 500_000_000;        // units are lamports
+pub const DEFAULT_PAINTBRUSH_PRICE: u64 = 20_000_000;                   // units are lamports
+pub const DEFAULT_PAINTBRUSH_COOLDOWN: Slot = (5 * 60 * 1000) / 400;    // units are slots 
+pub const DEFAULT_BOMB_PRICE: u64 = 500_000_000;                        // units are lamports
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct PlaceState {
@@ -51,8 +51,8 @@ pub struct PlaceState {
     // Current price of a gameplay token of type Paintbrush
     pub paintbrush_price: u64,
 
-    // number of seconds for the cooldown for new paintbrushes
-    pub paintbrush_cooldown: u64,
+    // number of slots for the cooldown for new paintbrushes
+    pub paintbrush_cooldown: Slot,
 
     // current price of a gameplay token of type Bomb
     pub bomb_price: u64,
