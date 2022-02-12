@@ -1,4 +1,4 @@
-import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter, AccountInfo, Transaction } from "@solana/web3.js";
+import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter, AccountInfo, Transaction, TransactionSignature, TransactionInstruction } from "@solana/web3.js";
 import { PlaceProgram } from ".";
 import { extendBorsh } from "./utils/borsh";
 import { blend32 } from "./palletes/blend32";
@@ -29,6 +29,16 @@ export type GameplayTokenRecord = {
     userTokenAccount: TokenAccount,
     _userTokenAccountSubscription: number | null,
     _gptAccountSubscription: number | null,
+}
+
+export type AwaitingGptRecord = {
+    gptMintPubkey: PublicKey,
+    gptAtaPubkey: PublicKey,
+    gptMetaPubkey: PublicKey,
+    gptMetaAccount: GameplayTokenMetaAccount | null;
+    gptAtaAccount: TokenAccount | null;
+    gptAtaSubscription: number,
+    gptMetaSubscription: number,
 }
 
 export type GameplayTokenRecordsHandler =
@@ -62,6 +72,7 @@ export class PlaceClient {
     public currentUser: PublicKey | null = null;
     public currentUserPlaceTokenAccounts: TokenAccount[] | null = null;
     public currentUserGptRecords: GameplayTokenRecord[] | null = null;
+    public awaitingGptRecords: AwaitingGptRecord[] = []
 
     // A buffer containing a color pallete
     // a color pallete is mapping from 8 bit values to full 32 bit color values (RBGA)
@@ -522,6 +533,135 @@ export class PlaceClient {
         })
     }
 
+    private _handleGptAtaUpdated(mintPubkey: PublicKey, tokenAccount: TokenAccount) {
+        if (this.currentUserGptRecords === null) {
+            console.log("WARNING: tried to update record but currentUserGptRecords was null");
+            return;
+        }
+
+        let updated = false;
+        let awaitingRecord: AwaitingGptRecord | null = null;
+        let awaitingRecordIdx = 0;
+        let shouldUnsubscribe: PublicKeyB58[] = [];
+
+        for (let [idx, record] of this.awaitingGptRecords.entries()) {
+            if (record.gptMintPubkey.toBase58() === mintPubkey.toBase58()) {
+                record.gptAtaAccount = tokenAccount
+                awaitingRecord = record;
+                awaitingRecordIdx = idx;
+            }
+        }
+
+        if (awaitingRecord !== null) {
+            // check if the awaiting record is ready to be upgraded
+            if (awaitingRecord.gptMetaAccount !== null && awaitingRecord.gptAtaAccount) {
+                this.currentUserGptRecords.push({
+                    mintPubkey: awaitingRecord.gptMintPubkey.toBase58(),
+                    gameplayTokenMetaAcct: awaitingRecord.gptMetaAccount,
+                    userTokenAccount: awaitingRecord.gptAtaAccount,
+                    _gptAccountSubscription: awaitingRecord.gptMetaSubscription,
+                    _userTokenAccountSubscription: awaitingRecord.gptAtaSubscription,
+                })
+
+                this.awaitingGptRecords = this.awaitingGptRecords.splice(awaitingRecordIdx, 1);
+                updated = true;
+            }
+        } else {
+            for (let record of this.currentUserGptRecords) {
+                if (record.mintPubkey === mintPubkey.toBase58()) {
+                    record.userTokenAccount = tokenAccount;
+                    updated = true;
+                }
+
+                if (!record.userTokenAccount.data.amount.eq(new BN(1))) {
+                    console.log("user gpt token balance != 1")
+                    shouldUnsubscribe.push(record.mintPubkey)
+                }
+            }
+
+            console.log("GPT token acct changed: ", mintPubkey);
+        }
+
+        for (let unsub of shouldUnsubscribe) {
+            this.unsubscribeFromGptRecord(unsub)
+        }
+
+        if (updated) {
+            this.OnGameplayTokenRecordsUpdated.dispatch(this.currentUserGptRecords);
+        }
+    }
+
+    private _handleGptMetaUpdated(mintPubkey: PublicKey, gptMetaAccount: GameplayTokenMetaAccount) {
+        if (this.currentUserGptRecords === null) {
+            console.log("WARNING: tried to update record but currentUserGptRecords was null");
+            return;
+        }
+
+        let updated = false;
+        let awaitingRecord: AwaitingGptRecord | null = null;
+        let awaitingRecordIdx = 0;
+
+        for (let [idx, record] of this.awaitingGptRecords.entries()) {
+            if (record.gptMintPubkey.toBase58() === mintPubkey.toBase58()) {
+                record.gptMetaAccount = gptMetaAccount
+                awaitingRecord = record;
+                awaitingRecordIdx = idx;
+            }
+        }
+
+        if (awaitingRecord !== null) {
+            // check if the awaiting record is ready to be upgraded
+            if (awaitingRecord.gptMetaAccount !== null && awaitingRecord.gptAtaAccount) {
+                this.currentUserGptRecords.push({
+                    mintPubkey: awaitingRecord.gptMintPubkey.toBase58(),
+                    gameplayTokenMetaAcct: awaitingRecord.gptMetaAccount,
+                    userTokenAccount: awaitingRecord.gptAtaAccount,
+                    _gptAccountSubscription: awaitingRecord.gptMetaSubscription,
+                    _userTokenAccountSubscription: awaitingRecord.gptAtaSubscription,
+                })
+
+                this.awaitingGptRecords = this.awaitingGptRecords.splice(awaitingRecordIdx, 1);
+                updated = true;
+            }
+        } else {
+            for (let record of this.currentUserGptRecords) {
+                if (record.mintPubkey === mintPubkey.toBase58()) {
+                    record.gameplayTokenMetaAcct = gptMetaAccount;
+                    updated = true;
+                }
+            }
+        }
+
+        if (updated) {
+            this.OnGameplayTokenRecordsUpdated.dispatch(this.currentUserGptRecords);
+        }
+    }
+
+    public async awaitGptRecord(purchaseIx: TransactionInstruction) {
+        console.log("Awaiting stuff");
+        let info = PlaceProgram.parseInfoFromPurchaseGameplayTokenIx(purchaseIx)
+
+        let gptMetaSub = this.connection.onAccountChange(info.gptMetaPubkey, (acct) => {
+            let gpt = new GameplayTokenMetaAccount(info.gptMetaPubkey, acct);
+            this._handleGptMetaUpdated(info.gptMintPubkey, gpt);
+        }, "processed");
+
+        let gptAtaSub = this.connection.onAccountChange(info.gptAtaPubkey, (acct) => {
+            let token = new TokenAccount(info.gptAtaPubkey, acct);
+            this._handleGptAtaUpdated(info.gptMintPubkey, token);
+        }, "processed");
+
+        this.awaitingGptRecords.push({
+            gptAtaAccount: null,
+            gptMetaAccount: null,
+            gptAtaPubkey: info.gptAtaPubkey,
+            gptMetaPubkey: info.gptMetaPubkey,
+            gptMintPubkey: info.gptMintPubkey,
+            gptAtaSubscription: gptAtaSub,
+            gptMetaSubscription: gptMetaSub,
+        });
+    }
+
     private async subscribeToCurrentUserGptRecords() {
         if (this.currentUser === null) {
             console.log("WARNING: refreshing current user gpt accounts with null current user");
@@ -542,21 +682,15 @@ export class PlaceClient {
             let gptAcctPubkey = record.gameplayTokenMetaAcct.pubkey;
             let tokenAcctPubkey = record.userTokenAccount.pubkey;
             let gptSub = this.connection.onAccountChange(gptAcctPubkey, (acct) => {
-                console.log("GPT acct changed: ", mintPubkey);
                 let gptAcct = new GameplayTokenMetaAccount(gptAcctPubkey, acct);
-                record.gameplayTokenMetaAcct = gptAcct;
-                // @ts-ignore
-                this.OnGameplayTokenRecordsUpdated.dispatch(this.currentUserGptRecords);
-            }, "recent")
+                this._handleGptMetaUpdated(new PublicKey(record.mintPubkey), gptAcct)
+            }, "processed")
             record._gptAccountSubscription = gptSub;
 
             let tokenAcctSub = this.connection.onAccountChange(tokenAcctPubkey, (acct) => {
-                console.log("GPT token acct changed: ", mintPubkey);
                 let tokenAcct = new TokenAccount(tokenAcctPubkey, acct);
-                if (!tokenAcct.data.amount.eq(new BN(1))) {
-                    this.unsubscribeFromGptRecord(mintPubkey)
-                }
-            }, "recent")
+                this._handleGptAtaUpdated(new PublicKey(record.mintPubkey), tokenAcct);
+            }, "processed")
             record._userTokenAccountSubscription = tokenAcctSub
         }
 

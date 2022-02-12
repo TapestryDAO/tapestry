@@ -66,6 +66,12 @@ export type ClaimTokensParams = {
     dest_ata: PublicKey,
 }
 
+export type PurchaseGameplayTokenInstructionInfo = {
+    gptMintPubkey: PublicKey,
+    gptAtaPubkey: PublicKey,
+    gptMetaPubkey: PublicKey,
+}
+
 type PixelPatchCoords = {
     xPatch: number,
     yPatch: number,
@@ -152,6 +158,15 @@ export class PlaceProgram extends Program {
             programId: this.PUBKEY,
             data: data
         })
+    }
+
+    // Keeping this here so its easier to remember to update with the instruction creation code
+    public static parseInfoFromPurchaseGameplayTokenIx(ix: TransactionInstruction): PurchaseGameplayTokenInstructionInfo {
+        return {
+            gptMetaPubkey: ix.keys[2].pubkey,
+            gptMintPubkey: ix.keys[3].pubkey,
+            gptAtaPubkey: ix.keys[4].pubkey,
+        }
     }
 
     public static async updatePlaceState(params: UpdatePlaceStateParams) {

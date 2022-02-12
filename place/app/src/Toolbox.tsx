@@ -67,14 +67,13 @@ export const PaintbrushTool: FC = () => {
 
         let tx = new Transaction().add(ix);
         let signature = await sendTransaction(tx, connection);
-        // NOTE(will): it seems like using "processed" should work here, but
-        // then when I refresh the token accounts for the user, the newly minted NFT isn't returned
-        // immediately, finalized takes a while on local host, so probably takes even longer on mainnet
-        // so need to find another solution
-        let result = await connection.confirmTransaction(signature, "finalized")
-        console.log(result);
+        placeClient.awaitGptRecord(ix);
+
+        // was hopeful we could use "processed" here because finalized takes a while
+        // but it seems we can't actually get the newly created accounts until finalized
+        let result = await connection.confirmTransaction(signature, "processed");
+
         setProcessingPurchase(false);
-        // await placeClient.fetchGameplayTokensForOwner(publicKey);
     }
 
     useEffect(() => {
@@ -83,7 +82,6 @@ export const PaintbrushTool: FC = () => {
         let placeClient = PlaceClient.getInstance();
 
         let subscription = placeClient.OnGameplayTokenRecordsUpdated.addMemo((records) => {
-            console.log("got records blooob: ", records.length);
             let tokensReady = records.filter((result) => {
                 let client = PlaceClient.getInstance();
                 if (client.currentSlot == null) return false;
