@@ -1,6 +1,6 @@
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenFetchResult, GameplayTokenRecord } from '@tapestrydao/place-client';
+import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenFetchResult, GameplayTokenRecord, PlaceTokenAtaRecord } from '@tapestrydao/place-client';
 import { DragEvent, FC, useEffect, useState } from 'react';
 import BN from 'bn.js';
 import { MintInfo, u64 } from '@solana/spl-token';
@@ -67,23 +67,21 @@ export const PaintbrushTool: FC = () => {
 
         let tx = new Transaction().add(ix);
         let signature = await sendTransaction(tx, connection);
-        // NOTE(will): it seems like using "processed" should work here, but
-        // then when I refresh the token accounts for the user, the newly minted NFT isn't returned
-        // immediately, finalized takes a while on local host, so probably takes even longer on mainnet
-        // so need to find another solution
-        let result = await connection.confirmTransaction(signature, "finalized")
-        console.log(result);
+        placeClient.awaitGptRecord(ix);
+        let result = await connection.confirmTransaction(signature, "processed");
+
         setProcessingPurchase(false);
-        // await placeClient.fetchGameplayTokensForOwner(publicKey);
     }
 
     useEffect(() => {
-        if (publicKey === null || publicKey === undefined) return;
-
         let placeClient = PlaceClient.getInstance();
-
         let subscription = placeClient.OnGameplayTokenRecordsUpdated.addMemo((records) => {
-            console.log("got records blooob: ", records.length);
+            if (records === null) {
+                setTokensReady(0);
+                setTokensTotal(0);
+                return;
+            }
+
             let tokensReady = records.filter((result) => {
                 let client = PlaceClient.getInstance();
                 if (client.currentSlot == null) return false;
@@ -97,7 +95,7 @@ export const PaintbrushTool: FC = () => {
         return () => {
             PlaceClient.getInstance().OnGameplayTokenRecordsUpdated.detach(subscription)
         }
-    }, [publicKey]);
+    }, []);
 
     return <div className='toolbox__paintbrush-container'>
         <img className='toolbox__paintbrush-image' src="paintbrush_pixel.png"></img>
@@ -115,13 +113,14 @@ export const Ownership: FC = () => {
     let [userOwnedTokens, setUserOwnedTokens] = useState<number | null>(null);
     let [claimProcessing, setClaimProcessing] = useState<boolean>(false);
 
-    const updateClaimableTokensCount = () => {
-        let client = PlaceClient.getInstance();
-        if (publicKey !== null && publicKey !== undefined) {
-            let count = client.getTotalClaimableTokensCount();
-            setClaimableTokensCount(count);
+    const updateClaimableTokensCount = (records: GameplayTokenRecord[] | null) => {
+        if (records === null) {
+            setClaimableTokensCount(0);
         } else {
-            setClaimableTokensCount(null);
+            let count = records.reduce((prev, value) => {
+                return prev + value.gameplayTokenMetaAcct.data.place_tokens_owed
+            }, 0);
+            setClaimableTokensCount(count);
         }
     }
 
@@ -137,15 +136,17 @@ export const Ownership: FC = () => {
         setPlaceTokenSuppy(supply);
     }
 
-    const updateUserPlaceTokens = (tokenAccts: TokenAccount[] | null) => {
-        if (tokenAccts === null) {
+    const updateUserPlaceTokens = (ataRecords: PlaceTokenAtaRecord[] | null) => {
+        if (ataRecords === null) {
             setUserOwnedTokens(null);
+            setClaimProcessing(false);
             return;
         }
 
-        let tokenAmountTotal = tokenAccts.reduce((prev, current) => {
-            return prev.add(current.data.amount)
+        let tokenAmountTotal = ataRecords.reduce((prev, current) => {
+            return prev.add(current.tokenAccount.data.amount)
         }, new BN(0));
+
         setUserOwnedTokens(tokenAmountTotal.toNumber())
     }
 
@@ -170,19 +171,12 @@ export const Ownership: FC = () => {
     useEffect(() => {
         let client = PlaceClient.getInstance();
 
-        updateClaimableTokensCount();
-        let sub = client.OnGameplayTokenRecordsUpdated.addMemo((records) => {
-            updateClaimableTokensCount();
-        })
-
-        updatePlaceTokenSupply(client.currentMintInfo)
-        let tokenMintSub = client.OnPlaceTokenMintUpdated.add(updatePlaceTokenSupply);
-
-        updateUserPlaceTokens(client.currentUserPlaceTokenAccounts)
-        let tokenAcctsSub = client.OnCurrentUserPlaceTokenAcctsUpdated.add(updateUserPlaceTokens)
+        let gptSub = client.OnGameplayTokenRecordsUpdated.addMemo(updateClaimableTokensCount);
+        let tokenMintSub = client.OnPlaceTokenMintUpdated.addMemo(updatePlaceTokenSupply);
+        let tokenAcctsSub = client.OnCurrentUserPlaceTokenAcctsUpdated.addMemo(updateUserPlaceTokens)
 
         return () => {
-            client.OnGameplayTokenRecordsUpdated.detach(sub);
+            client.OnGameplayTokenRecordsUpdated.detach(gptSub);
             client.OnPlaceTokenMintUpdated.detach(tokenMintSub);
             client.OnCurrentUserPlaceTokenAcctsUpdated.detach(tokenAcctsSub);
         };
