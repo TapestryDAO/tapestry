@@ -370,9 +370,9 @@ fn process_init_mint(
         place_state_pda.clone(),
         owner_acct.key.clone(),
         place_state_pda.clone(),
-        String::from("Tapestry"),
-        String::from("TAPESTRY"),
-        String::from("http://localhost:8080/tapestry_token.json"),
+        String::from("Tapestry Coin"),
+        String::from("TPSTRY"),
+        String::from(""),
         None,
         0,
         true,
@@ -910,6 +910,7 @@ fn process_set_pixel(
     if gameplay_token.update_allowed_slot > current_slot {
         return Err(PlaceError::GameplayTokenNotReady.into());
     }
+
     msg!(
         "TAP: current_slot: {}, allowed_after: {}",
         current_slot,

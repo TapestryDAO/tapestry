@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 from random import random
 import subprocess
-from utils import KEYS_DIR, run_command,TAPESTRY_ROOT
+from helpers import KEYS_DIR, run_command,TAPESTRY_ROOT
 
 def main():
     parser = argparse.ArgumentParser()

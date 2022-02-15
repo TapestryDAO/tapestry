@@ -2236,19 +2236,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mpl-auction"
-version = "0.0.1"
-dependencies = [
- "arrayref",
- "borsh",
- "num-derive",
- "num-traits",
- "solana-program",
- "spl-token",
- "thiserror",
-]
-
-[[package]]
 name = "mpl-token-metadata"
 version = "1.1.0"
 dependencies = [
@@ -4788,24 +4775,6 @@ dependencies = [
  "sysctl",
  "unix_socket2",
  "users",
-]
-
-[[package]]
-name = "solana-tapestry"
-version = "0.1.0"
-dependencies = [
- "arrayref",
- "assert_matches",
- "borsh",
- "mpl-auction",
- "mpl-token-metadata",
- "solana-program",
- "solana-program-test",
- "solana-sdk",
- "solana-validator",
- "spl-associated-token-account",
- "spl-token",
- "thiserror",
 ]
 
 [[package]]

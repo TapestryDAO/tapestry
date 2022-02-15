@@ -3,8 +3,8 @@
 [workspace]
 members=[
   "place/program",
-  "tapestry/program",
 ]
 exclude = [
-  "build/custom_deps/mpl-program-library"
+  "build/custom_deps/mpl-program-library",
+  "tapestry/program",
 ]
