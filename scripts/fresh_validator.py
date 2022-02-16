@@ -8,7 +8,7 @@ import math
 
 import argparse
 
-from scripts.helpers import run_command, TAPESTRY_ROOT,KEYS_DIR
+from helpers import run_command, TAPESTRY_ROOT,KEYS_DIR
 
 def fill_pattern(x: int, y: int, width: int, height: int, pattern: str, keyname: str):
         run_command(["tap", "tx", "fillpattern",
