@@ -43,8 +43,8 @@ export const makeJSONRPC = async (method: string, params: any[], endpoint = SOLA
     return result.data
 }
 
-export const getNewConnection = (): Connection => {
-    return new Connection(SOLANA_ENDPOINT_LOCAL, SOLANA_CONFIG_LOCAL)
+export const getNewConnection = (endpoint = SOLANA_ENDPOINT_LOCAL, config = SOLANA_CONFIG_LOCAL): Connection => {
+    return new Connection(endpoint, config)
 }
 
 export const getKeyPath = (keyname: string): string => {

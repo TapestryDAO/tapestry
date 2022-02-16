@@ -29,6 +29,16 @@ def prompt_yes_or_no(question):
         if reply[0] == "n":
             return False
 
+def check_balance(url: str, keypair: str) -> float:
+    check_balance_cmd = [
+        "solana", "balance",
+        "--url", url,
+        "--keypair", keypair,
+    ]
+
+    result = subprocess.check_output(check_balance_cmd, cwd=TAPESTRY_ROOT).decode("utf-8")
+    return float(result.split(" ")[0])
+
 
 # HELPERS
 

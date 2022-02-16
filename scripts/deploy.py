@@ -1,25 +1,36 @@
 import argparse
+import semver
 
-
-from helpers import TARGET_DIR, KEYS_DIR, TAPESTRY_ROOT, run_command, get_pubkey_b58
+from helpers import TARGET_DIR, KEYS_DIR, TAPESTRY_ROOT, check_balance, prompt_yes_or_no, run_command, get_pubkey_b58
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dest", type=str, choices=["localhost", "devnet"], default="localhost")
-    parser.add_argument("--upgrade", action="store_true", default=False)
-    parser.add_argument("--airdrop", action="store_true", default=False)
     args = parser.parse_args()
 
     program_id_keypath = KEYS_DIR / "program_ids" / f"{args.dest}.json"
     program_id_pubkey = get_pubkey_b58(program_id_keypath)
     program_auth_keypath = KEYS_DIR / "program_auths" / f"{args.dest}.json"
     program_auth_pubkey = get_pubkey_b58(program_auth_keypath)
+    starting_balance = check_balance(args.dest, program_auth_keypath)
+
+    print("Deploying:")
+    print("Desination         : ", args.dest)
+    print("Program ID         : ", program_id_pubkey)
+    print("Program Authority  : ", program_auth_pubkey)
+    print("Auth Acct. Balance : ", starting_balance, " SOL")
+
+    result = prompt_yes_or_no("Would you like to continue deployment?")
+
+    if not result:
+        raise Exception("user did not want to continue")
 
     success = False
     try:
         # Aidrop sol if needed
-        if args.airdrop:
-            airdrop_cmd = ["solana", "airdrop", "--url", args.dest, "10", program_auth_pubkey]
+        required_balance_for_deploy = 6 # guess
+        while check_balance(args.dest, program_auth_keypath) < required_balance_for_deploy:
+            airdrop_cmd = ["solana", "airdrop", "--url", args.dest, "3", program_auth_pubkey]
             run_command(airdrop_cmd)
 
         # fresh build injecting program ID
@@ -46,6 +57,13 @@ def main():
     except Exception as e:
         print(f"Caught error: {e}")
         success = False
+
+    final_balance = check_balance(args.dest, program_auth_keypath)
+    if success:
+        print("Deployed Succesfully")
+        print("Final Auth Acct. Balance : ", final_balance, " SOL")
+        print("Total Deploy Cost        : ", starting_balance - final_balance, " SOL")
+    
 
     
 
