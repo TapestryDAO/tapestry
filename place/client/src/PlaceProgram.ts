@@ -85,7 +85,6 @@ type PixelPatchCoords = {
 // bag of static methods
 export class PlaceProgram extends Program {
 
-    // I'm now setting this 
     static PUBKEY: PublicKey = new PublicKey(PLACE_VERSION.programId);
 
     static readonly PATCH_PDA_PREFIX = "patch";
