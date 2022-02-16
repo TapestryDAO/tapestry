@@ -13,9 +13,9 @@ def main():
     owner_pubkey = get_pubkey_b58(owner_keypath)
     network = args.network
     
-    required_balance_for_init = 25 # guess
+    required_balance_for_init = 15 # guess
     while check_balance(network, owner_keypath) < required_balance_for_init:
-        airdrop_cmd = ["solana", "airdrop", 3, "--url", network, "--keypair", owner_keypath]
+        airdrop_cmd = ["solana", "airdrop", 2, "--url", network, "--keypair", owner_keypath]
         run_command(airdrop_cmd)
 
     starting_balance = check_balance(network, owner_keypath)

@@ -12,6 +12,13 @@ def main():
     program_id_pubkey = get_pubkey_b58(program_id_keypath)
     program_auth_keypath = KEYS_DIR / "program_auths" / f"{args.dest}.json"
     program_auth_pubkey = get_pubkey_b58(program_auth_keypath)
+
+    # Aidrop sol if needed
+    required_balance_for_deploy = 6 # guess
+    while check_balance(args.dest, program_auth_keypath) < required_balance_for_deploy:
+        airdrop_cmd = ["solana", "airdrop", "--url", args.dest, 2, program_auth_pubkey]
+        run_command(airdrop_cmd)
+
     starting_balance = check_balance(args.dest, program_auth_keypath)
 
     print("Deploying:")
@@ -27,12 +34,6 @@ def main():
 
     success = False
     try:
-        # Aidrop sol if needed
-        required_balance_for_deploy = 6 # guess
-        while check_balance(args.dest, program_auth_keypath) < required_balance_for_deploy:
-            airdrop_cmd = ["solana", "airdrop", "--url", args.dest, "3", program_auth_pubkey]
-            run_command(airdrop_cmd)
-
         # fresh build injecting program ID
         env_stuff = [f"SOLANA_PLACE_PROGRAM_ID=\"{program_id_pubkey}\""]
         build_cmd = ["cargo", "build-bpf"]
