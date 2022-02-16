@@ -57,5 +57,5 @@ export const ENDPOINTS: PlaceRpcEndpoint[] = [
 ];
 
 // TODO(will): need to do some restructuring such that these can be set from UI
-export const PLACE_VERSION = VERSIONS[1];
+export const PLACE_VERSION = VERSIONS[0];
 export const PLACE_ENDPOINT = ENDPOINTS[0];
