@@ -1,14 +1,7 @@
-import { sendAndConfirmTransaction, Transaction, ConfirmOptions, PublicKey } from '@solana/web3.js';
-import { inspect } from 'util';
 import { ArgumentsCamelCase, Argv } from 'yargs';
-import { applyKeynameOption, applyXYArgOptions, KeynameOptionArgs, XYOptionArgs } from '../../cli_utils/commandHelpers';
-import { getNewConnection, loadKey, makeJSONRPC, SOLANA_MAINNET_ENDPOINT } from '../../cli_utils/utils';
-import { PlaceProgram, SetPixelParams, PLACE_HEIGHT_PX, PLACE_WIDTH_PX, PATCH_SIZE_PX } from '../client/src/PlaceProgram';
+import { applyKeynameOption, KeynameOptionArgs } from '../../cli_utils/commandHelpers';
+import { loadKey } from '../../cli_utils/utils';
 import { PlaceClient } from '../client/src/PlaceClient';
-import BN from 'bn.js';
-import { GameplayTokenType } from '../client/src/accounts';
-// @ts-ignore
-import asyncPool from "tiny-async-pool"
 
 type GetGameplayTokensCommandArgs = KeynameOptionArgs;
 

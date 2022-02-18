@@ -12,7 +12,6 @@ CARGO_DEPLOY_DIR = TAPESTRY_ROOT / "target" / "deploy"
 MPL_DEPLOY_DIR = TAPESTRY_ROOT / "build" / "custom_deps" / "mpl-program-library" / "target" / "deploy"
 
 PROGRAMS = [
-    ("Tapestry11111111111111111111111111111111111", CARGO_DEPLOY_DIR / "solana_tapestry.so"),
     ("tapestry11111111111111111111111111111111111", CARGO_DEPLOY_DIR / "solana_place.so"),
     ("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s", MPL_DEPLOY_DIR / "mpl_token_metadata.so "),
     ("auctxRXPeJoc4817jDhf4HbjnhEcr1cCXenosMhK5R8", MPL_DEPLOY_DIR / "mpl_auction.so"),

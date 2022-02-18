@@ -18,6 +18,7 @@ import { Metadata, MetadataProgram } from '@metaplex-foundation/mpl-token-metada
 import { PurchaseGameplayTokenArgsData } from './instructions/purchaseGameplayToken';
 import { InitMintArgsData } from './instructions/initMint';
 import { ClaimTokensArgsData } from './instructions/claimTokens';
+import { PLACE_VERSION, SolanaNetwork } from './Config';
 
 export const PLACE_HEIGHT_PX = 1000;
 export const PLACE_WIDTH_PX = 1000;
@@ -79,8 +80,12 @@ type PixelPatchCoords = {
     yOffset: number,
 }
 
+// NOTE(will): in hind sight, doing this as a class that gets instantiated
+// with a program ID and semantic version made more sense than using it as a
+// bag of static methods
 export class PlaceProgram extends Program {
-    static readonly PUBKEY: PublicKey = new PublicKey('tapestry11111111111111111111111111111111111');
+
+    static PUBKEY: PublicKey = new PublicKey(PLACE_VERSION.programId);
 
     static readonly PATCH_PDA_PREFIX = "patch";
     static readonly PLACE_STATE_PDA_PREFIX = "place";

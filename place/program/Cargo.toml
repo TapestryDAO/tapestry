@@ -19,6 +19,7 @@ mpl-token-metadata = {path="../../build/custom_deps/mpl-program-library/token-me
 [features]
 test-bpf = ["solana-validator"]
 no-entrypoint = []
+devnet = []
 
 [dev-dependencies]
 assert_matches = "1.5.0"

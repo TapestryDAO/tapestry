@@ -8,16 +8,7 @@ import math
 
 import argparse
 
-TAPESTRY_ROOT = Path(os.environ["TAPESTRY_ROOT"])
-
-KEYS_DIR = TAPESTRY_ROOT / "keys"
-
-# Expects array of any
-def run_command(args, cwd=TAPESTRY_ROOT):
-    full_command = " ".join(map(lambda v: str(v), args))
-    print(f"Running Command: {full_command}")
-    subprocess.check_call(full_command, cwd=TAPESTRY_ROOT, shell=True)
-
+from helpers import run_command, TAPESTRY_ROOT,KEYS_DIR
 
 def fill_pattern(x: int, y: int, width: int, height: int, pattern: str, keyname: str):
         run_command(["tap", "tx", "fillpattern",

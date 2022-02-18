@@ -11,6 +11,7 @@ import { GameplayTokenType } from '../client/src/accounts';
 import asyncPool from "tiny-async-pool"
 import { GameplayTokenMetaAccount } from '../client/src/accounts/GameplayTokenMetaAccount';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { PLACE_ENDPOINT } from '../client/src';
 
 const MAX_COLORS = 256;
 
@@ -27,7 +28,7 @@ const init_all_patches_command = {
     handler: async (args: ArgumentsCamelCase<InitAllPatchesCommandArgs>) => {
 
         let keypair = loadKey(args.keyname);
-        let connection = getNewConnection();
+        let connection = getNewConnection(PLACE_ENDPOINT.url);
         let connectionConfig: ConfirmOptions = {
             skipPreflight: true,
             commitment: 'confirmed',
@@ -94,7 +95,7 @@ const init_mint_command = {
         let owner_keypair = loadKey(args.keyname);
         let init_mint_ix = await PlaceProgram.initTokenMint({ owner: owner_keypair.publicKey })
         let tx = new Transaction().add(init_mint_ix);
-        let connection = getNewConnection();
+        let connection = getNewConnection(PLACE_ENDPOINT.url);
         let result = await sendAndConfirmTransaction(connection, tx, [owner_keypair]);
         console.log("Result: ", result);
     }
@@ -118,7 +119,7 @@ const init_mint_command = {
 //     },
 //     handler: async (args: ArgumentsCamelCase<SetPixelCommandArgs>) => {
 //         let payer = loadKey(args.keyname);
-//         let connection = getNewConnection();
+//         let connection = getNewConnection(PLACE_ENDPOINT.url);
 //         let pixelValue = [0, 0, 0];
 
 //         let params: SetPixelParams = {
@@ -181,7 +182,7 @@ const init_mint_command = {
 //         }
 
 //         let keypair = loadKey(args.keyname);
-//         let connection = getNewConnection();
+//         let connection = getNewConnection(PLACE_ENDPOINT.url);
 //         let connectionConfig: ConfirmOptions = {
 //             skipPreflight: true,
 //             commitment: 'confirmed',
@@ -316,7 +317,7 @@ const update_place_state_command = {
         })
 
         let tx = new Transaction().add(update_place_ix);
-        let connection = getNewConnection();
+        let connection = getNewConnection(PLACE_ENDPOINT.url);
         let result = await sendAndConfirmTransaction(connection, tx, [key]);
         console.log("Result: ", result);
     }
@@ -362,7 +363,7 @@ const purchase_gameplay_token_command = {
 
         let tx = new Transaction().add(ix);
 
-        let connection = getNewConnection();
+        let connection = getNewConnection(PLACE_ENDPOINT.url);
         let result = await sendAndConfirmTransaction(connection, tx, [keypair]);
         console.log(result);
     }
@@ -379,7 +380,7 @@ const claim_tokens_command = {
     },
     handler: async (args: ArgumentsCamelCase<ClaimTokensCommandArgs>) => {
         let claimer = loadKey(args.keyname);
-        let connection = getNewConnection();
+        let connection = getNewConnection(PLACE_ENDPOINT.url);
         let client = PlaceClient.getInstance();
 
         client.setCurrentUser(claimer.publicKey);

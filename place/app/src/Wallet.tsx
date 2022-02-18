@@ -16,14 +16,35 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Toolbox } from './Toolbox';
 import { Notification } from './Notification';
 import { App } from './App';
+import { PLACE_VERSION, PLACE_ENDPOINT, SolanaNetwork } from '@tapestrydao/place-client'
 
 export const Wallet: FC = () => {
     // Can be set to 'devnet', 'testnet', or 'mainnet-beta'
-    const network = WalletAdapterNetwork.Devnet;
+
+    if (PLACE_VERSION.network !== PLACE_ENDPOINT.network) {
+        throw Error("version and endpoint did not have matching network");
+    }
+
+    let network: WalletAdapterNetwork = WalletAdapterNetwork.Devnet;
+
+    switch (PLACE_ENDPOINT.network) {
+        case SolanaNetwork.Localhost:
+            network = WalletAdapterNetwork.Devnet; // unsure what to do for this?
+            break;
+        case SolanaNetwork.Testnet:
+            network = WalletAdapterNetwork.Testnet;
+            break;
+        case SolanaNetwork.Devnet:
+            network = WalletAdapterNetwork.Devnet;
+            break;
+        case SolanaNetwork.Mainnet:
+            network = WalletAdapterNetwork.Mainnet;
+            break;
+    }
 
     // You can also provide a custom RPC endpoint
     // const endpoint = useMemo(() => clusterApiUrl(network), [network]);
-    const endpoint = "http://127.0.0.1:8899"
+    const endpoint = PLACE_ENDPOINT.url;
 
     // @solana/wallet-adapter-wallets includes all the adapters but supports tree shaking and lazy loading --
     // Only the wallets you configure here will be compiled into your application, and only the dependencies

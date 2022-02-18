@@ -1,5 +1,5 @@
 import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter, AccountInfo, Transaction, TransactionSignature, TransactionInstruction } from "@solana/web3.js";
-import { PlaceProgram } from ".";
+import { PlaceProgram, PLACE_ENDPOINT } from ".";
 import { extendBorsh } from "./utils/borsh";
 import { blend32 } from "./palletes/blend32";
 import { PlaceAccountType, PatchData, PlaceStateData } from "./accounts";
@@ -160,7 +160,7 @@ export class PlaceClient {
 
     public static getInstance(): PlaceClient {
         if (!PlaceClient.instance) {
-            this.instance = new PlaceClient(new Connection("http://127.0.0.1:8899"))
+            this.instance = new PlaceClient(new Connection(PLACE_ENDPOINT.url))
         }
 
         return this.instance;
