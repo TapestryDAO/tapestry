@@ -8,6 +8,7 @@ import {
     TransactionSignature,
     TransactionInstruction,
     Commitment,
+    SlotChangeCallback,
 } from "@solana/web3.js";
 import {
     PlaceProgram,
@@ -101,6 +102,7 @@ export class PlaceClient {
         CurrentUserPlaceTokenAcctsUpdateHandler
     >();
     public OnGameplayTokenRecordsUpdated = new Signal<GameplayTokenRecordsHandler>();
+    public OnSlotChanged = new Signal<SlotChangeCallback>();
 
     // current state updated via various RPC subscriptions
     public currentSlot: number | null = null;
@@ -171,6 +173,7 @@ export class PlaceClient {
         // NOTE(will): unsubscribe not handled if we ever destroy this object
         this.currentSlotSubscription = this.connection.onSlotChange((slotChange) => {
             this.currentSlot = slotChange.slot;
+            this.OnSlotChanged.dispatch(slotChange);
         });
 
         this.subscribeToPlaceTokenMint();
@@ -897,7 +900,7 @@ export class PlaceClient {
         this.OnGameplayTokenRecordsUpdated.dispatch(this.currentUserGptRecords);
     }
 
-    private async fetchGptRecords(owner: PublicKey): Promise<GameplayTokenRecord[]> {
+    public async fetchGptRecords(owner: PublicKey): Promise<GameplayTokenRecord[]> {
         let allUserTokenAccounts = await TokenAccount.getTokenAccountsByOwner(
             this.connection,
             owner
