@@ -120,8 +120,10 @@ const spiral_bot = {
                 currentLegProgress = 0;
             }
 
-            currentX = directions[currentDirectionIdx].x + currentX;
-            currentY = directions[currentDirectionIdx].y + currentY;
+            currentX =
+                (PLACE_WIDTH_PX + directions[currentDirectionIdx].x + currentX) % PLACE_WIDTH_PX;
+            currentY =
+                (PLACE_HEIGHT_PX + directions[currentDirectionIdx].y + currentY) % PLACE_HEIGHT_PX;
         }, interval);
     },
 };
