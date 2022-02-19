@@ -1,6 +1,6 @@
-import { WalletAdapterNetwork, WalletError } from '@solana/wallet-adapter-base';
-import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
-import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { WalletAdapterNetwork, WalletError } from "@solana/wallet-adapter-base";
+import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import {
     LedgerWalletAdapter,
     PhantomWalletAdapter,
@@ -9,14 +9,14 @@ import {
     SolletExtensionWalletAdapter,
     SolletWalletAdapter,
     TorusWalletAdapter,
-} from '@solana/wallet-adapter-wallets';
-import { clusterApiUrl } from '@solana/web3.js';
-import React, { FC, useCallback, useMemo } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
-import { Toolbox } from './Toolbox';
-import { Notification } from './Notification';
-import { App } from './App';
-import { PLACE_VERSION, PLACE_ENDPOINT, SolanaNetwork } from '@tapestrydao/place-client'
+} from "@solana/wallet-adapter-wallets";
+import { clusterApiUrl } from "@solana/web3.js";
+import React, { FC, useCallback, useMemo } from "react";
+import toast, { Toaster } from "react-hot-toast";
+import { Toolbox } from "./Toolbox";
+import { Notification } from "./Notification";
+import { App } from "./App";
+import { PLACE_VERSION, PLACE_ENDPOINT, SolanaNetwork } from "@tapestrydao/place-client";
 
 export const Wallet: FC = () => {
     // Can be set to 'devnet', 'testnet', or 'mainnet-beta'

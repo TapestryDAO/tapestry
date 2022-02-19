@@ -3,83 +3,82 @@ import {
     SystemProgram,
     SYSVAR_RENT_PUBKEY,
     TransactionInstruction,
-} from '@solana/web3.js'
-import { Program, TokenAccount } from '@metaplex-foundation/mpl-core'
-import { SetPixelArgsData } from './instructions/setPixel';
-import { InitPatchArgsData } from './instructions/initPatch';
-import { UpdatePlaceStateArgsData } from './instructions/updatePlaceState';
-import { GameplayTokenType } from './accounts';
+} from "@solana/web3.js";
+import { Program, TokenAccount } from "@metaplex-foundation/mpl-core";
+import { SetPixelArgsData } from "./instructions/setPixel";
+import { InitPatchArgsData } from "./instructions/initPatch";
+import { UpdatePlaceStateArgsData } from "./instructions/updatePlaceState";
+import { GameplayTokenType } from "./accounts";
 
-import BN from 'bn.js';
-import { randomBytes } from 'crypto';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from '@solana/spl-token';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { Metadata, MetadataProgram } from '@metaplex-foundation/mpl-token-metadata';
-import { PurchaseGameplayTokenArgsData } from './instructions/purchaseGameplayToken';
-import { InitMintArgsData } from './instructions/initMint';
-import { ClaimTokensArgsData } from './instructions/claimTokens';
-import { PLACE_VERSION, SolanaNetwork } from './Config';
-import { PlaceProgramVersion } from '.';
+import BN from "bn.js";
+import { randomBytes } from "crypto";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { Metadata, MetadataProgram } from "@metaplex-foundation/mpl-token-metadata";
+import { PurchaseGameplayTokenArgsData } from "./instructions/purchaseGameplayToken";
+import { InitMintArgsData } from "./instructions/initMint";
+import { ClaimTokensArgsData } from "./instructions/claimTokens";
+import { PlaceProgramVersion } from "./Config";
 
 export const PLACE_HEIGHT_PX = 1000;
 export const PLACE_WIDTH_PX = 1000;
 export const PATCH_SIZE_PX = 20;
 
 export type InitTokenMintParams = {
-    owner: PublicKey,
-}
+    owner: PublicKey;
+};
 
 export type SetPixelParams = {
-    x: number,
-    y: number,
-    pixel: number,
-    payer: PublicKey,
+    x: number;
+    y: number;
+    pixel: number;
+    payer: PublicKey;
     // gamplay account holding token metadata
-    gameplay_token_meta_acct: PublicKey,
+    gameplay_token_meta_acct: PublicKey;
     // SPL Token account holding actual token
-    gameplay_token_acct: PublicKey,
-}
+    gameplay_token_acct: PublicKey;
+};
 
 export type InitPatchParams = {
-    xPatch: number,
-    yPatch: number,
-    payer: PublicKey,
-}
+    xPatch: number;
+    yPatch: number;
+    payer: PublicKey;
+};
 
 export type UpdatePlaceStateParams = {
-    current_owner: PublicKey,
-    new_owner: PublicKey | null,
-    is_frozen: boolean | null,
-    paintbrush_price: BN | null,
-    paintbrush_cooldown: BN | null,
-    bomb_price: BN | null,
-}
+    current_owner: PublicKey;
+    new_owner: PublicKey | null;
+    is_frozen: boolean | null;
+    paintbrush_price: BN | null;
+    paintbrush_cooldown: BN | null;
+    bomb_price: BN | null;
+};
 
 export type PurchaseGameplayTokenParams = {
-    payer: PublicKey,
-    token_type: GameplayTokenType,
-    desired_price: BN,
-}
+    payer: PublicKey;
+    token_type: GameplayTokenType;
+    desired_price: BN;
+};
 
 export type ClaimTokensParams = {
-    claimer: PublicKey,
-    gameplay_token_random_seed: BN,
-    gameplay_token_ata: PublicKey,
-    dest_ata: PublicKey,
-}
+    claimer: PublicKey;
+    gameplay_token_random_seed: BN;
+    gameplay_token_ata: PublicKey;
+    dest_ata: PublicKey;
+};
 
 export type PurchaseGameplayTokenInstructionInfo = {
-    gptMintPubkey: PublicKey,
-    gptAtaPubkey: PublicKey,
-    gptMetaPubkey: PublicKey,
-}
+    gptMintPubkey: PublicKey;
+    gptAtaPubkey: PublicKey;
+    gptMetaPubkey: PublicKey;
+};
 
 type PixelPatchCoords = {
-    xPatch: number,
-    yPatch: number,
-    xOffset: number,
-    yOffset: number,
-}
+    xPatch: number;
+    yPatch: number;
+    xOffset: number;
+    yOffset: number;
+};
 
 export class PlaceProgram {
 
@@ -101,7 +100,7 @@ export class PlaceProgram {
         let data = InitPatchArgsData.serialize({
             xPatch: params.xPatch,
             yPatch: params.yPatch,
-        })
+        });
 
         let patchPda = await this.findPatchPda(params.xPatch, params.yPatch);
 
@@ -113,12 +112,14 @@ export class PlaceProgram {
             ],
             programId: this.programId,
             data: data,
-        })
+        });
     }
 
     public async claimTokens(params: ClaimTokensParams) {
         let data = ClaimTokensArgsData.serialize({});
-        let gameplay_token_meta_pda = await this.findGameplayMetaPda(params.gameplay_token_random_seed);
+        let gameplay_token_meta_pda = await this.findGameplayMetaPda(
+            params.gameplay_token_random_seed
+        );
         let place_token_mint_pda = await this.findPlaceTokenMintPda();
         let place_state_pda = await this.findPlaceStatePda();
         return new TransactionInstruction({
@@ -141,14 +142,17 @@ export class PlaceProgram {
         let randomSeed = new BN(randomBytes(8));
         let gameplay_meta_pda = await this.findGameplayMetaPda(randomSeed);
         let gameplay_token_mint_pda = await this.findGameplayTokenMintPda(randomSeed);
-        let gameplay_token_ata = await this.findGameplayTokenMintAta(gameplay_token_mint_pda, params.payer);
+        let gameplay_token_ata = await this.findGameplayTokenMintAta(
+            gameplay_token_mint_pda,
+            params.payer
+        );
         let gameplay_token_mpl_pda = await Metadata.getPDA(gameplay_token_mint_pda);
 
         let data = PurchaseGameplayTokenArgsData.serialize({
             token_type: params.token_type,
             random_seed: randomSeed,
             desired_price: params.desired_price,
-        })
+        });
 
         return new TransactionInstruction({
             keys: [
@@ -165,7 +169,7 @@ export class PlaceProgram {
                 { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
             ],
             programId: this.programId,
-            data: data
+            data: data,
         })
     }
 
@@ -175,7 +179,7 @@ export class PlaceProgram {
             gptMetaPubkey: ix.keys[2].pubkey,
             gptMintPubkey: ix.keys[3].pubkey,
             gptAtaPubkey: ix.keys[4].pubkey,
-        }
+        };
     }
 
     public async updatePlaceState(params: UpdatePlaceStateParams) {
@@ -186,7 +190,7 @@ export class PlaceProgram {
             paintbrush_price: params.paintbrush_price,
             paintbrush_cooldown: params.paintbrush_cooldown,
             bomb_price: params.bomb_price,
-        })
+        });
 
         return new TransactionInstruction({
             keys: [
@@ -247,7 +251,7 @@ export class PlaceProgram {
             ],
             programId: this.programId,
             data: data,
-        })
+        });
     }
 
     public async findPatchPda(xPatch: number, yPatch: number): Promise<PublicKey> {
@@ -314,11 +318,11 @@ export class PlaceProgram {
             TOKEN_PROGRAM_ID,
             gameplayTokenMintPda,
             userPubkey,
-            false); // TODO(will): what are the implications of this?
+            false
+        ); // TODO(will): what are the implications of this?
     }
 
     private computePatchCoords(x: number, y: number): PixelPatchCoords {
-
         if (x > PLACE_WIDTH_PX || y > PLACE_HEIGHT_PX || x < 0 || y < 0) {
             throw Error("Invalid pixel coordinates: " + x + "," + y);
         }
@@ -332,6 +336,6 @@ export class PlaceProgram {
             yPatch: Math.floor(y / PATCH_SIZE_PX),
             xOffset: x % PATCH_SIZE_PX,
             yOffset: y % PATCH_SIZE_PX,
-        }
+        };
     }
 }

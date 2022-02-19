@@ -4,7 +4,8 @@ from pathlib import Path
 import os
 from random import random
 import subprocess
-from helpers import KEYS_DIR, run_command,TAPESTRY_ROOT
+from helpers import KEYS_DIR, run_command, TAPESTRY_ROOT
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -19,26 +20,36 @@ def main():
         keyname = f"walker{i}"
         keypath = KEYS_DIR / f"{keyname}.json"
         if not keypath.exists():
-            run_command(["solana-keygen", "new", "-o", keypath, "--no-bip39-passphrase"])
+            run_command(
+                ["solana-keygen", "new", "-o", keypath, "--no-bip39-passphrase"]
+            )
 
         run_command(["solana", "airdrop", "1000", keypath])
 
         random_x = math.floor(random() * 1000)
         random_y = math.floor(random() * 1000)
         command = [
-            "pla", "tx", "walker", 
-            "-x", random_x, 
-            "-y", random_y, 
-            "--keyname", keyname,
-            "--colors", args.colors
+            "pla",
+            "tx",
+            "walker",
+            "-x",
+            random_x,
+            "-y",
+            random_y,
+            "--keyname",
+            keyname,
+            "--colors",
+            args.colors,
         ]
         command = map(lambda v: str(v), command)
-        proc = subprocess.Popen(command, cwd=TAPESTRY_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(
+            command, cwd=TAPESTRY_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         procs.append(proc)
 
     for proc in procs:
         proc.wait()
-    
+
 
 if __name__ == "__main__":
     main()

@@ -1,15 +1,12 @@
-import { Borsh } from '@metaplex-foundation/mpl-core';
-import { Schema } from 'borsh';
-import { PlaceInstruction } from './types';
+import { Borsh } from "@metaplex-foundation/mpl-core";
+import { Schema } from "borsh";
+import { PlaceInstruction } from "./types";
 
-export type ClaimTokensArgs = {
-};
+export type ClaimTokensArgs = {};
 
 export class ClaimTokensArgsData extends Borsh.Data<ClaimTokensArgs> {
     static readonly SCHEMA: Schema = new Map([
-        ...ClaimTokensArgsData.struct([
-            ['instruction', 'u8'],
-        ]),
+        ...ClaimTokensArgsData.struct([["instruction", "u8"]]),
     ]);
 
     instruction: number = PlaceInstruction.ClaimTokens;
@@ -17,4 +14,4 @@ export class ClaimTokensArgsData extends Borsh.Data<ClaimTokensArgs> {
     constructor(args: ClaimTokensArgs) {
         super(args);
     }
-};
+}

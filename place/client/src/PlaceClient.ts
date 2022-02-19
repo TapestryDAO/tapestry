@@ -1,66 +1,80 @@
-import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter, AccountInfo, Transaction, TransactionSignature, TransactionInstruction, Commitment } from "@solana/web3.js";
-import { PlaceProgram, PlaceProgramVersion, PlaceRpcEndpoint, PLACE_ENDPOINT, PLACE_VERSION } from ".";
+import {
+    Connection,
+    PublicKey,
+    KeyedAccountInfo,
+    GetProgramAccountsFilter,
+    AccountInfo,
+    Transaction,
+    TransactionSignature,
+    TransactionInstruction,
+    Commitment,
+} from "@solana/web3.js";
+import { PlaceProgram, PLACE_ENDPOINT, PLACE_VERSION } from ".";
 import { extendBorsh } from "./utils/borsh";
 import { blend32 } from "./palletes/blend32";
 import { PlaceAccountType, PatchData, PlaceStateData } from "./accounts";
 import base58 from "bs58";
 import { TokenAccount } from "@metaplex-foundation/mpl-core";
-import BN from 'bn.js';
+import BN from "bn.js";
 import { GameplayTokenMetaAccount } from "./accounts/GameplayTokenMetaAccount";
-import { Signal } from './signals';
-import { MintLayout, Token, MintInfo, ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { cp } from "fs";
+import { Signal } from "./signals";
+import {
+    MintLayout,
+    Token,
+    MintInfo,
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 
 export const PATCH_WIDTH = 20;
 export const PATCH_HEIGHT = 20;
 
 export type CanvasUpdate = {
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    image: Uint8ClampedArray,
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    image: Uint8ClampedArray;
 };
 
 type PublicKeyB58 = string;
 
 export type GameplayTokenRecord = {
-    mintPubkey: PublicKeyB58,
-    gameplayTokenMetaAcct: GameplayTokenMetaAccount,
-    userTokenAccount: TokenAccount,
-    _userTokenAccountSubscription: number | null,
-    _gptAccountSubscription: number | null,
-}
+    mintPubkey: PublicKeyB58;
+    gameplayTokenMetaAcct: GameplayTokenMetaAccount;
+    userTokenAccount: TokenAccount;
+    _userTokenAccountSubscription: number | null;
+    _gptAccountSubscription: number | null;
+};
 
 export type PlaceTokenAtaRecord = {
-    pubkey: PublicKey,
-    tokenAccount: TokenAccount,
-    _subscription: number,
-}
+    pubkey: PublicKey;
+    tokenAccount: TokenAccount;
+    _subscription: number;
+};
 
 type AwaitingGptRecord = {
-    gptMintPubkey: PublicKey,
-    gptAtaPubkey: PublicKey,
-    gptMetaPubkey: PublicKey,
+    gptMintPubkey: PublicKey;
+    gptAtaPubkey: PublicKey;
+    gptMetaPubkey: PublicKey;
     gptMetaAccount: GameplayTokenMetaAccount | null;
     gptAtaAccount: TokenAccount | null;
-    gptAtaSubscription: number,
-    gptMetaSubscription: number,
-}
+    gptAtaSubscription: number;
+    gptMetaSubscription: number;
+};
 
 type AwaitingUserPlaceTokenAtaRecord = {
-    pubkey: PublicKey,
-    subscription: number,
-}
+    pubkey: PublicKey;
+    subscription: number;
+};
 
-export type GameplayTokenRecordsHandler =
-    (records: GameplayTokenRecord[] | null) => void;
+export type GameplayTokenRecordsHandler = (records: GameplayTokenRecord[] | null) => void;
 
-export type CurrentUserPlaceTokenAcctsUpdateHandler =
-    (tokenAccounts: PlaceTokenAtaRecord[] | null) => void;
+export type CurrentUserPlaceTokenAcctsUpdateHandler = (
+    tokenAccounts: PlaceTokenAtaRecord[] | null
+) => void;
 
-export type PlaceTokenMintUpdateHandler =
-    (mintInfo: MintInfo) => void;
+export type PlaceTokenMintUpdateHandler = (mintInfo: MintInfo) => void;
 
 export class PlaceClient {
     private static instance: PlaceClient;
@@ -77,7 +91,9 @@ export class PlaceClient {
 
     // Signals to expose state changes to react app
     public OnPlaceTokenMintUpdated = new Signal<PlaceTokenMintUpdateHandler>();
-    public OnCurrentUserPlaceTokenAcctsUpdated = new Signal<CurrentUserPlaceTokenAcctsUpdateHandler>();
+    public OnCurrentUserPlaceTokenAcctsUpdated = new Signal<
+        CurrentUserPlaceTokenAcctsUpdateHandler
+    >();
     public OnGameplayTokenRecordsUpdated = new Signal<GameplayTokenRecordsHandler>();
 
     // current state updated via various RPC subscriptions
@@ -88,8 +104,8 @@ export class PlaceClient {
     public currentUserGptRecords: GameplayTokenRecord[] | null = null;
     public currentUserPlaceTokenAtaRecords: PlaceTokenAtaRecord[] | null = null;
 
-    public awaitingGptRecords: AwaitingGptRecord[] = []
-    public awaitingUserPlaceTokenRecords: AwaitingUserPlaceTokenAtaRecord[] = []
+    public awaitingGptRecords: AwaitingGptRecord[] = [];
+    public awaitingUserPlaceTokenRecords: AwaitingUserPlaceTokenAtaRecord[] = [];
 
     // A buffer containing a color pallete
     // a color pallete is mapping from 8 bit values to full 32 bit color values (RBGA)
@@ -105,15 +121,15 @@ export class PlaceClient {
         memcmp: {
             bytes: base58.encode([PlaceAccountType.Patch]),
             offset: 0,
-        }
-    }
+        },
+    };
 
     private placeStateAccountsFilter: GetProgramAccountsFilter = {
         memcmp: {
             bytes: base58.encode([PlaceAccountType.PlaceState]),
             offset: 0,
-        }
-    }
+        },
+    };
 
     constructor(programVersion: PlaceProgramVersion, endpoint: PlaceRpcEndpoint) {
         this.programVersion = programVersion;
@@ -144,13 +160,12 @@ export class PlaceClient {
             bufOffset += 4;
         }
 
-        this.colorPallete = buf
+        this.colorPallete = buf;
 
         // NOTE(will): unsubscribe not handled if we ever destroy this object
-        this.currentSlotSubscription =
-            this.connection.onSlotChange((slotChange) => {
-                this.currentSlot = slotChange.slot
-            });
+        this.currentSlotSubscription = this.connection.onSlotChange((slotChange) => {
+            this.currentSlot = slotChange.slot;
+        });
 
         this.subscribeToPlaceTokenMint();
     }
@@ -187,40 +202,41 @@ export class PlaceClient {
 
     // Returns all colors in the pallete as hex strings
     public getColorPalleteHex(): string[] {
-        let palleteColors: string[] = []
+        let palleteColors: string[] = [];
         for (let i = 0; i < this.colorPallete.length; i = i + 4) {
             let r = this.colorPallete[i];
             let g = this.colorPallete[i + 1];
             let b = this.colorPallete[i + 2];
             // ignore alpha
 
-            let hex = ((b | g << 8 | r << 16) | 1 << 24).toString(16).slice(1)
+            let hex = (b | (g << 8) | (r << 16) | (1 << 24)).toString(16).slice(1);
             palleteColors.push("#" + hex);
         }
 
         return palleteColors;
     }
 
-    // #ffffff string -> uint8 
+    // #ffffff string -> uint8
     public pixelColorToPalletColor(rgb: string): number {
-
         let offset = 0;
         if (rgb.startsWith("#")) {
             offset += 1;
         }
 
-        let r = rgb.substring(offset, offset += 2);
-        let g = rgb.substring(offset, offset += 2);
-        let b = rgb.substring(offset, offset += 2);
+        let r = rgb.substring(offset, (offset += 2));
+        let g = rgb.substring(offset, (offset += 2));
+        let b = rgb.substring(offset, (offset += 2));
         let rValue = parseInt(r, 16);
         let gValue = parseInt(g, 16);
         let bValue = parseInt(b, 16);
         let aValue = 255;
 
         for (let i = 0; i < this.colorPallete.length; i = i + 4) {
-            if (this.colorPallete[i] == rValue
-                && this.colorPallete[i + 1] == gValue
-                && this.colorPallete[i + 2] == bValue) {
+            if (
+                this.colorPallete[i] == rValue &&
+                this.colorPallete[i + 1] == gValue &&
+                this.colorPallete[i + 2] == bValue
+            ) {
                 return i / 4;
             }
         }
@@ -231,13 +247,17 @@ export class PlaceClient {
     }
 
     public getLargestCurrentUserAta(): TokenAccount | null {
-        if (this.currentUserPlaceTokenAtaRecords === null || this.currentUserPlaceTokenAtaRecords.length === 0) {
+        if (
+            this.currentUserPlaceTokenAtaRecords === null ||
+            this.currentUserPlaceTokenAtaRecords.length === 0
+        ) {
             console.log("ata records is null");
             return null;
         }
 
-        let sortedRecords = this.currentUserPlaceTokenAtaRecords
-            .sort((a, b) => a.tokenAccount.data.amount.cmp(b.tokenAccount.data.amount))
+        let sortedRecords = this.currentUserPlaceTokenAtaRecords.sort((a, b) =>
+            a.tokenAccount.data.amount.cmp(b.tokenAccount.data.amount)
+        );
 
         // TODO(will): maybe try to combine them if user has multiple?
 
@@ -246,16 +266,16 @@ export class PlaceClient {
 
     public async packClaimTokensTX(): Promise<Transaction[] | null> {
         if (this.currentUser === null) {
-            console.warn("tried to pack claim tx but current user was null")
+            console.warn("tried to pack claim tx but current user was null");
             return null;
         }
 
         if (this.currentUserGptRecords === null) {
-            console.warn("tried to pack claim tx but had no user gpt records")
+            console.warn("tried to pack claim tx but had no user gpt records");
             return null;
         }
 
-        let claimableGptAccts: GameplayTokenRecord[] = []
+        let claimableGptAccts: GameplayTokenRecord[] = [];
 
         for (let record of this.currentUserGptRecords) {
             if (record.gameplayTokenMetaAcct.data.place_tokens_owed > 0) {
@@ -268,7 +288,7 @@ export class PlaceClient {
             return null;
         }
 
-        let allTransactions: Transaction[] = []
+        let allTransactions: Transaction[] = [];
         let currentTx = new Transaction();
         let destAta = this.getLargestCurrentUserAta();
         let destAtaPubkey: PublicKey;
@@ -281,7 +301,7 @@ export class PlaceClient {
                 TOKEN_PROGRAM_ID,
                 placeTokenMintPda,
                 this.currentUser,
-                false,
+                false
             );
 
             let create_ata_ix = Token.createAssociatedTokenAccountInstruction(
@@ -290,8 +310,8 @@ export class PlaceClient {
                 placeTokenMintPda,
                 destAtaPubkey,
                 this.currentUser,
-                this.currentUser,
-            )
+                this.currentUser
+            );
             currentTx.add(create_ata_ix);
 
             this.awaitPlaceTokenAta(destAtaPubkey);
@@ -304,7 +324,7 @@ export class PlaceClient {
         for (let result of claimableGptAccts) {
             if (currentTx.instructions.length >= max) {
                 allTransactions.push(currentTx);
-                console.log("finishing this tx")
+                console.log("finishing this tx");
                 currentTx = new Transaction();
             }
 
@@ -316,8 +336,7 @@ export class PlaceClient {
                 gameplay_token_random_seed: randomSeed,
                 gameplay_token_ata: gptAta,
                 dest_ata: destAtaPubkey,
-            })
-            console.log("Current user", this.currentUser.toBase58());
+            });
             console.log("adding ix");
             currentTx.add(ix);
         }
@@ -366,10 +385,11 @@ export class PlaceClient {
         let oldIsNull = this.currentUser === null;
         if (newIsNull && oldIsNull) return;
         // @ts-ignore
-        if (newIsNull === oldIsNull && newCurrentUser.toBase58() === this.currentUser.toBase58()) return;
+        if (newIsNull === oldIsNull && newCurrentUser.toBase58() === this.currentUser.toBase58())
+            return;
 
         if (this.currentUser !== null) {
-            console.log("Unsubscribing from previous user: ", this.currentUser)
+            console.log("Unsubscribing from previous user: ", this.currentUser);
             this.unsubscribeFromCurrentUserPlaceTokenAccounts();
             this.unsubscribeFromCurrentUserGptRecords();
         }
@@ -383,7 +403,6 @@ export class PlaceClient {
         }
     }
 
-
     public async subscribeToPlaceTokenMint() {
         extendBorsh();
         if (this.placeTokenMintSubscription !== null) {
@@ -395,21 +414,25 @@ export class PlaceClient {
 
         // TODO(will): set up some sort of retry if this fails
         if (mintAcctInfo === null) {
-            console.warn("mint acct info null")
+            console.warn("mint acct info null");
             return;
         }
 
-        let mintInfo = MintLayout.decode(mintAcctInfo.data) as MintInfo
+        let mintInfo = MintLayout.decode(mintAcctInfo.data) as MintInfo;
         this.currentMintInfo = mintInfo;
 
         this.OnPlaceTokenMintUpdated.dispatch(mintInfo);
 
         console.log("Subscribing to place token mint");
-        this.placeTokenMintSubscription = this.connection.onAccountChange(placeMintPDA, async (accountInfo, ctx) => {
-            let mintInfo = MintLayout.decode(accountInfo.data) as MintInfo
-            console.log("Mint supply: ", mintInfo.supply);
-            this.OnPlaceTokenMintUpdated.dispatch(mintInfo);
-        }, "processed")
+        this.placeTokenMintSubscription = this.connection.onAccountChange(
+            placeMintPDA,
+            async (accountInfo, ctx) => {
+                let mintInfo = MintLayout.decode(accountInfo.data) as MintInfo;
+                console.log("Mint supply: ", mintInfo.supply);
+                this.OnPlaceTokenMintUpdated.dispatch(mintInfo);
+            },
+            "processed"
+        );
     }
 
     public unsubscribeFromPlaceTokenMint() {
@@ -420,7 +443,6 @@ export class PlaceClient {
     }
 
     private async subscribeToCurrentUserPlaceTokenAccounts() {
-
         let currentUser = this.currentUser;
         if (currentUser === null) {
             console.warn("attempted to subscribe to place token ATAs for null currentuser");
@@ -430,26 +452,30 @@ export class PlaceClient {
         let placeMintPDA = await this.placeProgram.findPlaceTokenMintPda();
         let ownerTokenAccounts = await this.connection.getTokenAccountsByOwner(currentUser, {
             mint: placeMintPDA,
-        })
+        });
 
         this.currentUserPlaceTokenAtaRecords = [];
         for (let acct of ownerTokenAccounts.value) {
-            let acctPubKey = acct.pubkey
+            let acctPubKey = acct.pubkey;
             let tokenAcct = new TokenAccount(acctPubKey, acct.account);
 
-            let sub = this.connection.onAccountChange(acctPubKey, (acctInfo) => {
-                let updatedTokenAcct = new TokenAccount(acctPubKey, acctInfo);
-                this._handleUserPlaceTokenAtaUpdated(acctPubKey, updatedTokenAcct);
-            }, "processed");
+            let sub = this.connection.onAccountChange(
+                acctPubKey,
+                (acctInfo) => {
+                    let updatedTokenAcct = new TokenAccount(acctPubKey, acctInfo);
+                    this._handleUserPlaceTokenAtaUpdated(acctPubKey, updatedTokenAcct);
+                },
+                "processed"
+            );
 
             this.currentUserPlaceTokenAtaRecords.push({
                 pubkey: acctPubKey,
                 tokenAccount: tokenAcct,
                 _subscription: sub,
-            })
+            });
         }
 
-        this.OnCurrentUserPlaceTokenAcctsUpdated.dispatch(this.currentUserPlaceTokenAtaRecords)
+        this.OnCurrentUserPlaceTokenAcctsUpdated.dispatch(this.currentUserPlaceTokenAtaRecords);
     }
 
     private unsubscribeFromCurrentUserPlaceTokenAccounts() {
@@ -457,7 +483,7 @@ export class PlaceClient {
             return;
         }
 
-        console.log("Unsubscribing from user place token accounts")
+        console.log("Unsubscribing from user place token accounts");
 
         for (let record of this.currentUserPlaceTokenAtaRecords) {
             this.connection.removeAccountChangeListener(record._subscription);
@@ -473,20 +499,24 @@ export class PlaceClient {
     }
 
     public async awaitPlaceTokenAta(pubkey: PublicKey) {
-        let sub = this.connection.onAccountChange(pubkey, (acct) => {
-            let tokenAcct = new TokenAccount(pubkey, acct);
-            this._handleUserPlaceTokenAtaUpdated(pubkey, tokenAcct);
-        }, "processed")
+        let sub = this.connection.onAccountChange(
+            pubkey,
+            (acct) => {
+                let tokenAcct = new TokenAccount(pubkey, acct);
+                this._handleUserPlaceTokenAtaUpdated(pubkey, tokenAcct);
+            },
+            "processed"
+        );
 
         this.awaitingUserPlaceTokenRecords.push({
             pubkey: pubkey,
             subscription: sub,
-        })
+        });
     }
 
     private _handleUserPlaceTokenAtaUpdated(pubkey: PublicKey, acct: TokenAccount) {
         if (this.currentUserPlaceTokenAtaRecords === null) {
-            console.warn("currentUserPlaceTokenAtaRecords was null when updating")
+            console.warn("currentUserPlaceTokenAtaRecords was null when updating");
             return;
         }
 
@@ -496,7 +526,12 @@ export class PlaceClient {
         }
 
         if (acct.data.owner.toBase58() !== this.currentUser.toBase58()) {
-            console.warn("token acct owner did not match curent user?", acct.data.owner.toBase58(), "vs", this.currentUser.toBase58())
+            console.warn(
+                "token acct owner did not match curent user?",
+                acct.data.owner.toBase58(),
+                "vs",
+                this.currentUser.toBase58()
+            );
         }
 
         let updated = false;
@@ -516,7 +551,7 @@ export class PlaceClient {
                 pubkey: pubkey,
                 tokenAccount: acct,
                 _subscription: awaitingRecord.subscription,
-            })
+            });
 
             this.awaitingUserPlaceTokenRecords.splice(awaitingRecordIdx, 1);
             updated = true;
@@ -544,15 +579,15 @@ export class PlaceClient {
         let offset = 0;
         for (let i = 0; i < acct.pixels.length; i++) {
             const pixel8Bit = acct.pixels.readUInt8(i);
-            let colorOffset = pixel8Bit * 4
+            let colorOffset = pixel8Bit * 4;
             if (this.colorPallete.length >= colorOffset + 4) {
-                let pixelValueArr = this.colorPallete.slice(colorOffset, colorOffset + 4)
+                let pixelValueArr = this.colorPallete.slice(colorOffset, colorOffset + 4);
                 // console.log(pixelValueArr);
                 array.set(pixelValueArr, offset);
             } else {
                 // console.log("Invalid color for pallete: ", pixel8Bit);
                 // fallback to the "zero" color
-                let pixelValueArr = this.colorPallete.slice(0, 4)
+                let pixelValueArr = this.colorPallete.slice(0, 4);
                 array.set(pixelValueArr, offset);
             }
 
@@ -601,7 +636,7 @@ export class PlaceClient {
                 width: PATCH_WIDTH,
                 height: PATCH_HEIGHT,
                 image: this.patchAccountToPixels(acct),
-            })
+            });
         }
 
         this.subscribeToPatchUpdates();
@@ -610,9 +645,10 @@ export class PlaceClient {
     public getCurrentUserGptRecordsSorted(): GameplayTokenRecord[] | null {
         if (this.currentUserGptRecords === null) return null;
         return this.currentUserGptRecords.sort((a, b) => {
-            return a.gameplayTokenMetaAcct.data.update_allowed_slot
-                .cmp(b.gameplayTokenMetaAcct.data.update_allowed_slot)
-        })
+            return a.gameplayTokenMetaAcct.data.update_allowed_slot.cmp(
+                b.gameplayTokenMetaAcct.data.update_allowed_slot
+            );
+        });
     }
 
     private _handleGptAtaUpdated(mintPubkey: PublicKey, tokenAccount: TokenAccount) {
@@ -628,7 +664,7 @@ export class PlaceClient {
 
         for (let [idx, record] of this.awaitingGptRecords.entries()) {
             if (record.gptMintPubkey.toBase58() === mintPubkey.toBase58()) {
-                record.gptAtaAccount = tokenAccount
+                record.gptAtaAccount = tokenAccount;
                 awaitingRecord = record;
                 awaitingRecordIdx = idx;
             }
@@ -643,7 +679,7 @@ export class PlaceClient {
                     userTokenAccount: awaitingRecord.gptAtaAccount,
                     _gptAccountSubscription: awaitingRecord.gptMetaSubscription,
                     _userTokenAccountSubscription: awaitingRecord.gptAtaSubscription,
-                })
+                });
 
                 this.awaitingGptRecords.splice(awaitingRecordIdx, 1);
                 updated = true;
@@ -656,8 +692,8 @@ export class PlaceClient {
                 }
 
                 if (!record.userTokenAccount.data.amount.eq(new BN(1))) {
-                    console.log("user gpt token balance != 1")
-                    shouldUnsubscribe.push(record.mintPubkey)
+                    console.log("user gpt token balance != 1");
+                    shouldUnsubscribe.push(record.mintPubkey);
                 }
             }
 
@@ -665,7 +701,7 @@ export class PlaceClient {
         }
 
         for (let unsub of shouldUnsubscribe) {
-            this.unsubscribeFromGptRecord(unsub)
+            this.unsubscribeFromGptRecord(unsub);
         }
 
         if (updated) {
@@ -685,7 +721,7 @@ export class PlaceClient {
 
         for (let [idx, record] of this.awaitingGptRecords.entries()) {
             if (record.gptMintPubkey.toBase58() === mintPubkey.toBase58()) {
-                record.gptMetaAccount = gptMetaAccount
+                record.gptMetaAccount = gptMetaAccount;
                 awaitingRecord = record;
                 awaitingRecordIdx = idx;
             }
@@ -700,7 +736,7 @@ export class PlaceClient {
                     userTokenAccount: awaitingRecord.gptAtaAccount,
                     _gptAccountSubscription: awaitingRecord.gptMetaSubscription,
                     _userTokenAccountSubscription: awaitingRecord.gptAtaSubscription,
-                })
+                });
 
                 this.awaitingGptRecords.splice(awaitingRecordIdx, 1);
                 updated = true;
@@ -751,10 +787,10 @@ export class PlaceClient {
         }
 
         if (this.currentUserGptRecords !== null) {
-            console.warn("tried to subscribe without unsubscribing")
+            console.warn("tried to subscribe without unsubscribing");
         }
 
-        console.log("Subscribing to user token updates", this.currentUser.toBase58())
+        console.log("Subscribing to user token updates", this.currentUser.toBase58());
 
         this.currentUserGptRecords = await this.fetchGptRecords(this.currentUser);
         console.log("got ", this.currentUserGptRecords.length, " gpt records for current user");
@@ -763,27 +799,35 @@ export class PlaceClient {
             let mintPubkey = record.mintPubkey;
             let gptAcctPubkey = record.gameplayTokenMetaAcct.pubkey;
             let tokenAcctPubkey = record.userTokenAccount.pubkey;
-            let gptSub = this.connection.onAccountChange(gptAcctPubkey, (acct) => {
-                let gptAcct = new GameplayTokenMetaAccount(gptAcctPubkey, acct);
-                this._handleGptMetaUpdated(new PublicKey(record.mintPubkey), gptAcct)
-            }, "processed")
+            let gptSub = this.connection.onAccountChange(
+                gptAcctPubkey,
+                (acct) => {
+                    let gptAcct = new GameplayTokenMetaAccount(gptAcctPubkey, acct);
+                    this._handleGptMetaUpdated(new PublicKey(record.mintPubkey), gptAcct);
+                },
+                "processed"
+            );
             record._gptAccountSubscription = gptSub;
 
-            let tokenAcctSub = this.connection.onAccountChange(tokenAcctPubkey, (acct) => {
-                let tokenAcct = new TokenAccount(tokenAcctPubkey, acct);
-                this._handleGptAtaUpdated(new PublicKey(record.mintPubkey), tokenAcct);
-            }, "processed")
-            record._userTokenAccountSubscription = tokenAcctSub
+            let tokenAcctSub = this.connection.onAccountChange(
+                tokenAcctPubkey,
+                (acct) => {
+                    let tokenAcct = new TokenAccount(tokenAcctPubkey, acct);
+                    this._handleGptAtaUpdated(new PublicKey(record.mintPubkey), tokenAcct);
+                },
+                "processed"
+            );
+            record._userTokenAccountSubscription = tokenAcctSub;
         }
 
-        console.log("Dispatching records update")
+        console.log("Dispatching records update");
         this.OnGameplayTokenRecordsUpdated.dispatch(this.currentUserGptRecords);
     }
 
     private unsubscribeFromCurrentUserGptRecords() {
-        console.log("unsubscribing from current user gpt records")
+        console.log("unsubscribing from current user gpt records");
         if (this.currentUserGptRecords === null) {
-            console.warn("tried to unsubscribe without subscribing")
+            console.warn("tried to unsubscribe without subscribing");
             return;
         }
 
@@ -807,31 +851,36 @@ export class PlaceClient {
             return;
         }
 
-        this.currentUserGptRecords = this.currentUserGptRecords
-            .filter((record) => {
-                if (record.mintPubkey === mintPubkey) {
-                    if (record._gptAccountSubscription !== null) {
-                        this.connection.removeAccountChangeListener(record._gptAccountSubscription);
-                    }
-                    if (record._userTokenAccountSubscription !== null) {
-                        this.connection.removeAccountChangeListener(record._userTokenAccountSubscription);
-                    }
-                    return false;
-                } else {
-                    return true;
+        this.currentUserGptRecords = this.currentUserGptRecords.filter((record) => {
+            if (record.mintPubkey === mintPubkey) {
+                if (record._gptAccountSubscription !== null) {
+                    this.connection.removeAccountChangeListener(record._gptAccountSubscription);
                 }
-            })
+                if (record._userTokenAccountSubscription !== null) {
+                    this.connection.removeAccountChangeListener(
+                        record._userTokenAccountSubscription
+                    );
+                }
+                return false;
+            } else {
+                return true;
+            }
+        });
 
         this.OnGameplayTokenRecordsUpdated.dispatch(this.currentUserGptRecords);
     }
 
     private async fetchGptRecords(owner: PublicKey): Promise<GameplayTokenRecord[]> {
-        let allUserTokenAccounts = await TokenAccount.getTokenAccountsByOwner(this.connection, owner);
-        console.log("user token accts: ", allUserTokenAccounts.length)
-        let potentialGptNftTokens = allUserTokenAccounts
-            .filter((acct) => acct.data.amount != new BN(1));
+        let allUserTokenAccounts = await TokenAccount.getTokenAccountsByOwner(
+            this.connection,
+            owner
+        );
+        console.log("user token accts: ", allUserTokenAccounts.length);
+        let potentialGptNftTokens = allUserTokenAccounts.filter(
+            (acct) => acct.data.amount != new BN(1)
+        );
 
-        let gptRecords: GameplayTokenRecord[] = []
+        let gptRecords: GameplayTokenRecord[] = [];
 
         for (const nftAcct of potentialGptNftTokens) {
             let mintPubkey = nftAcct.data.mint.toBase58();
@@ -859,7 +908,7 @@ export class PlaceClient {
                     userTokenAccount: nftAcct,
                     _gptAccountSubscription: null,
                     _userTokenAccountSubscription: null,
-                })
+                });
             }
         }
 

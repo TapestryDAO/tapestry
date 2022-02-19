@@ -8,8 +8,9 @@ import base58
 
 TAPESTRY_ROOT = Path(os.environ["TAPESTRY_ROOT"])
 
-TARGET_DIR = TAPESTRY_ROOT / "target" 
+TARGET_DIR = TAPESTRY_ROOT / "target"
 KEYS_DIR = TAPESTRY_ROOT / "keys"
+
 
 def get_pubkey_b58(keypath) -> str:
     with open(keypath) as f:
@@ -17,9 +18,10 @@ def get_pubkey_b58(keypath) -> str:
         bytes_arr = bytes()
         for idx in range(32, 64):
             bytes_arr += keypair_numbers[idx].to_bytes(1, "little")
-        return base58.b58encode(bytes_arr).decode('utf-8')
+        return base58.b58encode(bytes_arr).decode("utf-8")
 
     return None
+
 
 def prompt_yes_or_no(question):
     while "the answer is invalid":
@@ -29,14 +31,20 @@ def prompt_yes_or_no(question):
         if reply[0] == "n":
             return False
 
+
 def check_balance(url: str, keypair: str) -> float:
     check_balance_cmd = [
-        "solana", "balance",
-        "--url", url,
-        "--keypair", keypair,
+        "solana",
+        "balance",
+        "--url",
+        url,
+        "--keypair",
+        keypair,
     ]
 
-    result = subprocess.check_output(check_balance_cmd, cwd=TAPESTRY_ROOT).decode("utf-8")
+    result = subprocess.check_output(check_balance_cmd, cwd=TAPESTRY_ROOT).decode(
+        "utf-8"
+    )
     return float(result.split(" ")[0])
 
 def airdrop(amount: int, keypair: str, url: str = "localhost"):
@@ -50,6 +58,7 @@ def airdrop(amount: int, keypair: str, url: str = "localhost"):
 
 
 # HELPERS
+
 
 def run_command(args, cwd=TAPESTRY_ROOT):
     full_command = " ".join(map(lambda v: str(v), args))

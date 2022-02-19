@@ -3,10 +3,7 @@
         "target": "es2021" /* https://www.typescriptlang.org/tsconfig#target */,
         "module": "commonjs" /* https://www.typescriptlang.org/tsconfig#module */,
         "moduleResolution": "Node" /* https://www.typescriptlang.org/tsconfig#moduleResolution */,
-        "lib": [
-            "DOM",
-            "ESNext"
-        ] /* https://www.typescriptlang.org/tsconfig#lib */,
+        "lib": ["DOM", "ESNext"] /* https://www.typescriptlang.org/tsconfig#lib */,
         "jsx": "react-jsx",
         "noEmit": true /* https://www.typescriptlang.org/tsconfig#noEmit */,
         "isolatedModules": true /* https://www.typescriptlang.org/tsconfig#isolatedModules */,
@@ -19,12 +16,8 @@
         // "checkJs": true /* Report errors in .js files. Works in tandem with allowJs. */,
         "baseUrl": "../",
         "paths": {
-            "@tapestrydao/client": [
-                "client/build"
-            ],
+            "@tapestrydao/client": ["client/build"]
         }
     },
-    "include": [
-        "src/**/*"
-    ]
+    "include": ["src/**/*"]
 }
