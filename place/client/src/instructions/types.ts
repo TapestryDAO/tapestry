@@ -1,4 +1,3 @@
-
 // Duplicate in instruction.rs
 export enum PlaceInstruction {
     UpdatePlaceState,
@@ -7,4 +6,4 @@ export enum PlaceInstruction {
     SetPixel,
     InitMint,
     ClaimTokens,
-};
+}

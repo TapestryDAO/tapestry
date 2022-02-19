@@ -25,7 +25,7 @@
     display: none;
 }
 
-.toolbox__container>div {
+.toolbox__container > div {
     display: flex;
 }
 
@@ -53,10 +53,10 @@
 
 .toolbox__buy_button {
     border-radius: 0.25rem;
-    background-color: #5497D5;
+    background-color: #5497d5;
     min-width: 100px;
     min-height: 48px;
-    font-family: 'PublicPixel';
+    font-family: "PublicPixel";
     font-weight: normal;
     border: 0;
     text-transform: capitalize;
@@ -114,10 +114,10 @@
 
 .toolbox__ownership-claim-tokens-btn {
     border-radius: 0.25rem;
-    background-color: #5497D5;
+    background-color: #5497d5;
     min-width: 100px;
     min-height: 48px;
-    font-family: 'PublicPixel';
+    font-family: "PublicPixel";
     font-weight: normal;
     border: 0;
     text-transform: capitalize;
@@ -125,7 +125,7 @@
     margin: 10px;
 }
 
-.toolbox__ownership-stat>h6 {
+.toolbox__ownership-stat > h6 {
     padding: 0;
     margin: 5px;
 }

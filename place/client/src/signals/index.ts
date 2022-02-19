@@ -41,8 +41,7 @@ class SignalBindingImpl<T extends Function> implements SignalBinding {
     }
 
     detach(): boolean {
-        if (this.owner === null)
-            return false;
+        if (this.owner === null) return false;
 
         this.owner.detach(this);
 
@@ -57,8 +56,7 @@ class SignalBindingImpl<T extends Function> implements SignalBinding {
 /**
  * A signal is a dispatcher that can bind functions (handlers) to dispatched events.
  */
-export class Signal<T extends Function = (() => void)>
-{
+export class Signal<T extends Function = () => void> {
     private _head: SignalBindingImpl<T> | null = null;
     private _tail: SignalBindingImpl<T> | null = null;
 
@@ -107,15 +105,12 @@ export class Signal<T extends Function = (() => void)>
         let node = this._head;
         this._memo = args;
 
-        if (!node)
-            return false;
+        if (!node) return false;
 
-        if (this._filter && !this._filter(...args))
-            return false;
+        if (this._filter && !this._filter(...args)) return false;
 
         while (node) {
-            if (node.once)
-                this.detach(node);
+            if (node.once) this.detach(node);
 
             node.fn.apply(node.thisArg, args);
             node = node.next;
@@ -125,17 +120,16 @@ export class Signal<T extends Function = (() => void)>
     }
 
     /**
-     * Binds a new handler function to this signal that will may be called once using the 
+     * Binds a new handler function to this signal that will may be called once using the
      * memoized value from the most recent dispatch, and will be called for each subsequent
      * dispatches.
-     * 
+     *
      * @param fn The handler function to bind.
      * @param thisArg Optional `this` argument to use when calling this handler
      */
     addMemo(fn: WithVoidReturn<T>, thisArg: any = null): SignalBinding {
         return this._addSignalBinding(new SignalBindingImpl(fn, true, false, thisArg));
     }
-
 
     /**
      * Binds a new handler function to this signal that will be called for each dispatch.
@@ -165,14 +159,11 @@ export class Signal<T extends Function = (() => void)>
     detach(node_: SignalBinding): this {
         const node = node_ as SignalBindingImpl<T>;
 
-        if (node.owner !== this)
-            return this;
+        if (node.owner !== this) return this;
 
-        if (node.prev)
-            node.prev.next = node.next;
+        if (node.prev) node.prev.next = node.next;
 
-        if (node.next)
-            node.next.prev = node.prev;
+        if (node.next) node.next.prev = node.prev;
 
         if (node === this._head) {
             this._head = node.next;
@@ -180,12 +171,10 @@ export class Signal<T extends Function = (() => void)>
             if (node.next === null) {
                 this._tail = null;
             }
-        }
-        else if (node === this._tail) {
+        } else if (node === this._tail) {
             this._tail = node.prev;
 
-            if (this._tail)
-                this._tail.next = null;
+            if (this._tail) this._tail.next = null;
         }
 
         node.owner = null;
@@ -199,8 +188,7 @@ export class Signal<T extends Function = (() => void)>
     detachAll() {
         let node = this._head;
 
-        if (!node)
-            return this;
+        if (!node) return this;
 
         this._head = null;
         this._tail = null;
@@ -246,10 +234,8 @@ export class Signal<T extends Function = (() => void)>
         if (!this._head) {
             this._head = node;
             this._tail = node;
-        }
-        else {
-            if (this._tail)
-                this._tail.next = node;
+        } else {
+            if (this._tail) this._tail.next = node;
 
             node.prev = this._tail;
             this._tail = node;

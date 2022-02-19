@@ -1,24 +1,24 @@
-import { Borsh } from '@metaplex-foundation/mpl-core';
-import { Schema } from 'borsh';
-import { PlaceInstruction } from './types';
+import { Borsh } from "@metaplex-foundation/mpl-core";
+import { Schema } from "borsh";
+import { PlaceInstruction } from "./types";
 
 export type SetPixelArgs = {
-    x: number,
-    y: number,
-    x_offset: number,
-    y_offset: number,
-    pixel: number,
+    x: number;
+    y: number;
+    x_offset: number;
+    y_offset: number;
+    pixel: number;
 };
 
 export class SetPixelArgsData extends Borsh.Data<SetPixelArgs> {
     static readonly SCHEMA: Schema = new Map([
         ...SetPixelArgsData.struct([
-            ['instruction', 'u8'],
-            ['x', 'u8'],
-            ['y', 'u8'],
-            ['x_offset', 'u8'],
-            ['y_offset', 'u8'],
-            ['pixel', 'u8'],
+            ["instruction", "u8"],
+            ["x", "u8"],
+            ["y", "u8"],
+            ["x_offset", "u8"],
+            ["y_offset", "u8"],
+            ["pixel", "u8"],
         ]),
     ]);
 
@@ -37,4 +37,4 @@ export class SetPixelArgsData extends Borsh.Data<SetPixelArgs> {
         this.y_offset = args.y_offset;
         this.pixel = args.pixel;
     }
-};
+}

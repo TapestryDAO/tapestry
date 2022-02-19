@@ -1,8 +1,5 @@
 {
-    "patches": [
-        {"image" : "blue.gif"},
-        {"image" : "green.gif"}
-    ],
+    "patches": [{ "image": "blue.gif" }, { "image": "green.gif" }],
     "pattern": [
         [1, 1, 1, 1, 1, 1, 1, 1],
         [1, 2, 2, 2, 0, 0, 0, 1],
@@ -14,4 +11,3 @@
         [1, 1, 1, 1, 1, 1, 1, 1]
     ]
 }
-

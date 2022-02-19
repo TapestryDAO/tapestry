@@ -1,11 +1,22 @@
 import argparse
 import semver
 
-from helpers import TARGET_DIR, KEYS_DIR, TAPESTRY_ROOT, check_balance, prompt_yes_or_no, run_command, get_pubkey_b58
+from helpers import (
+    TARGET_DIR,
+    KEYS_DIR,
+    TAPESTRY_ROOT,
+    check_balance,
+    prompt_yes_or_no,
+    run_command,
+    get_pubkey_b58,
+)
+
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dest", type=str, choices=["localhost", "devnet"], default="localhost")
+    parser.add_argument(
+        "--dest", type=str, choices=["localhost", "devnet"], default="localhost"
+    )
     args = parser.parse_args()
 
     program_id_keypath = KEYS_DIR / "program_ids" / f"{args.dest}.json"
@@ -14,7 +25,7 @@ def main():
     program_auth_pubkey = get_pubkey_b58(program_auth_keypath)
 
     # Aidrop sol if needed
-    required_balance_for_deploy = 6 # guess
+    required_balance_for_deploy = 6  # guess
     while check_balance(args.dest, program_auth_keypath) < required_balance_for_deploy:
         airdrop_cmd = ["solana", "airdrop", "--url", args.dest, 2, program_auth_pubkey]
         run_command(airdrop_cmd)
@@ -35,12 +46,12 @@ def main():
     success = False
     try:
         # fresh build injecting program ID
-        env_stuff = [f"SOLANA_PLACE_PROGRAM_ID=\"{program_id_pubkey}\""]
+        env_stuff = [f'SOLANA_PLACE_PROGRAM_ID="{program_id_pubkey}"']
         build_cmd = ["cargo", "build-bpf"]
         bpf_out_dir = TAPESTRY_ROOT / "target" / args.dest
         if args.dest == "devnet":
             build_cmd += ["--features", "devnet"]
-            
+
         build_cmd += ["--bpf-out-dir", bpf_out_dir]
 
         run_command(env_stuff + build_cmd)
@@ -64,9 +75,7 @@ def main():
         print("Deployed Succesfully")
         print("Final Auth Acct. Balance : ", final_balance, " SOL")
         print("Total Deploy Cost        : ", starting_balance - final_balance, " SOL")
-    
 
-    
 
 if __name__ == "__main__":
     main()

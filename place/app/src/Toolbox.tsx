@@ -1,44 +1,53 @@
-import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { PlaceClient, PlaceProgram, GameplayTokenType, GameplayTokenFetchResult, GameplayTokenRecord, PlaceTokenAtaRecord } from '@tapestrydao/place-client';
-import { DragEvent, FC, useEffect, useState } from 'react';
-import BN from 'bn.js';
-import { MintInfo, u64 } from '@solana/spl-token';
-import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
-import { TokenAccount } from '@metaplex-foundation/mpl-core';
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { WalletDisconnectButton, WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import {
+    PlaceClient,
+    PlaceProgram,
+    GameplayTokenType,
+    GameplayTokenFetchResult,
+    GameplayTokenRecord,
+    PlaceTokenAtaRecord,
+} from "@tapestrydao/place-client";
+import { DragEvent, FC, useEffect, useState } from "react";
+import BN from "bn.js";
+import { MintInfo, u64 } from "@solana/spl-token";
+import { sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
+import { TokenAccount } from "@metaplex-foundation/mpl-core";
 
-require('./toolbox.css');
+require("./toolbox.css");
 
 type PalleteColorProps = {
-    color: string,
-}
+    color: string;
+};
 
 export const PalleteColor: FC<PalleteColorProps> = ({ color }) => {
-
     const handleDragStart = (event: DragEvent) => {
         console.log("drag start for color: ", color);
-        event.dataTransfer?.setData("text/plain", color)
-    }
+        event.dataTransfer?.setData("text/plain", color);
+    };
 
-    return <div
-        title={color}
-        className='toolbox__pallete-pixel'
-        style={{ backgroundColor: color }}
-        draggable={true}
-        onDragStart={handleDragStart}>
-    </div>
-}
+    return (
+        <div
+            title={color}
+            className="toolbox__pallete-pixel"
+            style={{ backgroundColor: color }}
+            draggable={true}
+            onDragStart={handleDragStart}
+        ></div>
+    );
+};
 
 export const Pallete: FC = () => {
-
     let palleteColors = PlaceClient.getInstance().getColorPalleteHex();
 
-    return <div className='toolbox__pallete-container'>
-        {palleteColors.map(color => {
-            return <PalleteColor color={color} />
-        })}
-    </div>;
-}
+    return (
+        <div className="toolbox__pallete-container">
+            {palleteColors.map((color) => {
+                return <PalleteColor color={color} />;
+            })}
+        </div>
+    );
+};
 
 export const PaintbrushTool: FC = () => {
     const { connection } = useConnection();
@@ -51,7 +60,7 @@ export const PaintbrushTool: FC = () => {
         console.log("Buy Paintbrush Clicked");
         if (publicKey === null) return;
 
-        let placeClient = PlaceClient.getInstance()
+        let placeClient = PlaceClient.getInstance();
         let state = await placeClient.fetchPlaceStateAccount();
         setProcessingPurchase(true);
 
@@ -63,7 +72,7 @@ export const PaintbrushTool: FC = () => {
             payer: publicKey,
             token_type: GameplayTokenType.PaintBrush,
             desired_price: state.paintbrush_price,
-        })
+        });
 
         let tx = new Transaction().add(ix);
         let signature = await sendTransaction(tx, connection);
@@ -71,7 +80,7 @@ export const PaintbrushTool: FC = () => {
         let result = await connection.confirmTransaction(signature, "processed");
 
         setProcessingPurchase(false);
-    }
+    };
 
     useEffect(() => {
         let placeClient = PlaceClient.getInstance();
@@ -85,27 +94,34 @@ export const PaintbrushTool: FC = () => {
             let tokensReady = records.filter((result) => {
                 let client = PlaceClient.getInstance();
                 if (client.currentSlot == null) return false;
-                return result.gameplayTokenMetaAcct.data.update_allowed_slot.lte(new BN(client.currentSlot));
+                return result.gameplayTokenMetaAcct.data.update_allowed_slot.lte(
+                    new BN(client.currentSlot)
+                );
             });
 
             setTokensReady(tokensReady.length);
             setTokensTotal(records.length);
-        })
+        });
 
         return () => {
-            PlaceClient.getInstance().OnGameplayTokenRecordsUpdated.detach(subscription)
-        }
+            PlaceClient.getInstance().OnGameplayTokenRecordsUpdated.detach(subscription);
+        };
     }, []);
 
-    return <div className='toolbox__paintbrush-container'>
-        <img className='toolbox__paintbrush-image' src="paintbrush_pixel.png"></img>
-        <h4>Ready: {tokensReady}/{tokensTotal}</h4>
-        <button onClick={onBuyButtonClicked} className='toolbox__buy_button'>{processingPurchase ? "Processing..." : "Buy"}</button>
-    </div>
-}
+    return (
+        <div className="toolbox__paintbrush-container">
+            <img className="toolbox__paintbrush-image" src="paintbrush_pixel.png"></img>
+            <h4>
+                Ready: {tokensReady}/{tokensTotal}
+            </h4>
+            <button onClick={onBuyButtonClicked} className="toolbox__buy_button">
+                {processingPurchase ? "Processing..." : "Buy"}
+            </button>
+        </div>
+    );
+};
 
 export const Ownership: FC = () => {
-
     let { publicKey, sendTransaction } = useWallet();
     let { connection } = useConnection();
     let [claimableTokensCount, setClaimableTokensCount] = useState<number | null>(null);
@@ -118,11 +134,11 @@ export const Ownership: FC = () => {
             setClaimableTokensCount(0);
         } else {
             let count = records.reduce((prev, value) => {
-                return prev + value.gameplayTokenMetaAcct.data.place_tokens_owed
+                return prev + value.gameplayTokenMetaAcct.data.place_tokens_owed;
             }, 0);
             setClaimableTokensCount(count);
         }
-    }
+    };
 
     const updatePlaceTokenSupply = (mintInfo: MintInfo | null) => {
         if (mintInfo === null) {
@@ -134,7 +150,7 @@ export const Ownership: FC = () => {
         let supplyBN = u64.fromBuffer(buffer);
         let supply = parseInt(supplyBN.toString());
         setPlaceTokenSuppy(supply);
-    }
+    };
 
     const updateUserPlaceTokens = (ataRecords: PlaceTokenAtaRecord[] | null) => {
         if (ataRecords === null) {
@@ -144,11 +160,11 @@ export const Ownership: FC = () => {
         }
 
         let tokenAmountTotal = ataRecords.reduce((prev, current) => {
-            return prev.add(current.tokenAccount.data.amount)
+            return prev.add(current.tokenAccount.data.amount);
         }, new BN(0));
 
-        setUserOwnedTokens(tokenAmountTotal.toNumber())
-    }
+        setUserOwnedTokens(tokenAmountTotal.toNumber());
+    };
 
     const handleClaimButtonPressed = async () => {
         if (publicKey === null) return;
@@ -166,57 +182,62 @@ export const Ownership: FC = () => {
         }
 
         setClaimProcessing(false);
-    }
+    };
 
     useEffect(() => {
         let client = PlaceClient.getInstance();
 
         let gptSub = client.OnGameplayTokenRecordsUpdated.addMemo(updateClaimableTokensCount);
         let tokenMintSub = client.OnPlaceTokenMintUpdated.addMemo(updatePlaceTokenSupply);
-        let tokenAcctsSub = client.OnCurrentUserPlaceTokenAcctsUpdated.addMemo(updateUserPlaceTokens)
+        let tokenAcctsSub = client.OnCurrentUserPlaceTokenAcctsUpdated.addMemo(
+            updateUserPlaceTokens
+        );
 
         return () => {
             client.OnGameplayTokenRecordsUpdated.detach(gptSub);
             client.OnPlaceTokenMintUpdated.detach(tokenMintSub);
             client.OnCurrentUserPlaceTokenAcctsUpdated.detach(tokenAcctsSub);
         };
-    }, [publicKey])
+    }, [publicKey]);
 
     let showClaimTokensButton = claimableTokensCount !== null ? claimableTokensCount > 0 : false;
     let claimButtonText = claimProcessing ? "Processing..." : "CLAIM " + claimableTokensCount;
 
-    return <div className="toolbox__ownership-container">
-        <div className='toolbox__ownership-heading'>
-            <h4>Place Tokens</h4>
+    return (
+        <div className="toolbox__ownership-container">
+            <div className="toolbox__ownership-heading">
+                <h4>Place Tokens</h4>
+            </div>
+            <div className="toolbox__ownership-stat">
+                {placeTokenSuppy === null ? <></> : <h6>Total Supply: {placeTokenSuppy}</h6>}
+            </div>
+            <div className="toolbox__ownership-stat">
+                {claimableTokensCount === null ? <></> : <h6>Claimable: {claimableTokensCount}</h6>}
+            </div>
+            <div className="toolbox__ownership-stat">
+                {userOwnedTokens === null ? <></> : <h6>Owned: {userOwnedTokens}</h6>}
+            </div>
+            {showClaimTokensButton ? (
+                <button
+                    disabled={claimProcessing}
+                    onClick={handleClaimButtonPressed}
+                    className="toolbox__ownership-claim-tokens-btn"
+                >
+                    {claimButtonText}
+                </button>
+            ) : (
+                <></>
+            )}
         </div>
-        <div className="toolbox__ownership-stat">
-            {placeTokenSuppy === null ? <></> : <h6>Total Supply: {placeTokenSuppy}</h6>}
-        </div>
-        <div className='toolbox__ownership-stat'>
-            {claimableTokensCount === null ?
-                <></> :
-                <h6>Claimable: {claimableTokensCount}</h6>
-            }
-        </div>
-        <div className='toolbox__ownership-stat'>
-            {userOwnedTokens === null ? <></> : <h6>Owned: {userOwnedTokens}</h6>}
-        </div>
-        {showClaimTokensButton ?
-            <button
-                disabled={claimProcessing}
-                onClick={handleClaimButtonPressed}
-                className='toolbox__ownership-claim-tokens-btn'
-            >{claimButtonText}</button>
-            : <></>}
-    </div>
-}
+    );
+};
 
 export const Toolbox: FC = () => {
     const { wallet } = useWallet();
 
     return (
         <div className="toolbox__container">
-            <div className='toolbox__header-container'>
+            <div className="toolbox__header-container">
                 <h1 className="toolbox__header-heading">Tapestry</h1>
             </div>
             <div className="toolbox__actions">

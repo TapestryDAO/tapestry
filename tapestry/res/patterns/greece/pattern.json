@@ -1,7 +1,5 @@
 {
-    "patches": [
-        {"image": "greece.png"}
-    ],
+    "patches": [{ "image": "greece.png" }],
     "patchify": true,
     "pattern": [
         [1, 1, 1, 1, 1, 1, 1, 1],

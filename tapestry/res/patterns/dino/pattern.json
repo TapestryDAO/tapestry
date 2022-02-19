@@ -1,7 +1,5 @@
 {
-    "patches": [
-        {"image": "dino.png"}
-    ],
+    "patches": [{ "image": "dino.png" }],
     "patchify": true,
     "pattern": [
         [1, 1, 1, 1],
