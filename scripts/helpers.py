@@ -47,12 +47,18 @@ def check_balance(url: str, keypair: str) -> float:
     )
     return float(result.split(" ")[0])
 
+
 def airdrop(amount: int, keypair: str, url: str = "localhost"):
     airdrop_cmd = [
-        "solana", "airdrop", str(amount),
-        "--url", url,
-        "--keypair", str(keypair),
-        "--commitment", "confirmed",
+        "solana",
+        "airdrop",
+        str(amount),
+        "--url",
+        url,
+        "--keypair",
+        str(keypair),
+        "--commitment",
+        "confirmed",
     ]
     run_command(airdrop_cmd)
 

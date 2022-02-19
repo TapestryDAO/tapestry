@@ -183,17 +183,20 @@ export class PlaceClient {
     // NOTE(will): Plan is to get rid of this singleton
     // but doing this as a stop gap measure because I don't want
     // to refactor the App code right now.
-    public static getInstanceInit(program: PlaceProgramVersion, endpoint: PlaceRpcEndpoint): PlaceClient {
+    public static getInstanceInit(
+        program: PlaceProgramVersion,
+        endpoint: PlaceRpcEndpoint
+    ): PlaceClient {
         if (!!PlaceClient.instance) {
-            console.log("Re-initializing place client...")
+            console.log("Re-initializing place client...");
         }
         PlaceClient.instance = PlaceClient.instance = new PlaceClient(program, endpoint);
-        return PlaceClient.instance
+        return PlaceClient.instance;
     }
 
     public static getInstance(): PlaceClient {
         if (!PlaceClient.instance) {
-            console.log("Initializing Place Client...")
+            console.log("Initializing Place Client...");
             PlaceClient.instance = new PlaceClient(PLACE_VERSION, PLACE_ENDPOINT);
         }
 
@@ -329,8 +332,11 @@ export class PlaceClient {
             }
 
             let gptAcct = result.gameplayTokenMetaAcct;
-            let randomSeed = result.gameplayTokenMetaAcct.data.random_seed
-            let gptAta = await this.placeProgram.findGameplayTokenMintAta(gptAcct.data.token_mint_pda, this.currentUser);
+            let randomSeed = result.gameplayTokenMetaAcct.data.random_seed;
+            let gptAta = await this.placeProgram.findGameplayTokenMintAta(
+                gptAcct.data.token_mint_pda,
+                this.currentUser
+            );
             let ix = await this.placeProgram.claimTokens({
                 claimer: this.currentUser,
                 gameplay_token_random_seed: randomSeed,
@@ -350,23 +356,27 @@ export class PlaceClient {
         if (this.placePatchesSubscription !== null) return;
 
         console.log("Subscribing to patch updates");
-        this.placePatchesSubscription = this.connection.onProgramAccountChange(this.placeProgram.programId, async (accountInfo, ctx) => {
-
-            let data = accountInfo.accountInfo.data;
-            if (data !== undefined) {
-                let patch = PatchData.deserialize(accountInfo.accountInfo.data)
-                // console.log("GOT PATCH: ", patch.x, patch.y);
-                this.updatesQueue.push({
-                    x: patch.x * PATCH_WIDTH,
-                    y: patch.y * PATCH_HEIGHT,
-                    width: PATCH_WIDTH,
-                    height: PATCH_HEIGHT,
-                    image: this.patchAccountToPixels(patch)
-                })
-            } else {
-                console.log("got update for account: ", accountInfo.accountId);
-            }
-        }, "processed", [this.patchAccountsFilter]);
+        this.placePatchesSubscription = this.connection.onProgramAccountChange(
+            this.placeProgram.programId,
+            async (accountInfo, ctx) => {
+                let data = accountInfo.accountInfo.data;
+                if (data !== undefined) {
+                    let patch = PatchData.deserialize(accountInfo.accountInfo.data);
+                    // console.log("GOT PATCH: ", patch.x, patch.y);
+                    this.updatesQueue.push({
+                        x: patch.x * PATCH_WIDTH,
+                        y: patch.y * PATCH_HEIGHT,
+                        width: PATCH_WIDTH,
+                        height: PATCH_HEIGHT,
+                        image: this.patchAccountToPixels(patch),
+                    });
+                } else {
+                    console.log("got update for account: ", accountInfo.accountId);
+                }
+            },
+            "processed",
+            [this.patchAccountsFilter]
+        );
     }
 
     public unsubscribeFromPatchUpdates() {
@@ -410,7 +420,7 @@ export class PlaceClient {
         }
 
         let placeMintPDA = await this.placeProgram.findPlaceTokenMintPda();
-        let mintAcctInfo = await this.connection.getAccountInfo(placeMintPDA)
+        let mintAcctInfo = await this.connection.getAccountInfo(placeMintPDA);
 
         // TODO(will): set up some sort of retry if this fails
         if (mintAcctInfo === null) {
@@ -602,7 +612,7 @@ export class PlaceClient {
     public async fetchPlaceStateAccount(): Promise<PlaceStateData> {
         extendBorsh();
         const config = { filters: [this.placeStateAccountsFilter] };
-        let results = await this.connection.getProgramAccounts(this.placeProgram.programId, config)
+        let results = await this.connection.getProgramAccounts(this.placeProgram.programId, config);
         if (results.length !== 1) {
             console.warn("nexpected number of state accounts: ", results.length);
         }
@@ -614,8 +624,11 @@ export class PlaceClient {
     public async fetchAllPatches() {
         extendBorsh();
         this.unsubscribeFromPatchUpdates();
-        const config = { filters: [this.patchAccountsFilter] }
-        let allAccounts = await this.connection.getProgramAccounts(this.placeProgram.programId, config);
+        const config = { filters: [this.patchAccountsFilter] };
+        let allAccounts = await this.connection.getProgramAccounts(
+            this.placeProgram.programId,
+            config
+        );
         let allAccountsParsed = allAccounts.flatMap((value) => {
             let data = value.account.data;
             if (data != undefined) {
@@ -757,17 +770,25 @@ export class PlaceClient {
 
     public async awaitGptRecord(purchaseIx: TransactionInstruction) {
         console.log("Awaiting gpt record");
-        let info = this.placeProgram.parseInfoFromPurchaseGameplayTokenIx(purchaseIx)
+        let info = this.placeProgram.parseInfoFromPurchaseGameplayTokenIx(purchaseIx);
 
-        let gptMetaSub = this.connection.onAccountChange(info.gptMetaPubkey, (acct) => {
-            let gpt = new GameplayTokenMetaAccount(info.gptMetaPubkey, acct);
-            this._handleGptMetaUpdated(info.gptMintPubkey, gpt);
-        }, "processed");
+        let gptMetaSub = this.connection.onAccountChange(
+            info.gptMetaPubkey,
+            (acct) => {
+                let gpt = new GameplayTokenMetaAccount(info.gptMetaPubkey, acct);
+                this._handleGptMetaUpdated(info.gptMintPubkey, gpt);
+            },
+            "processed"
+        );
 
-        let gptAtaSub = this.connection.onAccountChange(info.gptAtaPubkey, (acct) => {
-            let token = new TokenAccount(info.gptAtaPubkey, acct);
-            this._handleGptAtaUpdated(info.gptMintPubkey, token);
-        }, "processed");
+        let gptAtaSub = this.connection.onAccountChange(
+            info.gptAtaPubkey,
+            (acct) => {
+                let token = new TokenAccount(info.gptAtaPubkey, acct);
+                this._handleGptAtaUpdated(info.gptMintPubkey, token);
+            },
+            "processed"
+        );
 
         this.awaitingGptRecords.push({
             gptAtaAccount: null,
@@ -892,16 +913,19 @@ export class PlaceClient {
                         memcmp: {
                             bytes: mintPubkey,
                             offset: 1 + 1 + 8 + 8,
-                        }
-                    }
-                ]
-            }
+                        },
+                    },
+                ],
+            };
 
-            let gameplayTokenAccounts = await this.connection.getProgramAccounts(this.placeProgram.programId, fetchGptAccountsFilter)
+            let gameplayTokenAccounts = await this.connection.getProgramAccounts(
+                this.placeProgram.programId,
+                fetchGptAccountsFilter
+            );
 
             if (gameplayTokenAccounts.length > 0) {
                 let accountInfo = gameplayTokenAccounts[0];
-                let account = new GameplayTokenMetaAccount(accountInfo.pubkey, accountInfo.account)
+                let account = new GameplayTokenMetaAccount(accountInfo.pubkey, accountInfo.account);
                 gptRecords.push({
                     gameplayTokenMetaAcct: account,
                     mintPubkey: mintPubkey,

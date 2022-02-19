@@ -24,17 +24,10 @@ import { PlaceClient } from "../client/src/PlaceClient";
 import BN from "bn.js";
 import { GameplayTokenType } from "../client/src/accounts";
 // @ts-ignore
-<<<<<<< HEAD
-import asyncPool from "tiny-async-pool"
-import { GameplayTokenMetaAccount } from '../client/src/accounts/GameplayTokenMetaAccount';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { PLACE_ENDPOINT, PLACE_VERSION } from '../client/src';
-=======
 import asyncPool from "tiny-async-pool";
 import { GameplayTokenMetaAccount } from "../client/src/accounts/GameplayTokenMetaAccount";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { PLACE_ENDPOINT } from "../client/src";
->>>>>>> origin/master
+import { PLACE_ENDPOINT, PLACE_VERSION } from "../client/src";
 
 const MAX_COLORS = 256;
 
@@ -88,24 +81,28 @@ const init_all_patches_command = {
 
         const results = await asyncPool(20, AllXY, async (currentXYs: Vec2d[]) => {
             console.log("Init: ", currentXYs);
-            let tx = new Transaction()
-            await Promise.all(currentXYs.map(async currentXY => {
-                tx.add(await client.placeProgram.initPatch({
-                    xPatch: currentXY.x,
-                    yPatch: currentXY.y,
-                    payer: keypair.publicKey,
-                }))
-            }))
+            let tx = new Transaction();
+            await Promise.all(
+                currentXYs.map(async (currentXY) => {
+                    tx.add(
+                        await client.placeProgram.initPatch({
+                            xPatch: currentXY.x,
+                            yPatch: currentXY.y,
+                            payer: keypair.publicKey,
+                        })
+                    );
+                })
+            );
 
-            await sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig)
+            await sendAndConfirmTransaction(connection, tx, [keypair], connectionConfig);
+        });
 
-        }));
-        console.timeEnd('xy')
+        console.timeEnd("xy");
         console.log("All done, hopefully nothing failed");
 
         client.kill();
-    }
-}
+    },
+};
 
 type InitMintCommandArgs = KeynameOptionArgs;
 
@@ -119,13 +116,15 @@ const init_mint_command = {
         let owner_keypair = loadKey(args.keyname);
         // TODO(will): allow specifying program version and endpoint args
         let placeClient = PlaceClient.getInstanceInit(PLACE_VERSION, PLACE_ENDPOINT);
-        let init_mint_ix = await placeClient.placeProgram.initTokenMint({ owner: owner_keypair.publicKey })
+        let init_mint_ix = await placeClient.placeProgram.initTokenMint({
+            owner: owner_keypair.publicKey,
+        });
         let tx = new Transaction().add(init_mint_ix);
         let result = await sendAndConfirmTransaction(placeClient.connection, tx, [owner_keypair]);
         console.log("Result: ", result);
         placeClient.kill();
-    }
-}
+    },
+};
 
 // type SetPixelCommandArgs =
 //     XYOptionArgs &
@@ -327,7 +326,7 @@ const update_place_state_command = {
             ? new BN(args.paintbrush_cooldown!)
             : null;
         let bomb_price = args.bomb_price ? new BN(args.bomb_price!) : null;
-        let placeClient = PlaceClient.getInstanceInit(PLACE_VERSION, PLACE_ENDPOINT)
+        let placeClient = PlaceClient.getInstanceInit(PLACE_VERSION, PLACE_ENDPOINT);
 
         let key = loadKey(args.keyname);
         console.log("Key: ", key.publicKey.toBase58());
@@ -345,8 +344,8 @@ const update_place_state_command = {
         let result = await sendAndConfirmTransaction(placeClient.connection, tx, [key]);
         console.log("Result: ", result);
         placeClient.kill();
-    }
-}
+    },
+};
 
 type PurchaseGameplayTokenCommandArgs = KeynameOptionArgs & { type: string };
 

@@ -8,6 +8,7 @@ import math
 import argparse
 from helpers import airdrop, run_command, TAPESTRY_ROOT, KEYS_DIR
 
+
 def fill_pattern(x: int, y: int, width: int, height: int, pattern: str, keyname: str):
     run_command(
         [

@@ -81,7 +81,6 @@ type PixelPatchCoords = {
 };
 
 export class PlaceProgram {
-
     static readonly PATCH_PDA_PREFIX = "patch";
     static readonly PLACE_STATE_PDA_PREFIX = "place";
     static readonly PLACE_TOKEN_MINT_PDA_PREFIX = "tokes";
@@ -170,11 +169,13 @@ export class PlaceProgram {
             ],
             programId: this.programId,
             data: data,
-        })
+        });
     }
 
     // Keeping this here so its easier to remember to update with the instruction creation code
-    public parseInfoFromPurchaseGameplayTokenIx(ix: TransactionInstruction): PurchaseGameplayTokenInstructionInfo {
+    public parseInfoFromPurchaseGameplayTokenIx(
+        ix: TransactionInstruction
+    ): PurchaseGameplayTokenInstructionInfo {
         return {
             gptMetaPubkey: ix.keys[2].pubkey,
             gptMintPubkey: ix.keys[3].pubkey,
@@ -222,8 +223,8 @@ export class PlaceProgram {
                 { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
             ],
             programId: this.programId,
-            data: data
-        })
+            data: data,
+        });
     }
 
     public async setPixel(params: SetPixelParams) {
@@ -260,20 +261,14 @@ export class PlaceProgram {
         let yBuf = Buffer.alloc(1);
         yBuf.writeUInt8(yPatch);
 
-        let seeds = Buffer.concat([
-            Buffer.from(PlaceProgram.PATCH_PDA_PREFIX),
-            xBuf,
-            yBuf,
-        ])
+        let seeds = Buffer.concat([Buffer.from(PlaceProgram.PATCH_PDA_PREFIX), xBuf, yBuf]);
 
         let result = await PublicKey.findProgramAddress([seeds], this.programId);
         return result[0];
     }
 
     public async findPlaceStatePda(): Promise<PublicKey> {
-        let seeds = Buffer.concat([
-            Buffer.from(PlaceProgram.PLACE_STATE_PDA_PREFIX),
-        ])
+        let seeds = Buffer.concat([Buffer.from(PlaceProgram.PLACE_STATE_PDA_PREFIX)]);
 
         let result = await PublicKey.findProgramAddress([seeds], this.programId);
         return result[0];
@@ -283,7 +278,7 @@ export class PlaceProgram {
         let seeds = Buffer.concat([
             Buffer.from(PlaceProgram.PLACE_STATE_PDA_PREFIX),
             Buffer.from(PlaceProgram.PLACE_TOKEN_MINT_PDA_PREFIX),
-        ])
+        ]);
 
         let result = await PublicKey.findProgramAddress([seeds], this.programId);
         return result[0];
@@ -312,7 +307,10 @@ export class PlaceProgram {
         return result[0];
     }
 
-    public async findGameplayTokenMintAta(gameplayTokenMintPda: PublicKey, userPubkey: PublicKey): Promise<PublicKey> {
+    public async findGameplayTokenMintAta(
+        gameplayTokenMintPda: PublicKey,
+        userPubkey: PublicKey
+    ): Promise<PublicKey> {
         return await Token.getAssociatedTokenAddress(
             ASSOCIATED_TOKEN_PROGRAM_ID,
             TOKEN_PROGRAM_ID,
