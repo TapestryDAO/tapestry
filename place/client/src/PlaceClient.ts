@@ -9,7 +9,13 @@ import {
     TransactionInstruction,
     Commitment,
 } from "@solana/web3.js";
-import { PlaceProgram, PLACE_ENDPOINT, PLACE_VERSION } from ".";
+import {
+    PlaceProgram,
+    PLACE_ENDPOINT,
+    PLACE_VERSION,
+    PlaceProgramVersion,
+    PlaceRpcEndpoint,
+} from ".";
 import { extendBorsh } from "./utils/borsh";
 import { blend32 } from "./palletes/blend32";
 import { PlaceAccountType, PatchData, PlaceStateData } from "./accounts";
