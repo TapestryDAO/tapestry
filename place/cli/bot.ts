@@ -87,7 +87,7 @@ const spiral_bot = {
 
         setInterval(async () => {
             let token = tokensSorted[currentToken];
-            currentToken += 1;
+            currentToken = (currentToken + 1) % tokensSorted.length;
 
             let pixelParams = {
                 x: currentX,
