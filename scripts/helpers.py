@@ -39,6 +39,15 @@ def check_balance(url: str, keypair: str) -> float:
     result = subprocess.check_output(check_balance_cmd, cwd=TAPESTRY_ROOT).decode("utf-8")
     return float(result.split(" ")[0])
 
+def airdrop(amount: int, keypair: str, url: str = "localhost"):
+    airdrop_cmd = [
+        "solana", "airdrop", str(amount),
+        "--url", url,
+        "--keypair", str(keypair),
+        "--commitment", "confirmed",
+    ]
+    run_command(airdrop_cmd)
+
 
 # HELPERS
 

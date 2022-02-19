@@ -11,7 +11,7 @@ import { GameplayTokenType } from '../client/src/accounts';
 import asyncPool from "tiny-async-pool"
 import { GameplayTokenMetaAccount } from '../client/src/accounts/GameplayTokenMetaAccount';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { PLACE_ENDPOINT } from '../client/src';
+import { PLACE_ENDPOINT, PLACE_VERSION } from '../client/src';
 
 const MAX_COLORS = 256;
 
@@ -28,7 +28,8 @@ const init_all_patches_command = {
     handler: async (args: ArgumentsCamelCase<InitAllPatchesCommandArgs>) => {
 
         let keypair = loadKey(args.keyname);
-        let connection = getNewConnection(PLACE_ENDPOINT.url);
+        let client = PlaceClient.getInstanceInit(PLACE_VERSION, PLACE_ENDPOINT);
+        let connection = client.connection;
         let connectionConfig: ConfirmOptions = {
             skipPreflight: true,
             commitment: 'confirmed',
@@ -68,7 +69,7 @@ const init_all_patches_command = {
             console.log("Init: ", currentXYs);
             let tx = new Transaction()
             await Promise.all(currentXYs.map(async currentXY => {
-                tx.add(await PlaceProgram.initPatch({
+                tx.add(await client.placeProgram.initPatch({
                     xPatch: currentXY.x,
                     yPatch: currentXY.y,
                     payer: keypair.publicKey,
@@ -80,6 +81,8 @@ const init_all_patches_command = {
         }));
         console.timeEnd('xy')
         console.log("All done, hopefully nothing failed");
+
+        client.kill();
     }
 }
 
@@ -93,11 +96,14 @@ const init_mint_command = {
     },
     handler: async (args: ArgumentsCamelCase<InitMintCommandArgs>) => {
         let owner_keypair = loadKey(args.keyname);
-        let init_mint_ix = await PlaceProgram.initTokenMint({ owner: owner_keypair.publicKey })
+        // TODO(will): allow specifying program version and endpoint args
+        let placeClient = PlaceClient.getInstanceInit(PLACE_VERSION, PLACE_ENDPOINT);
+        let init_mint_ix = await placeClient.placeProgram.initTokenMint({ owner: owner_keypair.publicKey })
         let tx = new Transaction().add(init_mint_ix);
-        let connection = getNewConnection(PLACE_ENDPOINT.url);
-        let result = await sendAndConfirmTransaction(connection, tx, [owner_keypair]);
+        let result = await sendAndConfirmTransaction(placeClient.connection, tx, [owner_keypair]);
         console.log("Result: ", result);
+
+        placeClient.kill();
     }
 }
 
@@ -298,16 +304,17 @@ const update_place_state_command = {
             })
     },
     handler: async (args: ArgumentsCamelCase<UpdatePlaceStateArgs>) => {
-
         let new_owner = args.new_owner ? new PublicKey(args.new_owner!) : null;
         let is_frozen = args.is_frozen ? args.is_frozen! : null;
         let paintbrush_price = args.paintbrush_price ? new BN(args.paintbrush_price!) : null;
         let paintbrush_cooldown = args.paintbrush_cooldown ? new BN(args.paintbrush_cooldown!) : null;
         let bomb_price = args.bomb_price ? new BN(args.bomb_price!) : null;
+        let placeClient = PlaceClient.getInstanceInit(PLACE_VERSION, PLACE_ENDPOINT)
 
         let key = loadKey(args.keyname);
+        console.log("Key: ", key.publicKey.toBase58());
 
-        let update_place_ix = await PlaceProgram.updatePlaceState({
+        let update_place_ix = await placeClient.placeProgram.updatePlaceState({
             current_owner: key.publicKey,
             new_owner: new_owner,
             is_frozen: is_frozen,
@@ -317,9 +324,10 @@ const update_place_state_command = {
         })
 
         let tx = new Transaction().add(update_place_ix);
-        let connection = getNewConnection(PLACE_ENDPOINT.url);
-        let result = await sendAndConfirmTransaction(connection, tx, [key]);
+        let result = await sendAndConfirmTransaction(placeClient.connection, tx, [key]);
         console.log("Result: ", result);
+
+        placeClient.kill();
     }
 }
 
@@ -342,7 +350,8 @@ const purchase_gameplay_token_command = {
     handler: async (args: ArgumentsCamelCase<PurchaseGameplayTokenCommandArgs>) => {
         let keypair = loadKey(args.keyname);
         let type: GameplayTokenType = GameplayTokenType.PaintBrush;
-        let currentState = await PlaceClient.getInstance().fetchPlaceStateAccount();
+        let placeClient = PlaceClient.getInstance();
+        let currentState = await placeClient.fetchPlaceStateAccount();
         let desired_price = currentState.paintbrush_price;
         switch (args.type) {
             case "paintbrush":
@@ -355,16 +364,14 @@ const purchase_gameplay_token_command = {
                 break;
         }
 
-        let ix = await PlaceProgram.purchaseGameplayToken({
+        let ix = await placeClient.placeProgram.purchaseGameplayToken({
             token_type: type,
             desired_price: desired_price,
             payer: keypair.publicKey,
         })
 
         let tx = new Transaction().add(ix);
-
-        let connection = getNewConnection(PLACE_ENDPOINT.url);
-        let result = await sendAndConfirmTransaction(connection, tx, [keypair]);
+        let result = await sendAndConfirmTransaction(placeClient.connection, tx, [keypair]);
         console.log(result);
     }
 }

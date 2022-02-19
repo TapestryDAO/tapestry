@@ -8,7 +8,7 @@ import math
 
 import argparse
 
-from helpers import run_command, TAPESTRY_ROOT,KEYS_DIR
+from helpers import airdrop, run_command, TAPESTRY_ROOT,KEYS_DIR
 
 def fill_pattern(x: int, y: int, width: int, height: int, pattern: str, keyname: str):
         run_command(["tap", "tx", "fillpattern",
@@ -69,7 +69,10 @@ def main():
 
     print("Airdroping SOL")
     for key in default_keys:
-        run_command(["tap", "tx", "airdrop", "--keyname", key, "--amount", "1000"])
+        airdrop(1000, KEYS_DIR / f"{key}.json")
+
+    print("Waiting for airdops to finalize")
+    sleep(10)
 
     if args.tapestry:
         print("Initializing Tapestry State")

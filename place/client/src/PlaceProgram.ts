@@ -19,6 +19,7 @@ import { PurchaseGameplayTokenArgsData } from './instructions/purchaseGameplayTo
 import { InitMintArgsData } from './instructions/initMint';
 import { ClaimTokensArgsData } from './instructions/claimTokens';
 import { PLACE_VERSION, SolanaNetwork } from './Config';
+import { PlaceProgramVersion } from '.';
 
 export const PLACE_HEIGHT_PX = 1000;
 export const PLACE_WIDTH_PX = 1000;
@@ -80,12 +81,7 @@ type PixelPatchCoords = {
     yOffset: number,
 }
 
-// NOTE(will): in hind sight, doing this as a class that gets instantiated
-// with a program ID and semantic version made more sense than using it as a
-// bag of static methods
-export class PlaceProgram extends Program {
-
-    static PUBKEY: PublicKey = new PublicKey(PLACE_VERSION.programId);
+export class PlaceProgram {
 
     static readonly PATCH_PDA_PREFIX = "patch";
     static readonly PLACE_STATE_PDA_PREFIX = "place";
@@ -93,7 +89,15 @@ export class PlaceProgram extends Program {
     static readonly GAMEPLAY_TOKEN_META_PREFIX = "game";
     static readonly GAMEPLAY_TOKEN_MINT_PREFIX = "mint";
 
-    public static async initPatch(params: InitPatchParams) {
+    public readonly programVersion: PlaceProgramVersion;
+    public readonly programId: PublicKey;
+
+    public constructor(version: PlaceProgramVersion) {
+        this.programVersion = version;
+        this.programId = new PublicKey(version.programId);
+    }
+
+    public async initPatch(params: InitPatchParams) {
         let data = InitPatchArgsData.serialize({
             xPatch: params.xPatch,
             yPatch: params.yPatch,
@@ -107,12 +111,12 @@ export class PlaceProgram extends Program {
                 { pubkey: patchPda, isSigner: false, isWritable: true },
                 { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
             ],
-            programId: this.PUBKEY,
+            programId: this.programId,
             data: data,
         })
     }
 
-    public static async claimTokens(params: ClaimTokensParams) {
+    public async claimTokens(params: ClaimTokensParams) {
         let data = ClaimTokensArgsData.serialize({});
         let gameplay_token_meta_pda = await this.findGameplayMetaPda(params.gameplay_token_random_seed);
         let place_token_mint_pda = await this.findPlaceTokenMintPda();
@@ -127,12 +131,12 @@ export class PlaceProgram extends Program {
                 { pubkey: place_state_pda, isSigner: false, isWritable: false },
                 { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
             ],
-            programId: this.PUBKEY,
+            programId: this.programId,
             data: data,
         });
     }
 
-    public static async purchaseGameplayToken(params: PurchaseGameplayTokenParams) {
+    public async purchaseGameplayToken(params: PurchaseGameplayTokenParams) {
         let place_state_pda = await this.findPlaceStatePda();
         let randomSeed = new BN(randomBytes(8));
         let gameplay_meta_pda = await this.findGameplayMetaPda(randomSeed);
@@ -160,13 +164,13 @@ export class PlaceProgram extends Program {
                 { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
                 { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
             ],
-            programId: this.PUBKEY,
+            programId: this.programId,
             data: data
         })
     }
 
     // Keeping this here so its easier to remember to update with the instruction creation code
-    public static parseInfoFromPurchaseGameplayTokenIx(ix: TransactionInstruction): PurchaseGameplayTokenInstructionInfo {
+    public parseInfoFromPurchaseGameplayTokenIx(ix: TransactionInstruction): PurchaseGameplayTokenInstructionInfo {
         return {
             gptMetaPubkey: ix.keys[2].pubkey,
             gptMintPubkey: ix.keys[3].pubkey,
@@ -174,7 +178,7 @@ export class PlaceProgram extends Program {
         }
     }
 
-    public static async updatePlaceState(params: UpdatePlaceStateParams) {
+    public async updatePlaceState(params: UpdatePlaceStateParams) {
         let place_state_pda = await this.findPlaceStatePda();
         let data = UpdatePlaceStateArgsData.serialize({
             new_owner: params.new_owner,
@@ -190,12 +194,12 @@ export class PlaceProgram extends Program {
                 { pubkey: place_state_pda, isSigner: false, isWritable: true },
                 { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
             ],
-            programId: this.PUBKEY,
+            programId: this.programId,
             data: data,
         });
     }
 
-    public static async initTokenMint(params: InitTokenMintParams) {
+    public async initTokenMint(params: InitTokenMintParams) {
         let place_state_pda = await this.findPlaceStatePda();
         let place_token_mint_pda = await this.findPlaceTokenMintPda();
         let place_token_mpl_meta_pda = await Metadata.getPDA(place_token_mint_pda);
@@ -213,12 +217,12 @@ export class PlaceProgram extends Program {
                 { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
                 { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
             ],
-            programId: this.PUBKEY,
+            programId: this.programId,
             data: data
         })
     }
 
-    public static async setPixel(params: SetPixelParams) {
+    public async setPixel(params: SetPixelParams) {
         let patchCoords = this.computePatchCoords(params.x, params.y);
 
         console.log("Setting Patch Coords: ", patchCoords, "to color: ", params.pixel);
@@ -241,70 +245,70 @@ export class PlaceProgram extends Program {
                 { pubkey: params.gameplay_token_acct, isSigner: false, isWritable: false },
                 { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
             ],
-            programId: this.PUBKEY,
+            programId: this.programId,
             data: data,
         })
     }
 
-    static async findPatchPda(xPatch: number, yPatch: number): Promise<PublicKey> {
+    public async findPatchPda(xPatch: number, yPatch: number): Promise<PublicKey> {
         let xBuf = Buffer.alloc(1);
         xBuf.writeUInt8(xPatch);
         let yBuf = Buffer.alloc(1);
         yBuf.writeUInt8(yPatch);
 
         let seeds = Buffer.concat([
-            Buffer.from(this.PATCH_PDA_PREFIX),
+            Buffer.from(PlaceProgram.PATCH_PDA_PREFIX),
             xBuf,
             yBuf,
         ])
 
-        let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
+        let result = await PublicKey.findProgramAddress([seeds], this.programId);
         return result[0];
     }
 
-    static async findPlaceStatePda(): Promise<PublicKey> {
+    public async findPlaceStatePda(): Promise<PublicKey> {
         let seeds = Buffer.concat([
-            Buffer.from(this.PLACE_STATE_PDA_PREFIX),
+            Buffer.from(PlaceProgram.PLACE_STATE_PDA_PREFIX),
         ])
 
-        let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
+        let result = await PublicKey.findProgramAddress([seeds], this.programId);
         return result[0];
     }
 
-    static async findPlaceTokenMintPda(): Promise<PublicKey> {
+    public async findPlaceTokenMintPda(): Promise<PublicKey> {
         let seeds = Buffer.concat([
-            Buffer.from(this.PLACE_STATE_PDA_PREFIX),
-            Buffer.from(this.PLACE_TOKEN_MINT_PDA_PREFIX),
+            Buffer.from(PlaceProgram.PLACE_STATE_PDA_PREFIX),
+            Buffer.from(PlaceProgram.PLACE_TOKEN_MINT_PDA_PREFIX),
         ])
 
-        let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
+        let result = await PublicKey.findProgramAddress([seeds], this.programId);
         return result[0];
     }
 
-    static async findGameplayMetaPda(randomSeed: BN): Promise<PublicKey> {
+    public async findGameplayMetaPda(randomSeed: BN): Promise<PublicKey> {
         let seeds = Buffer.concat([
-            Buffer.from(this.GAMEPLAY_TOKEN_META_PREFIX),
+            Buffer.from(PlaceProgram.GAMEPLAY_TOKEN_META_PREFIX),
             // NOTE(will): can't use .toBuffer("le") here
             // https://github.com/indutny/bn.js/issues/227
             randomSeed.toArrayLike(Buffer, "le", 8),
         ]);
-        let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
+        let result = await PublicKey.findProgramAddress([seeds], this.programId);
         return result[0];
     }
 
-    static async findGameplayTokenMintPda(randomSeed: BN): Promise<PublicKey> {
+    public async findGameplayTokenMintPda(randomSeed: BN): Promise<PublicKey> {
         let seeds = Buffer.concat([
-            Buffer.from(this.GAMEPLAY_TOKEN_META_PREFIX),
+            Buffer.from(PlaceProgram.GAMEPLAY_TOKEN_META_PREFIX),
             // NOTE(will): can't use .toBuffer("le") here
             // https://github.com/indutny/bn.js/issues/227
             randomSeed.toArrayLike(Buffer, "le", 8),
-            Buffer.from(this.GAMEPLAY_TOKEN_MINT_PREFIX),
+            Buffer.from(PlaceProgram.GAMEPLAY_TOKEN_MINT_PREFIX),
         ]);
-        let result = await PublicKey.findProgramAddress([seeds], this.PUBKEY);
+        let result = await PublicKey.findProgramAddress([seeds], this.programId);
         return result[0];
     }
 
-    static async findGameplayTokenMintAta(gameplayTokenMintPda: PublicKey, userPubkey: PublicKey): Promise<PublicKey> {
+    public async findGameplayTokenMintAta(gameplayTokenMintPda: PublicKey, userPubkey: PublicKey): Promise<PublicKey> {
         return await Token.getAssociatedTokenAddress(
             ASSOCIATED_TOKEN_PROGRAM_ID,
             TOKEN_PROGRAM_ID,
@@ -313,7 +317,7 @@ export class PlaceProgram extends Program {
             false); // TODO(will): what are the implications of this?
     }
 
-    static computePatchCoords(x: number, y: number): PixelPatchCoords {
+    private computePatchCoords(x: number, y: number): PixelPatchCoords {
 
         if (x > PLACE_WIDTH_PX || y > PLACE_HEIGHT_PX || x < 0 || y < 0) {
             throw Error("Invalid pixel coordinates: " + x + "," + y);

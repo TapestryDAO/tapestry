@@ -1,5 +1,5 @@
 import { Argv, describe } from 'yargs'
-
+import { SolanaNetwork } from '../place/client/src';
 export type XYOptionArgs =
     { x: number } &
     { y: number }
@@ -59,3 +59,21 @@ export const applyRectOption = <T>(args: Argv<T>): Argv<T & RectOptionArgs> => {
             required: true,
         })
 };
+
+// export type ProgramOptionArgs =
+//     { program_id: string } &
+//     { network: string }
+
+// export const applyProgramOption = <T>(args: Argv<T>): Argv<T & ProgramOptionArgs> => {
+//     return args
+//         .option("program_id", {
+//             describe: "the name of a keypair in $KEYS_DIR/program_ids",
+//             type: "string",
+//             required: false,
+//         })
+//         .option("network", {
+//             describe: "Solana network to use",
+//             type: "string",
+//             default: "" + SolanaNetwork.Localhost,
+//         })
+// }

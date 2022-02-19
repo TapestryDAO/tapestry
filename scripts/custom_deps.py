@@ -53,6 +53,8 @@ def main():
         subprocess.check_call(" ".join(command), cwd=MPL_ROOT, shell=True)
         stamp_path.touch()
 
+    CARGO_DEPLOY_DIR.mkdir(parents=True, exist_ok=True)
+
     # Always do the copy in case the cargo dir got cleaned
     for program in MPL_PROGRAMS:
         src_so = program + ".so"

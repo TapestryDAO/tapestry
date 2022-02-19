@@ -1,5 +1,5 @@
-import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter, AccountInfo, Transaction, TransactionSignature, TransactionInstruction } from "@solana/web3.js";
-import { PlaceProgram, PLACE_ENDPOINT } from ".";
+import { Connection, PublicKey, KeyedAccountInfo, GetProgramAccountsFilter, AccountInfo, Transaction, TransactionSignature, TransactionInstruction, Commitment } from "@solana/web3.js";
+import { PlaceProgram, PlaceProgramVersion, PlaceRpcEndpoint, PLACE_ENDPOINT, PLACE_VERSION } from ".";
 import { extendBorsh } from "./utils/borsh";
 import { blend32 } from "./palletes/blend32";
 import { PlaceAccountType, PatchData, PlaceStateData } from "./accounts";
@@ -9,6 +9,7 @@ import BN from 'bn.js';
 import { GameplayTokenMetaAccount } from "./accounts/GameplayTokenMetaAccount";
 import { Signal } from './signals';
 import { MintLayout, Token, MintInfo, ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { cp } from "fs";
 
 export const PATCH_WIDTH = 20;
 export const PATCH_HEIGHT = 20;
@@ -64,7 +65,10 @@ export type PlaceTokenMintUpdateHandler =
 export class PlaceClient {
     private static instance: PlaceClient;
 
-    private connection: Connection;
+    private programVersion: PlaceProgramVersion;
+    private rpcEndpoint: PlaceRpcEndpoint;
+    public readonly connection: Connection;
+    public readonly placeProgram: PlaceProgram;
 
     // Subscriptions
     private placePatchesSubscription: number | null = null;
@@ -111,8 +115,11 @@ export class PlaceClient {
         }
     }
 
-    constructor(connection: Connection) {
-        this.connection = connection;
+    constructor(programVersion: PlaceProgramVersion, endpoint: PlaceRpcEndpoint) {
+        this.programVersion = programVersion;
+        this.rpcEndpoint = endpoint;
+        this.connection = new Connection(endpoint.url);
+        this.placeProgram = new PlaceProgram(programVersion);
 
         let bufSize = this.pallete.length * 4;
         let buf = Buffer.alloc(bufSize);
@@ -158,12 +165,24 @@ export class PlaceClient {
         this.unsubscribeFromCurrentUserPlaceTokenAccounts();
     }
 
+    // NOTE(will): Plan is to get rid of this singleton
+    // but doing this as a stop gap measure because I don't want
+    // to refactor the App code right now.
+    public static getInstanceInit(program: PlaceProgramVersion, endpoint: PlaceRpcEndpoint): PlaceClient {
+        if (!!PlaceClient.instance) {
+            console.log("Re-initializing place client...")
+        }
+        PlaceClient.instance = PlaceClient.instance = new PlaceClient(program, endpoint);
+        return PlaceClient.instance
+    }
+
     public static getInstance(): PlaceClient {
         if (!PlaceClient.instance) {
-            this.instance = new PlaceClient(new Connection(PLACE_ENDPOINT.url))
+            console.log("Initializing Place Client...")
+            PlaceClient.instance = new PlaceClient(PLACE_VERSION, PLACE_ENDPOINT);
         }
 
-        return this.instance;
+        return PlaceClient.instance;
     }
 
     // Returns all colors in the pallete as hex strings
@@ -256,7 +275,7 @@ export class PlaceClient {
         console.log("token destination ata: ", destAta);
         // if this user doesn't have an ata for place tokens, create one
         if (destAta === null) {
-            let placeTokenMintPda = await PlaceProgram.findPlaceTokenMintPda();
+            let placeTokenMintPda = await this.placeProgram.findPlaceTokenMintPda();
             destAtaPubkey = await Token.getAssociatedTokenAddress(
                 ASSOCIATED_TOKEN_PROGRAM_ID,
                 TOKEN_PROGRAM_ID,
@@ -291,13 +310,14 @@ export class PlaceClient {
 
             let gptAcct = result.gameplayTokenMetaAcct;
             let randomSeed = result.gameplayTokenMetaAcct.data.random_seed
-            let gptAta = await PlaceProgram.findGameplayTokenMintAta(gptAcct.data.token_mint_pda, this.currentUser);
-            let ix = await PlaceProgram.claimTokens({
+            let gptAta = await this.placeProgram.findGameplayTokenMintAta(gptAcct.data.token_mint_pda, this.currentUser);
+            let ix = await this.placeProgram.claimTokens({
                 claimer: this.currentUser,
                 gameplay_token_random_seed: randomSeed,
                 gameplay_token_ata: gptAta,
                 dest_ata: destAtaPubkey,
             })
+            console.log("Current user", this.currentUser.toBase58());
             console.log("adding ix");
             currentTx.add(ix);
         }
@@ -311,7 +331,7 @@ export class PlaceClient {
         if (this.placePatchesSubscription !== null) return;
 
         console.log("Subscribing to patch updates");
-        this.placePatchesSubscription = this.connection.onProgramAccountChange(PlaceProgram.PUBKEY, async (accountInfo, ctx) => {
+        this.placePatchesSubscription = this.connection.onProgramAccountChange(this.placeProgram.programId, async (accountInfo, ctx) => {
 
             let data = accountInfo.accountInfo.data;
             if (data !== undefined) {
@@ -370,7 +390,7 @@ export class PlaceClient {
             return;
         }
 
-        let placeMintPDA = await PlaceProgram.findPlaceTokenMintPda();
+        let placeMintPDA = await this.placeProgram.findPlaceTokenMintPda();
         let mintAcctInfo = await this.connection.getAccountInfo(placeMintPDA)
 
         // TODO(will): set up some sort of retry if this fails
@@ -407,7 +427,7 @@ export class PlaceClient {
             return;
         }
 
-        let placeMintPDA = await PlaceProgram.findPlaceTokenMintPda();
+        let placeMintPDA = await this.placeProgram.findPlaceTokenMintPda();
         let ownerTokenAccounts = await this.connection.getTokenAccountsByOwner(currentUser, {
             mint: placeMintPDA,
         })
@@ -547,7 +567,7 @@ export class PlaceClient {
     public async fetchPlaceStateAccount(): Promise<PlaceStateData> {
         extendBorsh();
         const config = { filters: [this.placeStateAccountsFilter] };
-        let results = await this.connection.getProgramAccounts(PlaceProgram.PUBKEY, config)
+        let results = await this.connection.getProgramAccounts(this.placeProgram.programId, config)
         if (results.length !== 1) {
             console.warn("nexpected number of state accounts: ", results.length);
         }
@@ -560,7 +580,7 @@ export class PlaceClient {
         extendBorsh();
         this.unsubscribeFromPatchUpdates();
         const config = { filters: [this.patchAccountsFilter] }
-        let allAccounts = await this.connection.getProgramAccounts(PlaceProgram.PUBKEY, config);
+        let allAccounts = await this.connection.getProgramAccounts(this.placeProgram.programId, config);
         let allAccountsParsed = allAccounts.flatMap((value) => {
             let data = value.account.data;
             if (data != undefined) {
@@ -701,7 +721,7 @@ export class PlaceClient {
 
     public async awaitGptRecord(purchaseIx: TransactionInstruction) {
         console.log("Awaiting gpt record");
-        let info = PlaceProgram.parseInfoFromPurchaseGameplayTokenIx(purchaseIx)
+        let info = this.placeProgram.parseInfoFromPurchaseGameplayTokenIx(purchaseIx)
 
         let gptMetaSub = this.connection.onAccountChange(info.gptMetaPubkey, (acct) => {
             let gpt = new GameplayTokenMetaAccount(info.gptMetaPubkey, acct);
@@ -815,8 +835,9 @@ export class PlaceClient {
 
         for (const nftAcct of potentialGptNftTokens) {
             let mintPubkey = nftAcct.data.mint.toBase58();
-            let gameplayTokenAccounts = await PlaceProgram.getProgramAccounts(this.connection, {
-                commitment: "processed",
+
+            let fetchGptAccountsFilter = {
+                commitment: "processed" as Commitment,
                 filters: [
                     {
                         memcmp: {
@@ -825,11 +846,13 @@ export class PlaceClient {
                         }
                     }
                 ]
-            })
+            }
+
+            let gameplayTokenAccounts = await this.connection.getProgramAccounts(this.placeProgram.programId, fetchGptAccountsFilter)
 
             if (gameplayTokenAccounts.length > 0) {
                 let accountInfo = gameplayTokenAccounts[0];
-                let account = new GameplayTokenMetaAccount(accountInfo.pubkey, accountInfo.info)
+                let account = new GameplayTokenMetaAccount(accountInfo.pubkey, accountInfo.account)
                 gptRecords.push({
                     gameplayTokenMetaAcct: account,
                     mintPubkey: mintPubkey,
