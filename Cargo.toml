@@ -3,6 +3,7 @@
 [workspace]
 members=[
   "place/program",
+  "place/watcher",
 ]
 exclude = [
   "build/custom_deps/mpl-program-library",
