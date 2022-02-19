@@ -1,57 +1,61 @@
 {
-  "name": "solana-tapestry",
-  "version": "0.1.0",
-  "private": true,
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/TapestryDAO/tapestry"
-  },
-  "homepage": ".",
-  "scripts": {
-    "setup": "yarn setupjs && yarn setuppy && yarn setuprs",
-    "setuprs": "yarn meta:install --build && yarn rust:build && yarn meta:install --deploy",
-    "setuppy": "poetry install",
-    "setupjs": "yarn install && yarn tap:client:setup && yarn tap:app:setup && yarn place:client:setup && yarn place:app:setup && yarn timp:app:setup",
-    "rust:build": "yarn meta:install && cargo build-bpf",
-    "rust:test": "yarn meta:install && cargo test-bpf",
-    "place:client:build": "cd place/client && yarn build",
-    "place:client:setup": "cd place/client && yarn install",
-    "place:app:setup": "cd place/app && yarn install",
-    "place:app:build": "cd place/app && yarn build",
-    "place:app:start": "cd place/app && yarn start",
-    "timp:app:setup": "cd tapestry/timp && yarn install",
-    "timp:app:build": "cd tapestry/timp && yarn build",
-    "timp:app:start": "cd tapestry/timp && yarn start",
-    "tap:build": "yarn rust:build && yarn tap:client:build && yarn tap:app:build",
-    "tap:test": "yarn rust:test && echo \"You should probably make more tests...\"",
-    "tap:client:setup": "cd tapestry/client && yarn install",
-    "tap:client:build": "cd tapestry/client && yarn build",
-    "tap:app:setup": "cd tapestry/app && yarn install",
-    "tap:app:build": "cd tapestry/app && yarn build",
-    "tap:app:start": "cd tapestry/app && yarn start",
-    "localnet:fresh": "python -u scripts/fresh_validator.py",
-    "localnet:up": "python -u scripts/start_test_validator.py",
-    "localnet:logs": "solana logs -u localhost",
-    "meta:install": "python -u scripts/custom_deps.py",
-    "swarm": "python -u scripts/swarm.py --walkers",
-    "initpatches": "pla tx initpatches --keyname owner"
-  },
-  "dependencies": {
-    "tiny-async-pool": "^1.2.0"
-  },
-  "devDependencies": {
-    "@solana/spl-token": "^0.1.8",
-    "@solana/web3.js": "^1.31.0",
-    "@types/bs58": "^4.0.1",
-    "@types/jimp": "^0.2.28",
-    "@types/node": "^17.0.8",
-    "@types/yargs": "^17.0.8",
-    "axios": "^0.24.0",
-    "bs58": "^4.0.1",
-    "jimp": "^0.16.1",
-    "ts-node": "^10.4.0",
-    "typescript": "^4.5.4",
-    "yargs": "^17.3.1",
-    "yarn": "^1.22.17"
-  }
+    "name": "solana-tapestry",
+    "version": "0.1.0",
+    "private": true,
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TapestryDAO/tapestry"
+    },
+    "homepage": ".",
+    "scripts": {
+        "setup": "yarn setupjs && yarn setuppy && yarn setuprs",
+        "setuprs": "yarn meta:install --build && yarn rust:build && yarn meta:install --deploy",
+        "setuppy": "poetry install",
+        "setupjs": "yarn install && yarn tap:client:setup && yarn tap:app:setup && yarn place:client:setup && yarn place:app:setup && yarn timp:app:setup",
+        "rust:build": "yarn meta:install && cargo build-bpf",
+        "rust:test": "yarn meta:install && cargo test-bpf",
+        "place:client:build": "cd place/client && yarn build",
+        "place:client:setup": "cd place/client && yarn install",
+        "place:app:setup": "cd place/app && yarn install",
+        "place:app:build": "cd place/app && yarn build",
+        "place:app:start": "cd place/app && yarn start",
+        "timp:app:setup": "cd tapestry/timp && yarn install",
+        "timp:app:build": "cd tapestry/timp && yarn build",
+        "timp:app:start": "cd tapestry/timp && yarn start",
+        "tap:build": "yarn rust:build && yarn tap:client:build && yarn tap:app:build",
+        "tap:test": "yarn rust:test && echo \"You should probably make more tests...\"",
+        "tap:client:setup": "cd tapestry/client && yarn install",
+        "tap:client:build": "cd tapestry/client && yarn build",
+        "tap:app:setup": "cd tapestry/app && yarn install",
+        "tap:app:build": "cd tapestry/app && yarn build",
+        "tap:app:start": "cd tapestry/app && yarn start",
+        "localnet:fresh": "python -u scripts/fresh_validator.py",
+        "localnet:up": "python -u scripts/start_test_validator.py",
+        "localnet:logs": "solana logs -u localhost",
+        "meta:install": "python -u scripts/custom_deps.py",
+        "swarm": "python -u scripts/swarm.py --walkers",
+        "initpatches": "pla tx initpatches --keyname owner"
+    },
+    "dependencies": {
+        "tiny-async-pool": "^1.2.0"
+    },
+    "prettier": {
+        "tabWidth": 4,
+        "printWidth": 100
+    },
+    "devDependencies": {
+        "@solana/spl-token": "^0.1.8",
+        "@solana/web3.js": "^1.31.0",
+        "@types/bs58": "^4.0.1",
+        "@types/jimp": "^0.2.28",
+        "@types/node": "^17.0.8",
+        "@types/yargs": "^17.0.8",
+        "axios": "^0.24.0",
+        "bs58": "^4.0.1",
+        "jimp": "^0.16.1",
+        "ts-node": "^10.4.0",
+        "typescript": "^4.5.4",
+        "yargs": "^17.3.1",
+        "yarn": "^1.22.17"
+    }
 }

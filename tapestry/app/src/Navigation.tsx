@@ -1,8 +1,8 @@
-import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletDisconnectButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { FC } from 'react';
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletDisconnectButton, WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { FC } from "react";
 
-require('./navigation.css');
+require("./navigation.css");
 
 export const Navigation: FC = () => {
     const { wallet } = useWallet();

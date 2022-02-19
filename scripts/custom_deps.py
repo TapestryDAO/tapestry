@@ -14,9 +14,7 @@ BUILD_DIR = TAPESTRY_ROOT / "build" / "custom_deps"
 MPL_ROOT = BUILD_DIR / "mpl-program-library"
 MPL_TARGET_DIR = MPL_ROOT / "target"
 MPL_OUT_DIR = MPL_TARGET_DIR / "deploy"
-MPL_PROGRAMS = [
-    "mpl_token_metadata"
-]
+MPL_PROGRAMS = ["mpl_token_metadata"]
 
 CARGO_DEPLOY_DIR = TAPESTRY_ROOT / "target" / "deploy"
 
@@ -33,7 +31,7 @@ def main():
     parser.add_argument("--clean", action="store_true")
 
     args = parser.parse_args()
-    
+
     MPL_ROOT.mkdir(parents=True, exist_ok=True)
     try:
         Repo.clone_from(MPL_URL, MPL_ROOT)
@@ -47,7 +45,7 @@ def main():
         MPL_TARGET_DIR.rmdir()
 
     stamp_path = MPL_TARGET_DIR / f"{repo.head.commit}.stamp"
-    
+
     if not stamp_path.exists():
         command = ["cargo", "build-bpf"]
         subprocess.check_call(" ".join(command), cwd=MPL_ROOT, shell=True)

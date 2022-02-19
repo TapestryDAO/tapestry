@@ -1,5 +1,3 @@
-
-
 from operator import sub
 import random
 import requests
@@ -10,6 +8,7 @@ import argparse
 import time
 
 BASE_DIR = Path("/tmp/image_gen_scratch")
+
 
 def main():
 
@@ -22,8 +21,8 @@ def main():
 
     bootstrap = args.bootstrap
 
-    image_width = 24*bootstrap
-    image_height = 24*bootstrap
+    image_width = 24 * bootstrap
+    image_height = 24 * bootstrap
     image_count = 100
 
     if not args.skip_download:
@@ -54,10 +53,18 @@ def main():
 
         if first_run:
             for i in range(0, level):
-                random_tl = BASE_DIR / f"random_{random.randint(0, image_count - 1)}.jpeg"
-                random_tr = BASE_DIR / f"random_{random.randint(0, image_count - 1)}.jpeg"
-                random_br = BASE_DIR / f"random_{random.randint(0, image_count - 1)}.jpeg"
-                random_bl = BASE_DIR / f"random_{random.randint(0, image_count - 1)}.jpeg"
+                random_tl = (
+                    BASE_DIR / f"random_{random.randint(0, image_count - 1)}.jpeg"
+                )
+                random_tr = (
+                    BASE_DIR / f"random_{random.randint(0, image_count - 1)}.jpeg"
+                )
+                random_br = (
+                    BASE_DIR / f"random_{random.randint(0, image_count - 1)}.jpeg"
+                )
+                random_bl = (
+                    BASE_DIR / f"random_{random.randint(0, image_count - 1)}.jpeg"
+                )
 
                 top = GEN_DIR / f"randomtop_{level}_{i}.jpeg"
                 bot = GEN_DIR / f"randombot_{level}_{i}.jpeg"
@@ -100,15 +107,35 @@ def main():
                     f"-{current_image_dim}",
                 ]
 
-                subprocess.check_call(" ".join(map(lambda v: str(v), merge_horizontal_command1)), shell=True)
-                subprocess.check_call(" ".join(map(lambda v: str(v), merge_horizontal_command2)), shell=True)
-                subprocess.check_call(" ".join(map(lambda v: str(v), merge_vertical_command)), shell=True)
+                subprocess.check_call(
+                    " ".join(map(lambda v: str(v), merge_horizontal_command1)),
+                    shell=True,
+                )
+                subprocess.check_call(
+                    " ".join(map(lambda v: str(v), merge_horizontal_command2)),
+                    shell=True,
+                )
+                subprocess.check_call(
+                    " ".join(map(lambda v: str(v), merge_vertical_command)), shell=True
+                )
         else:
             for i in range(0, level):
-                random_tl = GEN_DIR / f"random_level_{previous_level}_{random.randint(0, previous_level - 1)}.jpeg"
-                random_tr = GEN_DIR / f"random_level_{previous_level}_{random.randint(0, previous_level - 1)}.jpeg"
-                random_br = GEN_DIR / f"random_level_{previous_level}_{random.randint(0, previous_level - 1)}.jpeg"
-                random_bl = GEN_DIR / f"random_level_{previous_level}_{random.randint(0, previous_level - 1)}.jpeg"
+                random_tl = (
+                    GEN_DIR
+                    / f"random_level_{previous_level}_{random.randint(0, previous_level - 1)}.jpeg"
+                )
+                random_tr = (
+                    GEN_DIR
+                    / f"random_level_{previous_level}_{random.randint(0, previous_level - 1)}.jpeg"
+                )
+                random_br = (
+                    GEN_DIR
+                    / f"random_level_{previous_level}_{random.randint(0, previous_level - 1)}.jpeg"
+                )
+                random_bl = (
+                    GEN_DIR
+                    / f"random_level_{previous_level}_{random.randint(0, previous_level - 1)}.jpeg"
+                )
 
                 top = GEN_DIR / f"randomtop_{level}_{i}.jpeg"
                 bot = GEN_DIR / f"randombot_{level}_{i}.jpeg"
@@ -124,7 +151,7 @@ def main():
                     "horizontal",
                     "--",
                     f"-{current_image_dim}",
-                    "0"
+                    "0",
                 ]
 
                 merge_horizontal_command2 = [
@@ -136,7 +163,7 @@ def main():
                     "horizontal",
                     "--",
                     f"-{current_image_dim}",
-                    "0"
+                    "0",
                 ]
 
                 merge_vertical_command = [
@@ -151,9 +178,17 @@ def main():
                     f"-{current_image_dim}",
                 ]
 
-                subprocess.check_call(" ".join(map(lambda v: str(v), merge_horizontal_command1)), shell=True)
-                subprocess.check_call(" ".join(map(lambda v: str(v), merge_horizontal_command2)), shell=True)
-                subprocess.check_call(" ".join(map(lambda v: str(v), merge_vertical_command)), shell=True)
+                subprocess.check_call(
+                    " ".join(map(lambda v: str(v), merge_horizontal_command1)),
+                    shell=True,
+                )
+                subprocess.check_call(
+                    " ".join(map(lambda v: str(v), merge_horizontal_command2)),
+                    shell=True,
+                )
+                subprocess.check_call(
+                    " ".join(map(lambda v: str(v), merge_vertical_command)), shell=True
+                )
 
         print(f"Completing Level {level}")
 
@@ -162,12 +197,6 @@ def main():
         level = math.floor(level / 2)
         current_image_dim = current_image_dim * 2
         first_run = False
-
-
-        
-
-
-
 
 
 if __name__ == "__main__":

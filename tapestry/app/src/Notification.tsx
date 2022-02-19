@@ -1,11 +1,11 @@
-import React, { FC } from 'react';
+import React, { FC } from "react";
 
 // Use require instead of import, and order matters
-require('./notification.css');
+require("./notification.css");
 
 export interface NotificationProps {
     message: string;
-    variant: 'error' | 'info' | 'success';
+    variant: "error" | "info" | "success";
 }
 
 export const Notification: FC<NotificationProps> = ({ message, variant }) => {
