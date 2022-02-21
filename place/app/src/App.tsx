@@ -174,7 +174,7 @@ export const TapestryCanvas: FC = (props) => {
             gameplay_token_acct: tokenResult.userTokenAccount.pubkey,
         };
 
-        let ix = await PlaceProgram.setPixel(pixelParams);
+        let ix = await client.placeProgram.setPixel(pixelParams);
         let tx = new Transaction().add(ix);
         let sig = await sendTransaction(tx, connection);
         let result = await connection.confirmTransaction(sig, "confirmed");

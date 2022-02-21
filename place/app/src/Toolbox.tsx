@@ -68,7 +68,7 @@ export const PaintbrushTool: FC = () => {
         console.log("token_type: ", GameplayTokenType.PaintBrush);
         console.log("desired_price: ", state.paintbrush_price);
 
-        let ix = await PlaceProgram.purchaseGameplayToken({
+        let ix = await placeClient.placeProgram.purchaseGameplayToken({
             payer: publicKey,
             token_type: GameplayTokenType.PaintBrush,
             desired_price: state.paintbrush_price,

@@ -5,7 +5,6 @@ import { execSync, exec } from 'child_process'
 import axios from 'axios';
 import { exit } from 'process';
 import { inspect } from 'util';
-import { processImage } from '../tapestry/timp/src';
 
 export const TAPESTRY_ROOT = process.env.TAPESTRY_ROOT as string;
 
@@ -60,80 +59,6 @@ export const loadKeyFromPath = (keyPath: string): Keypair => {
     const data = fs.readFileSync(keyPath, 'utf8');
     const dataJson = JSON.parse(data);
     return Keypair.fromSecretKey(Uint8Array.from(dataJson));
-}
-
-export type PatternPatch = {
-    // path relative to the file containing the pattern.json
-    image: string,
-    imageBuffer?: Buffer,
-    url?: string,
-    hoverText?: string,
-}
-
-export type MaybePatternPatch = PatternPatch | null
-
-export type Pattern = {
-    patches: MaybePatternPatch[][]
-}
-
-export const loadPatternFromPath = async (patternPath: string): Promise<Pattern> => {
-    const data = fs.readFileSync(path.resolve(patternPath, "pattern.json"), 'utf-8');
-    const dataJson = JSON.parse(data);
-
-    const patches = dataJson["patches"] as PatternPatch[]
-    const patchify = dataJson["patchify"] !== undefined ? dataJson["patchify"] : false
-    const pattern = dataJson["pattern"] as number[][]
-
-    if (patchify && patches.length != 1) {
-        throw Error("invalid pattern for patchifying");
-    }
-
-    let patchesArr: MaybePatternPatch[][] = []
-
-    if (patchify) {
-        let imagePath = patches[0].image
-        let imageBuf = fs.readFileSync(path.resolve(patternPath, imagePath))
-        let imagePatches = await processImage(imageBuf, pattern[0].length, pattern.length);
-
-        for (var y = 0; y < pattern.length; y++) {
-            patchesArr.push([])
-            for (var x = 0; x < pattern[y].length; x++) {
-                const occupancy = pattern[y][x];
-                if (occupancy) {
-                    patchesArr[y].push({
-                        image: imagePath,
-                        imageBuffer: imagePatches[y][x],
-                        url: patches[0].url,
-                        hoverText: patches[0].hoverText,
-                    })
-                } else {
-                    patchesArr[y].push(null)
-                }
-            }
-        }
-    } else {
-        for (var y = 0; y < pattern.length; y++) {
-            patchesArr.push([])
-            for (let patchIdx of pattern[y]) {
-                if (patchIdx < 1) {
-                    patchesArr[y].push(null)
-                } else {
-                    let patch = patches[patchIdx - 1]
-                    let imageBuf = fs.readFileSync(path.resolve(patternPath, patch.image))
-                    patchesArr[y].push({
-                        image: patch.image,
-                        imageBuffer: imageBuf,
-                        url: patch.url,
-                        hoverText: patch.hoverText,
-                    })
-                }
-            }
-        }
-    }
-
-    return {
-        patches: patchesArr
-    }
 }
 
 export const allKeys = (): Array<{ key: Keypair, name: string }> => {

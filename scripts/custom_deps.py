@@ -42,21 +42,23 @@ def main():
     repo.git.checkout(MPL_TAG)
 
     if args.clean:
-        MPL_TARGET_DIR.rmdir()
+        shutil.rmtree(MPL_TARGET_DIR)
 
     stamp_path = MPL_TARGET_DIR / f"{repo.head.commit}.stamp"
 
     if not stamp_path.exists():
         command = ["cargo", "build-bpf"]
         subprocess.check_call(" ".join(command), cwd=MPL_ROOT, shell=True)
-
-        for program in MPL_PROGRAMS:
-            src_so = program + ".so"
-            src_key = program + "-keypair.json"
-            shutil.copy(MPL_OUT_DIR / src_so, CARGO_DEPLOY_DIR)
-            shutil.copy(MPL_OUT_DIR / src_key, CARGO_DEPLOY_DIR)
-
         stamp_path.touch()
+
+    CARGO_DEPLOY_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Always do the copy in case the cargo dir got cleaned
+    for program in MPL_PROGRAMS:
+        src_so = program + ".so"
+        src_key = program + "-keypair.json"
+        shutil.copy(MPL_OUT_DIR / src_so, CARGO_DEPLOY_DIR)
+        shutil.copy(MPL_OUT_DIR / src_key, CARGO_DEPLOY_DIR)
 
 
 if __name__ == "__main__":

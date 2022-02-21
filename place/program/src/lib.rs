@@ -14,9 +14,10 @@ use std::str::FromStr;
 
 pub fn id() -> solana_program::pubkey::Pubkey {
     // NOTE(will): for some reason cargo test doesn't pick up the value set by config.toml
-    return solana_program::pubkey::Pubkey::from_str(
-        std::option_env!("SOLANA_PLACE_PROGRAM_ID")
-            .unwrap_or("tapestry11111111111111111111111111111111111"),
-    )
-    .unwrap();
+    return solana_program::pubkey::Pubkey::from_str(std::env!("SOLANA_PLACE_PROGRAM_ID")).unwrap();
+}
+
+pub fn build_hacks_do_not_call() {
+    // this seems to be the only way I can force a rebuild if this env variable changes
+    println!("cargo:rerun-if-env-changed=SOLANA_PLACE_PROGRAM_ID");
 }
