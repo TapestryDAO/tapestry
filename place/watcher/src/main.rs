@@ -13,47 +13,7 @@ use std::io::BufWriter;
 use std::thread::sleep;
 use std::time::Duration;
 
-pub struct Blend32 {}
-
-impl Blend32 {
-    pub fn u8_to_rgb(pixel: u8) -> &'static [u8; 3] {
-        match pixel {
-            0 => &[255, 255, 255],
-            1 => &[0, 0, 0],
-            2 => &[31, 0, 71],
-            3 => &[59, 0, 88],
-            4 => &[115, 0, 94],
-            5 => &[191, 36, 50],
-            6 => &[236, 132, 26],
-            7 => &[255, 247, 104],
-            8 => &[164, 237, 58],
-            9 => &[70, 186, 41],
-            10 => &[32, 135, 90],
-            11 => &[8, 81, 102],
-            12 => &[0, 45, 126],
-            13 => &[0, 108, 196],
-            14 => &[32, 167, 222],
-            15 => &[111, 232, 255],
-            16 => &[144, 255, 229],
-            17 => &[191, 224, 224],
-            18 => &[153, 173, 193],
-            19 => &[101, 111, 149],
-            20 => &[74, 66, 112],
-            21 => &[104, 4, 137],
-            22 => &[167, 35, 178],
-            23 => &[219, 82, 185],
-            24 => &[255, 150, 203],
-            25 => &[255, 205, 217],
-            26 => &[255, 222, 161],
-            27 => &[208, 150, 118],
-            28 => &[167, 92, 67],
-            29 => &[129, 52, 49],
-            30 => &[89, 17, 49],
-            31 => &[58, 1, 33],
-            _ => &[255, 255, 255],
-        }
-    }
-}
+mod blend32;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -120,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     );
                                     let pixels = patch.pixels.as_slice().iter();
                                     for (patch_idx, pixel) in pixels.enumerate() {
-                                        let pixel_rgb = Blend32::u8_to_rgb(*pixel);
+                                        let pixel_rgb = blend32::Blend32::u8_to_rgb(*pixel);
                                         let place_y = place_y_tl + (patch_idx / PATCH_SIZE_PX);
                                         let place_x = place_x_tl + (patch_idx % PATCH_SIZE_PX);
                                         let pixel_offset =
