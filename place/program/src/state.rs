@@ -268,6 +268,11 @@ impl Patch {
         return Ok(patch);
     }
 
+    pub fn from_bytes(b: &[u8]) -> Result<Patch, ProgramError> {
+        let patch: Patch = try_from_slice_checked(b, PlaceAccountType::Patch, Self::LEN)?;
+        Ok(patch)
+    }
+
     pub fn pda(x: u8, y: u8) -> (Pubkey, u8) {
         return Pubkey::find_program_address(
             &[

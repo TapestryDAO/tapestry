@@ -9,5 +9,7 @@ publish = false
 solana-shadow = "*"
 solana-place = { path = "../program", features= ["no-entrypoint"]}
 solana-sdk = "1.8.12"
+solana-client = "1.8.12"
 tokio = "1.15.0"
 borsh = "0.9.1"
+png = "0.17.3"
