@@ -9,7 +9,7 @@ type ConvertHexToJsonCommandArgs = { inFile: string } & { name: string } & { rus
 };
 
 const PALLETE_OUT = path.resolve(TAPESTRY_ROOT, "place", "client", "src", "palletes");
-const PALLETE_OUT_RUST = path.resolve(TAPESTRY_ROOT, "place", "watcher", "src", "palletes");
+const PALLETE_OUT_RUST = path.resolve(TAPESTRY_ROOT, "place", "watcher", "src");
 
 const rgbStringToArayString = (color: string) => {
     let rString = color.substring(0, 2);
@@ -38,7 +38,8 @@ const writeRustPallete = (name: string, hexPallete: string[]) => {
     }
 
     // map any out of range value to the same color as 0
-    file_contents += indent + indent + indent + "_ => " + rgbStringToArayString(hexPallete[0]);
+    file_contents +=
+        indent + indent + indent + "_ => " + rgbStringToArayString(hexPallete[0]) + "\n";
     file_contents += indent + indent + "}\n";
     file_contents += indent + "}\n";
     file_contents += "}\n";

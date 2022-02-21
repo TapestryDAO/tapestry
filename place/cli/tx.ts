@@ -50,8 +50,8 @@ const init_all_patches_command = {
             commitment: "confirmed",
         };
 
-        const maxXPatch = PLACE_WIDTH_PX / PATCH_SIZE_PX;
-        const maxYPatch = PLACE_HEIGHT_PX / PATCH_SIZE_PX;
+        const maxXPatch = PLACE_WIDTH_PX / PATCH_SIZE_PX - 1;
+        const maxYPatch = PLACE_HEIGHT_PX / PATCH_SIZE_PX - 1;
 
         const getNext = (current: Vec2d): Vec2d | null => {
             let nextX = current.x + 1;
