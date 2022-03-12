@@ -41,46 +41,19 @@ export const Pallete: FC = () => {
     let palleteColors = PlaceClient.getInstance().getColorPalleteHex();
 
     return (
-        <div className="toolbox__pallete-container">
+        <>
             {palleteColors.map((color) => {
                 return <PalleteColor color={color} />;
             })}
-        </div>
+        </>
     );
 };
 
 export const PaintbrushTool: FC = () => {
-    const { connection } = useConnection();
-    const { sendTransaction, publicKey } = useWallet();
-    const [processingPurchase, setProcessingPurchase] = useState<boolean>(false);
-    const [tokensTotal, setTokensTotal] = useState<number>(0);
+    const [tokensTotal, setTokensTotal] = useState<number>(3);
     const [tokensReady, setTokensReady] = useState<number>(0);
 
-    const onBuyButtonClicked = async () => {
-        console.log("Buy Paintbrush Clicked");
-        if (publicKey === null) return;
-
-        let placeClient = PlaceClient.getInstance();
-        let state = await placeClient.fetchPlaceStateAccount();
-        setProcessingPurchase(true);
-
-        console.log("payer: ", publicKey);
-        console.log("token_type: ", GameplayTokenType.PaintBrush);
-        console.log("desired_price: ", state.paintbrush_price);
-
-        let ix = await placeClient.placeProgram.purchaseGameplayToken({
-            payer: publicKey,
-            token_type: GameplayTokenType.PaintBrush,
-            desired_price: state.paintbrush_price,
-        });
-
-        let tx = new Transaction().add(ix);
-        let signature = await sendTransaction(tx, connection);
-        placeClient.awaitGptRecord(ix);
-        let result = await connection.confirmTransaction(signature, "processed");
-
-        setProcessingPurchase(false);
-    };
+    const toolQueueCount = tokensTotal - tokensReady;
 
     useEffect(() => {
         let placeClient = PlaceClient.getInstance();
@@ -107,17 +80,26 @@ export const PaintbrushTool: FC = () => {
             PlaceClient.getInstance().OnGameplayTokenRecordsUpdated.detach(subscription);
         };
     }, []);
+    const headline = tokensReady ? "Ready!" : "Next Paint";
 
     return (
-        <div className="toolbox__paintbrush-container">
-            <img className="toolbox__paintbrush-image" src="paintbrush_pixel.png"></img>
-            <h4>
-                Ready: {tokensReady}/{tokensTotal}
-            </h4>
-            <button onClick={onBuyButtonClicked} className="toolbox__buy_button">
-                {processingPurchase ? "Processing..." : "Buy"}
-            </button>
-        </div>
+        <>
+            <div className="flex flex-row my-auto justify-end w-full">
+                {[...Array(toolQueueCount)].map(() => (
+                    <img
+                        className="toolbox__paintbrush-image h-16 border border-black"
+                        src="paintbrush_pixel.png"
+                    />
+                ))}
+            </div>
+            <div className="border border-black rounded-md w-32 min-h-32 flex justify-start p-2 flex-col">
+                <h3 className="w-full text-xl text-center">{headline}</h3>
+                <img
+                    className="toolbox__paintbrush-image h-16 border border-green-500"
+                    src="paintbrush_pixel.png"
+                />
+            </div>
+        </>
     );
 };
 
@@ -128,6 +110,34 @@ export const Ownership: FC = () => {
     let [placeTokenSuppy, setPlaceTokenSuppy] = useState<number | null>(null);
     let [userOwnedTokens, setUserOwnedTokens] = useState<number | null>(null);
     let [claimProcessing, setClaimProcessing] = useState<boolean>(false);
+
+    const [processingPurchase, setProcessingPurchase] = useState<boolean>(false);
+
+    const onBuyButtonClicked = async () => {
+        console.log("Buy Paintbrush Clicked");
+        if (publicKey === null) return;
+
+        let placeClient = PlaceClient.getInstance();
+        let state = await placeClient.fetchPlaceStateAccount();
+        setProcessingPurchase(true);
+
+        console.log("payer: ", publicKey);
+        console.log("token_type: ", GameplayTokenType.PaintBrush);
+        console.log("desired_price: ", state.paintbrush_price);
+
+        let ix = await placeClient.placeProgram.purchaseGameplayToken({
+            payer: publicKey,
+            token_type: GameplayTokenType.PaintBrush,
+            desired_price: state.paintbrush_price,
+        });
+
+        let tx = new Transaction().add(ix);
+        let signature = await sendTransaction(tx, connection);
+        placeClient.awaitGptRecord(ix);
+        let result = await connection.confirmTransaction(signature, "processed");
+
+        setProcessingPurchase(false);
+    };
 
     const updateClaimableTokensCount = (records: GameplayTokenRecord[] | null) => {
         if (records === null) {
@@ -189,9 +199,8 @@ export const Ownership: FC = () => {
 
         let gptSub = client.OnGameplayTokenRecordsUpdated.addMemo(updateClaimableTokensCount);
         let tokenMintSub = client.OnPlaceTokenMintUpdated.addMemo(updatePlaceTokenSupply);
-        let tokenAcctsSub = client.OnCurrentUserPlaceTokenAcctsUpdated.addMemo(
-            updateUserPlaceTokens
-        );
+        let tokenAcctsSub =
+            client.OnCurrentUserPlaceTokenAcctsUpdated.addMemo(updateUserPlaceTokens);
 
         return () => {
             client.OnGameplayTokenRecordsUpdated.detach(gptSub);
@@ -205,8 +214,8 @@ export const Ownership: FC = () => {
 
     return (
         <div className="toolbox__ownership-container">
-            <div className="toolbox__ownership-heading">
-                <h4>Place Tokens</h4>
+            {/* <div className="toolbox__ownership-heading">
+                <h4 className="pixel-font">Place Tokens</h4>
             </div>
             <div className="toolbox__ownership-stat">
                 {placeTokenSuppy === null ? <></> : <h6>Total Supply: {placeTokenSuppy}</h6>}
@@ -216,7 +225,10 @@ export const Ownership: FC = () => {
             </div>
             <div className="toolbox__ownership-stat">
                 {userOwnedTokens === null ? <></> : <h6>Owned: {userOwnedTokens}</h6>}
-            </div>
+            </div> */}
+            <button onClick={onBuyButtonClicked} className="toolbox__buy_button">
+                {processingPurchase ? "Processing..." : "Buy"}
+            </button>
             {showClaimTokensButton ? (
                 <button
                     disabled={claimProcessing}
@@ -236,17 +248,22 @@ export const Toolbox: FC = () => {
     const { wallet } = useWallet();
 
     return (
-        <div className="toolbox__container">
-            <div className="toolbox__header-container">
-                <h1 className="toolbox__header-heading">Tapestry</h1>
+        <div className="toolbox__container grid md:grid-cols-5 grid-rows-2 md:grid-rows-none  grid-row-reverse py-2 md:gap-2 lg:gap-8 2xl:gap-16">
+            <div className="w-full bg-gray-500 md:my-6 col-span-2 flex rounded-md order-last">
+                <PaintbrushTool></PaintbrushTool>
             </div>
-            <div className="toolbox__actions">
-                {!wallet && <WalletMultiButton>Connect Wallet</WalletMultiButton>}
-                {wallet && <WalletDisconnectButton />}
+            <div className="w-full flex col-span-2 content-center md:py-6 ">
+                <div className="flex-wrap w-full flex content-center shadow-sm shadow-black">
+                    <Pallete />
+                </div>
             </div>
-            <PaintbrushTool></PaintbrushTool>
-            <Ownership></Ownership>
-            <Pallete />
+            <div className="w-full hidden md:flex flex-col justify-center">
+                <div className="toolbox__actions">
+                    {!wallet && <WalletMultiButton>Connect Wallet</WalletMultiButton>}
+                    {wallet && <WalletDisconnectButton />}
+                </div>
+                <Ownership></Ownership>
+            </div>
         </div>
     );
 };

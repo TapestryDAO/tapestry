@@ -77,8 +77,10 @@ export const Wallet: FC = () => {
         <ConnectionProvider endpoint={endpoint}>
             <WalletProvider wallets={wallets} onError={onError} autoConnect>
                 <WalletModalProvider>
-                    <Toolbox />
-                    <App />
+                    <div className="flex flex-col w-full">
+                        <App />
+                        <Toolbox />
+                    </div>
                 </WalletModalProvider>
                 <Toaster position="bottom-left" reverseOrder={false} />
             </WalletProvider>

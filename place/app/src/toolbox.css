@@ -2,66 +2,39 @@
     --palletePixelSize: 48px;
 }
 
-.toolbox__container {
-    display: flex;
-    flex-direction: column;
-    /* justify-content: space-between; */
-    padding: 0;
-    margin: 0;
-    min-width: calc(48px * 5);
-    width: auto;
-    background: #2c2d30;
-    max-height: 100%;
-    overflow: scroll;
-
-    -ms-overflow-style: none;
-    /* IE and Edge */
-    scrollbar-width: none;
-    /* Firefox */
-}
-
 /* Hide scrollbar for Chrome, Safari and Opera */
 .toolbox__container::-webkit-scrollbar {
     display: none;
-}
-
-.toolbox__container > div {
-    display: flex;
 }
 
 .toolbox__actions {
     display: flex;
     justify-content: top;
     align-self: top;
-    margin: 1rem;
-}
-
-.toolbox__paintbrush-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
 }
 
 .toolbox__paintbrush-image {
-    max-width: 150px;
-    max-height: 150px;
-    width: auto;
-    height: auto;
     margin: 10px;
     border-radius: 0.25rem;
 }
 
-.toolbox__buy_button {
+.toolbox__buy_button,
+.toolbox__actions .wallet-adapter-button {
     border-radius: 0.25rem;
     background-color: #5497d5;
     min-width: 100px;
     min-height: 48px;
     font-family: "PublicPixel";
     font-weight: normal;
+    line-height: initial;
     border: 0;
     text-transform: capitalize;
     color: white;
     margin: 10px;
+    justify-content: center;
+}
+.toolbox__actions .wallet-adapter-button {
+    width: 100%;
 }
 
 .toolbox__header-container {
@@ -78,21 +51,20 @@
     color: #fff;
 }
 
-.toolbox__pallete-container {
-    min-width: 100%;
-    width: auto;
-    flex-wrap: wrap;
-}
-
 .toolbox__pallete-pixel {
-    width: 48px;
-    height: 48px;
-    display: inline-block;
+    height: 40px;
+    width: 40px;
     cursor: pointer;
+    flex: 1 0 auto;
+    /* height: auto; */
+}
+.flex-item::before {
+    content: "";
+    float: left;
+    padding-top: 100%;
 }
 
 .toolbox__ownership-container {
-    margin: 10px;
     display: flex;
     flex-direction: column;
 }
@@ -145,8 +117,4 @@
     } 
     
     */
-}
-
-.toolbox__container {
-    background-color: #2b2b2b;
 }

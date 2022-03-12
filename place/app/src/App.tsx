@@ -246,7 +246,7 @@ export const App: FC = () => {
     });
 
     return (
-        <div className="App">
+        <div className="App mx-auto">
             <TapestryCanvas />
         </div>
     );

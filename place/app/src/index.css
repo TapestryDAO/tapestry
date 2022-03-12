@@ -19,7 +19,7 @@ body {
     font-family: "Source Code Pro", monospace;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #383838;
+    background-color: #f3f3f3;
     color: #ffffff;
     height: 100%;
     width: 100%;
@@ -41,6 +41,10 @@ body {
     width: auto;
     overflow: hidden;
     align-content: stretch;
+}
+.pixel-font {
+    font-family: "PublicPixel";
+    font-weight: normal;
 }
 
 .TapestryCanvas_Container {
